@@ -8,7 +8,7 @@ import FicheArticle from "./FicheArticle.jsx";
 
 const PAR_PAGE = 10;
 
-export default function Articles({ compte }) {
+export default function Articles({ compte, parametres }) {
   // Consultation pour tous ; réception et modification réservées à l'Agent Logistique.
   const gestion = !!compte?.agent_logistique;
   const [page, setPage] = useState(1);
@@ -26,7 +26,7 @@ export default function Articles({ compte }) {
   const [recherche, setRecherche] = useState("");  // appliqué après une courte pause
   const [categorie, setCategorie] = useState("");
   const [magasin, setMagasin] = useState("");
-  const [sousSeuil, setSousSeuil] = useState(false);
+  const [sousSeuil, setSousSeuil] = useState(!!parametres?.sousSeuil); // coché d'avance depuis le Tableau de bord
   const [etatProduit, setEtatProduit] = useState(""); // filtre « État » (12/10/2026)
   const [options, setOptions] = useState({ categories: [], magasins: [], etats: [] });
 

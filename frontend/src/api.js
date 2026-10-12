@@ -286,6 +286,10 @@ export function lireCompteurs() {
 export function signalerChangement() {
   window.dispatchEvent(new Event("gestistock:compteurs"));
 }
+/** Écran « Tableau de bord » : cartes chiffrées, articles à réapprovisionner, activité du jour (12/10/2026). */
+export function lireTableauDeBord() {
+  return lire("/api/tableau-de-bord/");
+}
 export function lireSession() {
   return lire("/api/session/");
 }

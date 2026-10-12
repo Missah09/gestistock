@@ -604,3 +604,51 @@ th .facultatif { color: var(--gris); }
 /* Fenêtre « Nouvel article » ouverte par-dessus « Entrée en stock » */
 .voile.par-dessus { z-index: 20; }
 .fenetre.par-dessus { z-index: 21; }
+
+/* ---------- Tableau de bord (12/10/2026) : 4 cartes chiffrées, « À réapprovisionner », « Activité du jour » ---------- */
+.tdb { display: flex; flex-direction: column; gap: 18px; padding-top: 20px; }
+.tdb-maj { color: var(--gris); font-size: 13px; }
+.tdb-cartes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.tdb-carte { display: flex; align-items: center; gap: 16px; padding: 18px 20px; text-align: left; font: inherit; color: inherit; min-width: 0; }
+button.tdb-carte { cursor: pointer; }
+button.tdb-carte:hover { border-color: var(--hbc-clair); box-shadow: 0 2px 10px rgba(47,71,99,.14); }
+button.tdb-carte:focus-visible { outline: 3px solid var(--hbc-pale); outline-offset: 1px; border-color: var(--hbc-clair); }
+.tdb-icone { flex: none; width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; }
+.tdb-icone.rouge { background: var(--rouge-clair); color: var(--rouge); }
+.tdb-icone.orange { background: var(--orange-clair); color: #c27a0e; }
+.tdb-icone.vert { background: var(--vert-clair); color: var(--vert-fonce); }
+.tdb-icone.bleu { background: var(--hbc-pale); color: var(--hbc); }
+.tdb-texte { display: flex; flex-direction: column; min-width: 0; }
+.tdb-titre { color: var(--gris); font-size: 14px; }
+.tdb-valeur { font-size: 30px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tdb-valeur.rouge { color: var(--rouge); }
+.tdb-valeur.orange { color: var(--orange); }
+.tdb-valeur.vert { color: var(--vert-fonce); }
+.tdb-valeur.bleu { color: var(--encre); }
+
+.tdb-grille { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tdb-panneau { padding: 6px 0 8px; overflow: hidden; }
+.tdb-panneau-tete { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 10px; min-height: 52px; }
+.tdb-panneau-tete h2 { margin: 0; font-size: 17px; }
+.tdb-panneau-tete .btn.lien { height: 32px; padding: 0 4px; gap: 6px; }
+.tdb-panneau .tableau td { height: 50px; }
+.tdb-panneau .tableau tbody tr:last-child td { border-bottom: 0; }
+.tdb-pied { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 8px 20px 4px; color: var(--gris); font-size: 13px; border-top: 1px solid #eef1f5; }
+.tdb-pied .btn.lien { height: 30px; font-size: 13px; padding: 0 6px; }
+
+.tdb-activite { list-style: none; margin: 0; padding: 0 20px; }
+.tdb-activite li { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #eef1f5; }
+.tdb-activite li:last-child { border-bottom: 0; }
+.tdb-activite li.vide { justify-content: center; height: 80px; border: 0; }
+.tdb-evenement { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.tdb-activite time { flex: none; color: var(--gris); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tdb-point { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.a-entree { background: var(--hbc); }
+.a-retour { background: var(--hbc-clair); }
+.a-sortie { background: #e0961f; }
+.a-valide { background: var(--violet); }
+.a-demande { background: var(--gris-hbc); }
+.a-refus { background: var(--rouge); }
+
+@media (max-width: 1250px) { .tdb-cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .tdb-grille { grid-template-columns: minmax(0, 1fr); } }

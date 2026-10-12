@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views_comptes import compteurs, connexion, deconnexion, session
-from . import (views_gestion_comptes, views_requisitions, views_retours, views_sorties, views_validation,
+from . import (views_gestion_comptes, views_requisitions, views_retours, views_sorties, views_tableau, views_validation,
                views_visa)
 
 from .views import (ArticleViewSet, annuler_demande, choix, choix_demande, demandes, detail_demande, enregistrer_entree,
@@ -12,6 +12,8 @@ router = DefaultRouter()
 router.register("articles", ArticleViewSet, basename="article")
 
 urlpatterns = [path("session/", session), path("compteurs/", compteurs),
+               # Écran « Tableau de bord » (Agent Logistique et Responsable HBC, 12/10/2026)
+               path("tableau-de-bord/", views_tableau.tableau_de_bord),
                # Écran « Comptes » (administrateur)
                path("comptes/", views_gestion_comptes.comptes), path("comptes/<int:pk>/", views_gestion_comptes.modifier),
                path("comptes/<int:pk>/activer/", views_gestion_comptes.activer),

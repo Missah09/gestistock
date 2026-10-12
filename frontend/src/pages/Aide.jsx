@@ -40,6 +40,20 @@ const FICHES = [
     ],
   },
   {
+    id: "tableau", role: [AGENT, RESPONSABLE], icone: "home", titre: "Lire le Tableau de bord", ecran: "Tableau de bord",
+    etapes: [
+      "Le Tableau de bord s'ouvre tout seul après la connexion (Agent Logistique et Responsable HBC).",
+      "En haut, quatre chiffres : articles sous le seuil, demandes à valider (ou bons à viser pour le Responsable), retours en retard et valeur du stock au magasin.",
+      "Cliquez sur un chiffre pour ouvrir l'écran correspondant (par exemple la Liste d'Articles filtrée « Sous le seuil »).",
+      "« À réapprovisionner » : les articles épuisés, critiques puis en stock bas. Cliquez sur une ligne pour ouvrir la fiche de l'article.",
+      "« Activité du jour » : les entrées, demandes, validations, signatures, sorties et retours d'aujourd'hui, les plus récents en haut.",
+    ],
+    astuces: [
+      "L'écran se met à jour tout seul toutes les 30 secondes.",
+      "La valeur du stock = quantité disponible × prix unitaire ; le matériel prêté (dehors) n'est pas compté.",
+    ],
+  },
+  {
     id: "demande", role: POUR_TOUS, icone: "plus", titre: "Faire une demande de matériel", ecran: "Mes demandes",
     etapes: [
       "Menu « Mes demandes », puis le bouton bleu « Nouvelle demande ».",
@@ -211,11 +225,16 @@ function rolesDe(compte) {
   return r;
 }
 
+/** Une fiche peut concerner plusieurs rôles (ex. le Tableau de bord : Agent Logistique et Responsable HBC). */
+function pourMoi(fiche, mesRoles) {
+  return [].concat(fiche.role).some((r) => mesRoles.includes(r));
+}
+
 export default function Aide({ compte, allerA, ecransDuMenu = [] }) {
   const mesRoles = rolesDe(compte);
   const [tout, setTout] = useState(false);
-  const fiches = FICHES.filter((f) => tout || mesRoles.includes(f.role));
-  const autres = FICHES.length - FICHES.filter((f) => mesRoles.includes(f.role)).length;
+  const fiches = FICHES.filter((f) => tout || pourMoi(f, mesRoles));
+  const autres = FICHES.length - FICHES.filter((f) => pourMoi(f, mesRoles)).length;
 
   function voir(id) {
     document.getElementById(`aide-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -249,7 +268,7 @@ export default function Aide({ compte, allerA, ecransDuMenu = [] }) {
             <div className="aide-fiche-tete">
               <span className="aide-icone"><Icon name={f.icone} size={22} /></span>
               <h2>{f.titre}</h2>
-              <span className="pill p-i">{ROLES[f.role]}</span>
+              <span className="pill p-i">{[].concat(f.role).map((r) => ROLES[r]).join(" · ")}</span>
             </div>
             <ol className="aide-etapes">
               {f.etapes.map((e, i) => <li key={i}>{e}</li>)}

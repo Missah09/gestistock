@@ -65,6 +65,17 @@ Pour arrêter : fermez les deux fenêtres noires.
 - Aide : lien « Aide » en bas du menu = tutoriel pas à pas, selon le rôle de la personne.
 - Mot de passe oublié : `outils\changer-mot-de-passe.bat`.
 
+## Tableau de bord (depuis le 12/10/2026)
+- Menu **« Tableau de bord »** (Agent Logistique et Responsable HBC) : **écran d'accueil après la connexion** pour eux ;
+  les Saisisseurs arrivent toujours sur « Mes demandes ».
+- 4 chiffres cliquables : **Articles sous le seuil** (ouvre la Liste d'Articles filtrée « Sous le seuil »),
+  **Demandes à valider** (Agent Logistique) ou **Bons à viser** (Responsable), **Retours en retard**, **Valeur du stock**
+  (quantité disponible × prix unitaire, matériel prêté non compté ; montant exact au survol).
+- **À réapprovisionner** : les 6 articles les plus urgents (Épuisé, puis Critique, puis Stock bas) ; clic = fiche de l'article.
+- **Activité du jour** : entrées en stock, demandes, validations, signatures, sorties et retours d'aujourd'hui.
+- Pas de graphique. Mis à jour toutes les 30 s. Pas de migration. Tests : `stock/tests_tableau.py`.
+  Sauvegarde : `sauvegarde-avant-tableau-de-bord-12-10`.
+
 ## Réquisitions et PDF du bon (depuis le 12/10/2026)
 - Menu **« Réquisitions »** (Agent Logistique et Responsable HBC) : les bons signés par la Logistique et le Responsable,
   en onglets « À imprimer », « Imprimées », « Toutes ».

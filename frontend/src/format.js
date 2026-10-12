@@ -20,6 +20,15 @@ export function montant(valeur) {
   return `${ariary.format(Number(valeur))} Ar`;
 }
 
+/** Montant court pour les cartes du Tableau de bord : 612 450 000 → « 612 M Ar », 4 750 000 → « 4,8 M Ar ». */
+export function montantCourt(valeur) {
+  const v = Number(valeur) || 0;
+  const court = (n, suffixe) => `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: n < 100 ? 1 : 0 }).format(n)} ${suffixe}`;
+  if (v >= 1e9) return court(v / 1e9, "Md Ar");
+  if (v >= 1e6) return court(v / 1e6, "M Ar");
+  return montant(Math.round(v));
+}
+
 export function date(iso) {
   if (!iso) return "—";
   const [a, m, j] = iso.split("-");

@@ -12,9 +12,10 @@ import Demandes from "./pages/Demandes.jsx";
 import Requisitions from "./pages/Requisitions.jsx";
 import Retours from "./pages/Retours.jsx";
 import Sorties from "./pages/Sorties.jsx";
+import TableauDeBord from "./pages/TableauDeBord.jsx";
 
 // Écrans déjà développés ; les autres entrées du menu affichent « en préparation ».
-const ECRANS = { Aide, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, "Retours de stock": Retours, Comptes };
+const ECRANS = { Aide, "Tableau de bord": TableauDeBord, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, "Retours de stock": Retours, Comptes };
 
 /** Menu selon le rôle (ordre fixé le 11/10/2026).
  *  Articles (consultation) pour tous ; Tableau de bord pour l'Agent Logistique et le Responsable HBC. */
@@ -32,6 +33,12 @@ function menuPour(compte) {
   return menu;
 }
 
+/** Écran ouvert après la connexion (12/10/2026) : le Tableau de bord pour l'Agent Logistique et le Responsable HBC,
+ *  « Mes demandes » pour les Saisisseurs. */
+function accueil(compte) {
+  return compte && (compte.agent_logistique || compte.responsable) ? "Tableau de bord" : "Mes demandes";
+}
+
 // Compteur affiché à droite de l'entrée du menu (ce qui attend l'utilisateur).
 const COMPTEUR_DU_MENU = { "Demandes à valider": "a_valider", "Demandes à viser": "a_viser", "Liste Réquisitions": "a_imprimer", "Sorties de stock": "a_confirmer", "Retours de stock": "retours_en_retard" };
 
@@ -45,6 +52,8 @@ export default function App() {
   const [compte, setCompte] = useState(undefined); // undefined : vérification en cours ; null : non connecté
   const [ecran, setEcran] = useState("Mes demandes");
   const [ouvrirId, setOuvrirId] = useState(lienDeLEmail);
+  // Réglages passés à l'écran ouvert depuis un autre (ex. Tableau de bord → Liste d'Articles filtrée « Sous le seuil »).
+  const [parametres, setParametres] = useState(null);
   const [compteurs, setCompteurs] = useState({});
   const [raisonDeconnexion, setRaisonDeconnexion] = useState(null); // ex. « compte ouvert sur un autre appareil »
 
@@ -85,7 +94,11 @@ export default function App() {
   }, [compte]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    lireSession().then((s) => { setRaisonDeconnexion(s.message || null); setCompte(s.connecte ? s : null); }).catch(() => setCompte(null));
+    lireSession().then((s) => {
+      setRaisonDeconnexion(s.message || null);
+      if (s.connecte) setEcran(accueil(s));
+      setCompte(s.connecte ? s : null);
+    }).catch(() => setCompte(null));
     // Session terminée pendant le travail : retour à l'écran de connexion.
     const fin = (e) => { setRaisonDeconnexion(e.detail || null); setCompte(null); };
     window.addEventListener("gestistock:deconnecte", fin);
@@ -94,11 +107,16 @@ export default function App() {
 
   if (compte === undefined) return <div className="connexion-fond" />;
   if (compte === null) return <Connexion message={raisonDeconnexion}
-    onConnecte={(c) => { setRaisonDeconnexion(null); setEcran(ouvrirId && c.responsable ? "Demandes à viser" : "Mes demandes"); setCompte(c); }} />;
+    onConnecte={(c) => { setRaisonDeconnexion(null); setEcran(ouvrirId && c.responsable ? "Demandes à viser" : accueil(c)); setCompte(c); }} />;
 
   const menu = menuPour(compte);
-  const actif = ecran === "Aide" || menu.some(([, l]) => l === ecran) ? ecran : "Mes demandes";
+  const actif = ecran === "Aide" || menu.some(([, l]) => l === ecran) ? ecran : accueil(compte);
   const Ecran = ECRANS[actif];
+
+  /** Ouvre un écran du menu, avec d'éventuels réglages (filtre…). */
+  function allerA(nom, reglages = null) {
+    setOuvrirId(null); setParametres(reglages); setEcran(nom);
+  }
 
   async function deconnecter() {
     try { await seDeconnecter(); } finally { setRaisonDeconnexion(null); setCompte(null); }
@@ -117,7 +135,7 @@ export default function App() {
         <nav className="nav">
           {menu.map(([icon, label]) => (
             <a key={label} className={label === actif ? "on" : ""} href="#" aria-current={label === actif ? "page" : undefined}
-              onClick={(e) => { e.preventDefault(); setOuvrirId(null); setEcran(label); }}><Icon name={icon} />{label}
+              onClick={(e) => { e.preventDefault(); allerA(label); }}><Icon name={icon} />{label}
               {compteurs[COMPTEUR_DU_MENU[label]] > 0 && (
                 <span className={`pastille${label === "Retours de stock" ? " retard" : ""}`}
                   title={label === "Retours de stock" ? "Matériel en retard (date de retour dépassée)" : "En attente de votre part"}>{compteurs[COMPTEUR_DU_MENU[label]]}</span>
@@ -126,7 +144,7 @@ export default function App() {
         </nav>
         <nav className="nav bottom">
           <a className={actif === "Aide" ? "on" : ""} href="#" aria-current={actif === "Aide" ? "page" : undefined}
-            onClick={(e) => { e.preventDefault(); setOuvrirId(null); setEcran("Aide"); }}><Icon name="help" />Aide</a>
+            onClick={(e) => { e.preventDefault(); allerA("Aide"); }}><Icon name="help" />Aide</a>
           {compte.administrateur && <a href="/admin/" target="_blank" rel="noreferrer"><Icon name="sliders" />Administration</a>}
         </nav>
         <div className="carte-compte">
@@ -140,7 +158,7 @@ export default function App() {
       </aside>
       <main className="main">
         {Ecran ? <Ecran key={actif} compte={compte} ouvrirId={actif === "Demandes à viser" ? ouvrirId : null}
-          allerA={setEcran} ecransDuMenu={menu.map(([, l]) => l)} /> : (
+          parametres={parametres} allerA={allerA} ecransDuMenu={menu.map(([, l]) => l)} /> : (
           <>
             <header className="top"><h1>{actif}</h1></header>
             <div className="body"><div className="card prepa">Cet écran est en préparation.</div></div>

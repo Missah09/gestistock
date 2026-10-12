@@ -1,0 +1,500 @@
+:root {
+  /* Charte HBC (couleurs mesurées sur le logo) */
+  --hbc: #415f83;          /* bleu HBC : lettres H.B.C, 1re barre */
+  --hbc-fonce: #2f4763;    /* bleu HBC assombri : élément actif, survols */
+  --hbc-clair: #4a86a8;    /* bleu clair : 2e barre */
+  --hbc-pale: #e8f0f6;     /* fond très clair dérivé du bleu clair */
+  --anthracite: #383838;   /* 4e barre */
+  --gris-hbc: #919296;     /* 3e barre */
+
+  /* Couleurs d'état (ne dépendent PAS de la charte : vert = bon, orange = attention, rouge = danger) */
+  --vert: #20a080; --vert-fonce: #13785f; --vert-clair: #e3f4ee;
+
+  --encre: var(--anthracite); --gris: #626262; --trait: #dde3ea; --fond: #e6ebf1;
+  --orange: #9a5c00; --orange-clair: #fdf0d8; --rouge: #b8322a; --rouge-clair: #fce4e2;
+  --violet: #6b46c1; --violet-clair: #efeafb;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", Lato, system-ui, sans-serif; font-size: 14px; color: var(--encre); background: var(--fond); }
+button, input, select { font: inherit; color: inherit; }
+
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.side { background: var(--hbc); color: #eef3f8; display: flex; flex-direction: column; padding: 16px 10px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 2px 6px 24px; }
+.logo-rond { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #fff; display: grid; place-items: center; overflow: hidden; box-shadow: 0 0 0 3px rgba(255,255,255,.18); }
+.logo-rond img { width: 80%; height: auto; display: block; }
+.brand-texte { display: flex; flex-direction: column; line-height: 1.15; }
+.nom-appli { font-weight: 800; font-size: 17px; color: #fff; }
+.societe { font-size: 12px; font-weight: 700; letter-spacing: .14em; color: #c9d6e3; }
+.nav a { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 9px; margin-bottom: 3px; cursor: pointer; }
+.nav a:hover { background: rgba(255,255,255,.1); }
+.nav a.on { background: var(--hbc-fonce); color: #fff; font-weight: 700; box-shadow: inset 4px 0 0 var(--hbc-clair); }
+.nav.bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,.22); padding-top: 10px; }
+
+.main { display: flex; flex-direction: column; min-width: 0; }
+.top { height: 56px; background: #f7f9fb; border-bottom: 1px solid var(--trait); display: flex; align-items: center; padding: 0 26px; gap: 14px; }
+.top h1 { font-size: 20px; margin: 0; flex: 1; }
+.body { padding: 16px 26px; }
+
+
+/* ---------- Boutons ---------- */
+.btn { height: 40px; border: 1px solid #d5dbe5; background: #fff; border-radius: 8px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--hbc-clair); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.pri { background: var(--hbc); border-color: var(--hbc); color: #fff; font-weight: 700; }
+.btn.pri:hover:not(:disabled) { background: var(--hbc-fonce); border-color: var(--hbc-fonce); }
+
+/* ---------- Tableau Articles ---------- */
+.card { background: #fff; border: 1px solid #d3dbe4; border-radius: 12px; box-shadow: 0 1px 3px rgba(47,71,99,.08); }
+/* Le tableau Articles n'est pas rogné par la carte (pour que la barre rouge déborde à l'extérieur) :
+   les coins arrondis de l'en-tête sont donc dessinés sur les cellules elles-mêmes. */
+.card > .tableau { border-collapse: separate; border-spacing: 0; }
+.card > .tableau th:first-child { border-top-left-radius: 11px; }
+.card > .tableau th:last-child { border-top-right-radius: 11px; }
+.tableau { width: 100%; border-collapse: collapse; }
+.tableau th { text-align: left; font-size: 12.5px; font-weight: 700; color: var(--hbc-fonce); padding: 9px 14px; border-bottom: 1px solid var(--trait); background: #eef2f6; }
+.tableau td { padding: 0 14px; height: 44px; border-bottom: 1px solid #eef1f5; font-size: 13.5px; }
+.tableau tbody tr:hover td { background: #f5f8fb; }
+/* Liste Articles : les 10 lignes se partagent la hauteur de l'écran
+   (238 px = bandeau, filtres, en-tête du tableau, pagination et marges), entre 44 et 58 px chacune. */
+.card > .tableau td { height: clamp(44px, calc((100vh - 238px) / 10), 58px); }
+/* Articles épuisés ou critiques : fond blanc + barre rouge arrondie à gauche,
+   dans le même style que la barre de l'élément actif du menu. */
+.tableau tr.alerte-ligne td:first-child { position: relative; }
+.tableau tr.alerte-ligne td:first-child::before {
+  /* Comme le menu : toute la hauteur, bouts incurvés ; placée à l'extérieur, contre le bord gauche du tableau. */
+  content: ""; position: absolute; left: -7px; top: 2px; bottom: 2px; width: 10px;
+  border-left: 4px solid var(--rouge); border-radius: 9px 0 0 9px; box-sizing: border-box;
+}
+.code-cell { display: flex; align-items: center; gap: 10px; }
+.code { font-weight: 700; font-size: 12.5px; color: var(--hbc); letter-spacing: .02em; min-width: 76px; white-space: nowrap; }
+.btn-details { height: 30px; padding: 0 9px; border: 1px solid #c3d8e6; background: var(--hbc-pale); color: var(--hbc); border-radius: 7px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.btn-details:hover { background: #d9e7f1; border-color: var(--hbc-clair); }
+.nom { font-weight: 700; }
+.num { font-weight: 700; }
+.discret { color: var(--gris); }
+.tableau th.centre, .tableau td.centre { text-align: center; }
+.vide { text-align: center; color: var(--gris); height: 80px; }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.p-ok { background: var(--vert-clair); color: var(--vert-fonce); }
+.p-w { background: var(--orange-clair); color: var(--orange); }
+.p-c { background: var(--rouge-clair); color: var(--rouge); }
+.pied { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; color: var(--gris); font-size: 13px; }
+.pages { display: flex; gap: 8px; }
+.pages .btn { height: 36px; }
+.alerte { background: var(--rouge-clair); color: var(--rouge); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-weight: 700; }
+
+/* ---------- Recherche et filtres ---------- */
+.recherche { flex: 1 1 220px; max-width: 420px; height: 40px; border: 1px solid #d5dbe5; border-radius: 8px; display: flex; align-items: center; gap: 10px; padding: 0 14px; color: var(--gris-hbc); background: #fff; }
+.recherche:focus-within { border-color: var(--hbc-clair); box-shadow: 0 0 0 3px var(--hbc-pale); }
+.recherche input { border: 0; outline: 0; flex: 1; font-size: 13.5px; color: var(--encre); background: transparent; min-width: 0; }
+.barre { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: center; }
+.barre .btn { white-space: nowrap; flex: none; }
+select.btn { padding-right: 10px; }
+.btn.case { gap: 10px; }
+.btn.case input { width: 18px; height: 18px; accent-color: var(--hbc); margin: 0; }
+.btn.lien { border-color: transparent; background: transparent; color: var(--hbc); font-weight: 700; }
+.btn.lien:hover { border-color: transparent; text-decoration: underline; }
+.btn.lien.effacer { font-size: 12.5px; padding: 0 6px; gap: 5px; }
+
+/* ---------- Lignes cliquables ---------- */
+.tableau tr.cliquable { cursor: pointer; }
+.tableau tr.choisie td { background: var(--hbc-pale); }
+
+/* ---------- Fiche article (panneau latéral) ---------- */
+.voile { position: fixed; inset: 0; background: rgba(18, 28, 46, .42); z-index: 10; }
+.fiche { position: fixed; top: 0; right: 0; bottom: 0; width: min(720px, 100vw); background: #fff; z-index: 11; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(10, 20, 40, .25); }
+.fiche-tete { padding: 20px 26px 16px; border-bottom: 1px solid var(--trait); display: flex; gap: 14px; align-items: flex-start; }
+.fiche-tete h2 { margin: 0 0 8px; font-size: 20px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fiche-tete h2 .titre-code { display: inline-block; margin-left: 12px; font-size: 14px; min-width: 0; vertical-align: 2px; }
+.meta-petite .pill { font-size: 11.5px; padding: 2px 9px; }
+.bloc h3 .bloc-etat { margin-left: 10px; text-transform: none; letter-spacing: normal; vertical-align: 1px; }
+.fermer { margin-left: auto; flex: none; width: 44px; height: 44px; border: 1px solid #d5dbe5; border-radius: 8px; background: #fff; display: grid; place-items: center; cursor: pointer; }
+.fermer:hover { border-color: var(--hbc-clair); }
+.fiche-corps { padding: 18px 22px; flex: 1; overflow-y: auto; background: var(--fond); }
+
+/* Sections encadrées */
+.bloc { background: #fff; border: 1px solid #d9dfe8; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+.bloc h3 { margin: 0; padding: 10px 16px; font-size: 12.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--hbc-fonce); background: var(--hbc-pale); border-bottom: 1px solid #d9dfe8; border-left: 4px solid var(--hbc-clair); }
+
+/* Champs : une case par information, séparées par de fines lignes */
+.champs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #e3e7ee; }
+.champ { background: #fff; padding: 10px 16px 11px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.champ.large { grid-column: 1 / -1; }
+.champ span { font-size: 12.5px; color: var(--gris); }
+.champ b { font-size: 14.5px; overflow-wrap: anywhere; }
+.champ small { font-size: 12.5px; color: var(--gris); }
+
+.ex .tableau th { padding: 9px 14px; }
+.ex .tableau td { padding: 0 14px; height: 46px; font-size: 13.5px; }
+.ex .tableau tbody tr:last-child td { border-bottom: 0; }
+.a-completer { color: var(--orange); font-weight: 700; font-size: 13.5px; }
+.depasse { color: var(--rouge); font-weight: 700; }
+.p-g { background: #eef0f2; color: #4f5055; }
+.p-i { background: var(--violet-clair); color: var(--violet); }  /* « Prêté » */
+.fiche-pied { padding: 14px 26px; border-top: 1px solid var(--trait); display: flex; gap: 10px; align-items: center; }
+.sp { flex: 1; }
+@media (max-width: 640px) { .champs { grid-template-columns: 1fr; } }
+
+/* ---------- Formulaire « Modifier » ---------- */
+.saisie { width: 100%; height: 38px; border: 1px solid #c9d1dd; border-radius: 7px; padding: 0 10px; font-size: 14px; font-weight: 600; background: #fff; }
+.saisie:focus { outline: 0; border-color: var(--hbc-clair); box-shadow: 0 0 0 3px var(--hbc-pale); }
+.saisie.titre { height: 42px; font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+.saisie.petite { height: 36px; font-size: 13.5px; }
+.saisie.invalide, .en-erreur .saisie { border-color: var(--rouge); box-shadow: 0 0 0 3px var(--rouge-clair); }
+.champ em, .msg-erreur { display: block; font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--rouge); margin-top: 3px; }
+.etiquette { display: block; font-size: 13px; color: var(--gris); margin-bottom: 4px; }
+.ex .tableau td:has(.saisie) { padding-top: 6px; padding-bottom: 6px; vertical-align: top; }
+.succes { background: var(--vert-clair); color: var(--vert-fonce); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 700; }
+
+/* ---------- Fenêtre « Enregistrer des produits » ---------- */
+.fenetre { position: fixed; z-index: 11; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 40px); background: #fff; border-radius: 14px; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(10, 20, 40, .3); }
+.fenetre-tete { display: flex; align-items: center; padding: 18px 24px 14px; border-bottom: 1px solid var(--trait); }
+.fenetre-tete h2 { margin: 0; font-size: 20px; flex: 1; }
+.fenetre-corps { padding: 18px 24px; overflow-y: auto; flex: 1; }
+.entete-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin-bottom: 18px; }
+.entete-grille label { display: flex; flex-direction: column; gap: 5px; }
+.entete-grille label > span { font-size: 13px; font-weight: 700; color: var(--hbc-fonce); }
+.lignes { border: 1px solid #d9dfe8; border-radius: 10px; overflow: hidden; }
+.lignes .tableau td { height: auto; padding: 8px 10px; vertical-align: top; }
+.lignes .tableau th { padding: 10px; }
+.avec-unite { display: flex; align-items: center; gap: 6px; }
+.avec-unite small { color: var(--gris); white-space: nowrap; }
+.saisie.zone { height: auto; min-height: 36px; padding: 6px 10px; resize: vertical; font-family: inherit; }
+.saisie[readonly] { background: #f3f5f8; }
+.btn-icone { width: 36px; height: 36px; border: 1px solid #d5dbe5; border-radius: 7px; background: #fff; display: grid; place-items: center; cursor: pointer; color: var(--gris); }
+.btn-icone:hover { border-color: var(--rouge); color: var(--rouge); }
+.btn.lien.ajouter { margin: 6px 4px; }
+.total { color: var(--gris); }
+.total b { color: var(--encre); font-size: 16px; }
+.annonce { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.annonce .btn-icone { width: 30px; height: 30px; background: transparent; border-color: transparent; color: var(--vert-fonce); }
+@media (max-width: 760px) { .entete-grille { grid-template-columns: 1fr; } }
+
+
+/* ---------- Demandes ---------- */
+.nav a { color: inherit; text-decoration: none; }
+.prepa { padding: 40px; text-align: center; color: var(--gris); }
+.onglets { display: flex; gap: 4px; background: #fff; border: 1px solid #d5dbe5; border-radius: 9px; padding: 3px; }
+.onglet { height: 34px; border: 0; background: transparent; border-radius: 7px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--gris); cursor: pointer; }
+.onglet:hover { color: var(--hbc-fonce); background: #f2f5f9; }
+.onglet.on { background: var(--hbc); color: #fff; }
+.onglet .compte { min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; background: #eef1f5; color: var(--hbc-fonce); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; }
+.onglet.on .compte { background: rgba(255,255,255,.22); color: #fff; }
+.tableau.demandes td { height: 46px; }
+.tableau.demandes tbody.groupe tr:last-child td { border-bottom: 2px solid #dbe2ea; }
+.tableau.demandes tbody.groupe:hover td { background: #f5f8fb; }
+.tableau.demandes tbody.groupe.choisie td { background: var(--hbc-pale); }
+tbody.cliquable { cursor: pointer; }
+.tableau tbody.groupe tr:hover td { background: inherit; }
+.cellule-demande { vertical-align: top; padding-top: 10px !important; padding-bottom: 10px !important; border-right: 1px solid #eef1f5; }
+.cellule-demande .code { display: block; }
+.cellule-demande small { display: block; color: var(--gris); font-size: 12.5px; margin: 1px 0 4px; }
+.petite-pill { font-size: 11.5px; padding: 1px 8px; margin-left: 8px; }
+.cellule-demande .petite-pill, td > .petite-pill:first-child { margin-left: 0; }
+.dispo { white-space: nowrap; }
+.dispo .pill { margin-left: 8px; }
+.vert { color: var(--vert-fonce); font-weight: 700; }
+.rouge { color: var(--rouge); font-weight: 700; }
+.aide { font-size: 12.5px; color: var(--gris); }
+.saisie:disabled { background: #f3f5f8; color: var(--gris); cursor: not-allowed; }
+.lignes .tableau td .pill { margin-top: 6px; margin-left: 0; }
+.lignes .dispo { padding-top: 15px !important; }
+.btn.case.urgent { font-weight: 700; color: var(--rouge); }
+.btn.case.urgent input { accent-color: var(--rouge); }
+.btn.danger { color: var(--rouge); border-color: #efc4c0; font-weight: 700; }
+.btn.danger:hover:not(:disabled) { border-color: var(--rouge); }
+.btn.danger.plein { background: var(--rouge); border-color: var(--rouge); color: #fff; }
+.question { font-weight: 700; }
+
+/* Suivi en 3 étapes */
+.suivi { list-style: none; margin: 0; padding: 18px 16px 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.suivi li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; padding: 0 6px; }
+.suivi li::before { content: ""; position: absolute; top: 15px; left: -50%; width: 100%; height: 3px; background: #dbe2ea; z-index: 0; }
+.suivi li:first-child::before { display: none; }
+.suivi li.fait::before, .suivi li.encours::before, .suivi li.refus::before { background: var(--hbc-clair); }
+.suivi .rond { position: relative; z-index: 1; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: #fff; border: 2px solid #c9d1dd; color: var(--gris); }
+.suivi .fait .rond { background: var(--vert); border-color: var(--vert); color: #fff; }
+.suivi .encours .rond { border-color: var(--orange); color: var(--orange); background: var(--orange-clair); }
+.suivi .refus .rond { background: var(--rouge); border-color: var(--rouge); color: #fff; }
+.suivi b { font-size: 14px; }
+.suivi small { font-size: 12.5px; color: var(--gris); }
+.tableau.demandes tbody.groupe td[rowspan] { border-bottom: 2px solid #dbe2ea; }
+.lignes .dispo .pill { margin-top: 0; margin-left: 8px; }
+.champ b .rouge { color: var(--rouge); }
+.champ b .vert { color: var(--vert-fonce); }
+.champ b .pill.p-c { color: var(--rouge); }
+.champ b .pill.p-ok { color: var(--vert-fonce); }
+.champ b .pill.p-w { color: var(--orange); }
+.champ b .pill.p-i { color: var(--violet); }
+.maj { color: var(--gris-hbc); }
+
+/* Demandes : séparation verticale entre les colonnes (pas après la dernière) */
+.tableau.demandes th, .tableau.demandes td { border-right: 1px solid #dfe5ec; }
+.tableau.demandes th:last-child, .tableau.demandes td.col-statut { border-right: 0; }
+.tableau.demandes thead th { border-right-color: #d3dbe4; }
+.tableau.demandes td.vide { border-right: 0; }
+
+/* Nouvelle demande : liste Chantier (+ champ « Autre travail ») */
+.champ-chantier { display: flex; flex-direction: column; gap: 5px; }
+.champ-chantier label > span { font-size: 13px; font-weight: 700; color: var(--hbc-fonce); }
+.champ-chantier.en-erreur .saisie:not(:focus) { border-color: var(--rouge); box-shadow: 0 0 0 3px var(--rouge-clair); }
+.saisie.autre-travail { font-weight: 500; }
+
+/* Nouvelle demande (11/10) : horodatage près du titre, colonnes Retour prévu et Motif */
+.fenetre.large { width: min(1180px, calc(100vw - 32px)); }
+.fenetre-tete h2 { flex: none; }
+.horodatage { margin-left: 16px; margin-right: auto; display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--hbc-pale); color: var(--hbc-fonce); font-weight: 700; font-size: 13.5px; }
+.facultatif { font-style: normal; font-weight: 500; color: var(--gris); font-size: 12px; }
+th .facultatif { color: var(--gris); }
+.saisie.motif { font-weight: 500; }
+
+/* Choix d'un article : liste déroulante dans laquelle on peut écrire */
+.choix-article, .liste-deroulante { position: relative; }
+.choix-article .saisie, .liste-deroulante .saisie { padding-right: 34px; text-overflow: ellipsis; }
+.choix-article .fleche, .liste-deroulante .fleche { position: absolute; right: 1px; top: 1px; bottom: 1px; width: 32px; border: 0; background: transparent; color: var(--gris); display: grid; place-items: center; cursor: pointer; border-radius: 0 7px 7px 0; }
+.choix-article .fleche:hover:not(:disabled), .liste-deroulante .fleche:hover:not(:disabled) { color: var(--hbc-fonce); }
+.choix-article .fleche:disabled, .liste-deroulante .fleche:disabled { cursor: not-allowed; opacity: .5; }
+.choix-liste { position: fixed; z-index: 30; margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #c9d1dd; border-radius: 9px; box-shadow: 0 12px 32px rgba(10, 20, 40, .22); overflow-y: auto; font-size: 13.5px; }
+.choix-liste li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.choix-liste li.actif { background: var(--hbc-pale); }
+.choix-liste li[aria-selected="true"] .nom { color: var(--hbc-fonce); }
+.choix-liste li .code { min-width: 78px; }
+.choix-liste li .nom { font-weight: 600; flex: 1; min-width: 0; }
+.choix-liste li .petite-pill { margin-left: 0; flex: none; }
+.choix-liste li small { color: var(--gris); font-size: 12px; white-space: nowrap; }
+
+.choix-liste li.aucun { color: var(--gris); cursor: default; }
+/* Article déjà choisi sur une autre ligne : ligne colorée (orange = attention) + étiquette */
+.choix-liste li.pris { background: var(--orange-clair); box-shadow: inset 4px 0 0 #e0a43a; }
+
+.choix-liste li.pris .code, .choix-liste li.pris .nom { color: var(--orange); }
+.choix-liste li .deja { white-space: nowrap; border: 1px solid #ecc57e; }
+.choix-liste li + li.pris, .choix-liste li.pris + li { margin-top: 2px; }
+.choix-liste li.pris { cursor: not-allowed; }
+
+/* Liste déroulante unique (ListeDeroulante.jsx) */
+.liste-deroulante.sans-saisie .saisie { cursor: pointer; caret-color: transparent; }
+.liste-deroulante.sans-saisie .saisie[readonly] { background: #fff; }
+.liste-deroulante .saisie:disabled { cursor: not-allowed; }
+.choix-liste li.groupe { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gris); cursor: default; }
+.choix-liste li.choix-vide .nom { color: var(--gris); font-weight: 500; }
+.choix-liste li[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--hbc-clair); }
+/* Dans la barre de filtres (page Articles) : même hauteur que les boutons */
+.liste-deroulante.filtre { width: 220px; flex: none; }
+.liste-deroulante.filtre .saisie { height: 40px; border-color: #d5dbe5; border-radius: 8px; font-size: 13.5px; font-weight: 600; }
+
+
+/* ---------- Connexion et compte (11/10/2026) ---------- */
+.connexion-fond { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(160deg, var(--hbc) 0%, var(--hbc-fonce) 100%); padding: 16px; }
+.connexion { width: min(420px, 100%); padding: 32px 34px 26px; display: flex; flex-direction: column; gap: 16px; }
+.connexion-logo { width: 190px; height: auto; align-self: center; }
+.connexion h1 { margin: 4px 0 0; text-align: center; font-size: 24px; color: var(--hbc); }
+.connexion-sous-titre { margin: -10px 0 4px; text-align: center; color: var(--gris); font-size: 15px; }
+.connexion-champ { display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 700; }
+.connexion-champ input { height: 48px; border: 1px solid #c9d2dd; border-radius: 9px; padding: 0 14px; font-size: 16px; font-weight: 400; width: 100%; }
+.connexion-champ input:focus { outline: 3px solid var(--hbc-pale); border-color: var(--hbc-clair); }
+.connexion-champ input[aria-invalid="true"] { border-color: var(--rouge); }
+.connexion-mdp { position: relative; display: block; }
+.connexion-mdp input { padding-right: 52px; }
+.connexion-oeil { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 42px; height: 40px; border: 0; border-radius: 7px; background: transparent; color: var(--gris); display: grid; place-items: center; cursor: pointer; }
+.connexion-oeil:hover { color: var(--hbc); background: var(--hbc-pale); }
+.connexion-oeil:focus-visible { outline: 3px solid var(--hbc-pale); color: var(--hbc); }
+.connexion-mdp input::-ms-reveal { display: none; }
+.connexion-champ .err { color: var(--rouge); font-weight: 400; font-size: 13.5px; }
+.connexion-erreur { background: var(--rouge-clair); color: var(--rouge); border-radius: 9px; padding: 11px 14px; font-weight: 700; font-size: 14.5px; }
+.connexion-bouton { height: 52px; justify-content: center; font-size: 16px; margin-top: 4px; }
+.connexion-aide { margin: 0; text-align: center; color: var(--gris); font-size: 13.5px; }
+
+.carte-compte { border-top: 1px solid rgba(255,255,255,.22); margin-top: 10px; padding: 12px 8px 2px; }
+.compte-nom { font-weight: 800; color: #fff; font-size: 14.5px; overflow-wrap: anywhere; }
+.compte-info { color: #c9d6e3; font-size: 12.5px; margin-top: 2px; }
+.btn.compte-sortie { margin-top: 10px; width: 100%; justify-content: center; background: transparent; color: #fff; border-color: rgba(255,255,255,.45); height: 42px; }
+.btn.compte-sortie:hover:not(:disabled) { background: rgba(255,255,255,.12); border-color: #fff; }
+.side { overflow-y: auto; }
+/* Menu plus serré (jusqu'à 12 entrées pour l'administrateur) */
+.nav a { padding: 9px 12px; margin-bottom: 2px; }
+.brand { padding-bottom: 16px; }
+.btn.compte-sortie { height: 38px; margin-top: 8px; }
+
+
+/* ---------- Demandes à valider (Agent Logistique, 11/10/2026) ---------- */
+.cellule-demande .demandeur { display: block; font-weight: 700; font-size: 13.5px; margin-top: 2px; }
+.col-statut .sous-statut { display: block; margin-top: 5px; font-size: 12px; font-weight: 700; color: var(--hbc); }
+.tableau.demandes td.num .barree { text-decoration: line-through; color: var(--gris); font-weight: 600; }
+.tableau.demandes td.num .accorde { display: block; font-size: 12.5px; color: var(--hbc-fonce); }
+.consigne { background: #fff; border: 1px solid #d9dfe8; border-left: 4px solid var(--hbc); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.45; }
+.accorde-saisie { background: #f7fafc; }
+.accorde-saisie label { font-size: 13px; font-weight: 700; color: var(--hbc-fonce); }
+.accorde-saisie .saisie { width: 110px; height: 42px; font-size: 16px; font-weight: 800; }
+.accorde-saisie small.rouge { font-weight: 700; }
+.fiche-pied .question small { display: block; font-weight: 500; color: var(--gris); font-size: 12.5px; }
+.fiche-pied.refus { display: block; }
+.refus-saisie { display: flex; flex-direction: column; gap: 8px; }
+.refus-saisie textarea { font-weight: 500; }
+.refus-boutons { display: flex; gap: 10px; align-items: center; }
+/* Suivi en 5 étapes */
+.suivi.cinq { grid-template-columns: repeat(5, 1fr); padding-left: 8px; padding-right: 8px; }
+.suivi.cinq b { font-size: 13px; line-height: 1.25; }
+.suivi.cinq small { font-size: 12px; overflow-wrap: anywhere; }
+.fiche-pied .btn { white-space: nowrap; flex: none; }
+
+/* ---------- À viser et email (11/10/2026) ---------- */
+.avertissement { background: var(--orange-clair); color: var(--orange); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-weight: 700; }
+.avertissement .btn-icone { color: var(--orange); }
+.btn.petit-btn { height: 34px; align-self: flex-start; margin-top: 6px; font-weight: 700; color: var(--hbc); }
+.champ b.a-completer { font-size: 13.5px; }
+
+/* Confirmation dans le panneau après Valider / Viser / Refuser (11/10/2026, 21 h 50) */
+.bandeau-fait { display: flex; gap: 14px; align-items: center; background: var(--vert-clair); border: 1px solid #b8e2d3; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.bandeau-fait .rond-fait { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--vert); color: #fff; display: grid; place-items: center; font-size: 20px; font-weight: 800; }
+.bandeau-fait b { display: block; font-size: 16px; color: var(--vert-fonce); }
+.bandeau-fait span:not(.rond-fait) { display: block; font-size: 14px; color: var(--vert-fonce); margin-top: 2px; }
+.bandeau-fait.refus { background: var(--rouge-clair); border-color: #efc4c0; }
+.bandeau-fait.refus .rond-fait { background: var(--rouge); }
+.bandeau-fait.refus b, .bandeau-fait.refus span:not(.rond-fait) { color: var(--rouge); }
+
+/* Compteur du menu (demandes à valider, réquisitions à viser) */
+.nav a .pastille { margin-left: auto; min-width: 24px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--rouge); color: #fff; font-size: 12.5px; font-weight: 800; display: inline-grid; place-items: center; box-shadow: 0 0 0 2px var(--hbc); }
+.nav a.on .pastille { box-shadow: 0 0 0 2px var(--hbc-fonce); }
+
+/* ---------- Écran « Comptes » et connexion unique (11/10/2026) ---------- */
+.connexion-info { background: var(--orange-clair); color: var(--orange); border-radius: 9px; padding: 11px 14px; font-weight: 700; font-size: 14.5px; line-height: 1.4; }
+.tableau.comptes td { height: 52px; }
+.tableau.comptes tr.inactif td { color: var(--gris); }
+.tableau.comptes tr.inactif .nom { font-weight: 600; }
+.roles { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.roles .pill { font-size: 12px; padding: 2px 9px; }
+.connecte { display: inline-block; margin-left: 8px; font-size: 12.5px; font-weight: 700; color: var(--vert-fonce); }
+.fenetre.compte { width: min(820px, calc(100vw - 32px)); }
+.fenetre.compte .titre-pill { margin-left: 12px; }
+.fenetre.compte .entete-grille small.aide { display: block; }
+.fenetre.compte .connexion-mdp input { padding-right: 48px; }
+.roles-choix { border: 1px solid #d9dfe8; border-radius: 10px; padding: 10px 16px 14px; margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.roles-choix legend { font-size: 13px; font-weight: 800; color: var(--hbc-fonce); padding: 0 6px; }
+.roles-choix .aide { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.roles-choix .btn.case { height: auto; padding: 10px 14px; justify-content: flex-start; align-items: center; }
+.roles-choix .btn.case span { display: flex; flex-direction: column; text-align: left; }
+.roles-choix .btn.case small { color: var(--gris); font-size: 12.5px; }
+.roles-choix .boutons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.mdp-saisie { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+
+/* ---------- Bon de réquisition à l'écran + signature au stylo électronique (11/10/2026) ---------- */
+.voile.au-dessus { z-index: 20; }
+.fenetre.fenetre-bon { z-index: 21; width: min(960px, calc(100vw - 32px)); max-height: calc(100vh - 24px); }
+.fenetre-bon .fenetre-corps { background: var(--fond); }
+.fenetre-bon .fiche-pied { flex-wrap: wrap; }
+.pied-refus { width: 100%; }
+.bon { background: #fff; border: 1px solid #cfd6df; box-shadow: 0 2px 10px rgba(20, 35, 60, .12); padding: 26px 30px 16px; color: #222; font-size: 13.5px; }
+.bon-tete { display: grid; grid-template-columns: 150px 1fr 170px; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 2px solid var(--hbc); }
+.bon-logo { width: 140px; height: auto; }
+.bon-titre { text-align: center; font-size: 18px; font-weight: 800; letter-spacing: .03em; color: var(--hbc-fonce); }
+.bon-numero { text-align: right; font-size: 14px; }
+.bon-numero span { color: var(--gris); }
+.bon-section { margin: 16px 0 8px; font-weight: 800; color: var(--hbc-fonce); font-size: 14px; border-bottom: 1px solid #dfe5ec; padding-bottom: 4px; }
+.bon-infos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+.bon-infos span { color: var(--gris); }
+.bon-pointilles { display: inline-block; width: 60%; border-bottom: 1px dotted #888; height: 1em; vertical-align: -2px; }
+.bon-table { width: 100%; border-collapse: collapse; }
+.bon-table th, .bon-table td { border: 1px solid #b9c2cd; padding: 6px 8px; text-align: left; font-size: 13px; }
+/* Un texte très long sans espace (motif, désignation…) passe à la ligne au lieu de déborder du bon (12/10/2026). */
+.bon-table td:last-child, .bon-infos b, .bon-case b { overflow-wrap: anywhere; }
+.bon-table td:nth-child(3) { overflow-wrap: break-word; }
+.bon-table th { background: #eef2f6; color: var(--hbc-fonce); font-size: 12.5px; }
+.bon-table td.centre { text-align: center; }
+.bon-table td:nth-child(6) { min-width: 80px; }
+.bon-note { margin: 6px 0 0; font-size: 12px; color: var(--gris); font-style: italic; }
+.bon-visas { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #b9c2cd; }
+.bon-case { padding: 8px 10px; border-right: 1px solid #b9c2cd; display: flex; flex-direction: column; gap: 4px; min-height: 150px; }
+.bon-case:last-child { border-right: 0; }
+.bon-case-titre { font-weight: 800; color: var(--hbc-fonce); font-size: 13px; text-align: center; border-bottom: 1px solid #dfe5ec; padding-bottom: 4px; }
+.bon-case-ligne { font-size: 12.5px; }
+.bon-case-ligne span { color: var(--gris); }
+.bon-case-ligne.petit { font-size: 11.5px; color: var(--gris); min-height: 28px; }
+.bon-case-signature { flex: 1; min-height: 64px; display: grid; place-items: center; }
+.bon-case-signature img { max-width: 100%; max-height: 70px; }
+.bon-case-signature.main { place-items: start; color: var(--gris); font-size: 12.5px; }
+.bon-attente { color: var(--gris-hbc); font-size: 12px; font-style: italic; text-align: center; }
+.bon-case.a-signer { background: #fff7e6; box-shadow: inset 0 0 0 3px #e0a43a; }
+.bon-case.a-signer .bon-attente { color: var(--orange); font-weight: 700; font-style: normal; }
+.bon-pied { margin-top: 12px; font-size: 11px; color: var(--gris-hbc); text-align: center; }
+.signer { background: #fff; border: 1px solid #d9dfe8; border-left: 4px solid #e0a43a; border-radius: 10px; padding: 12px 16px 14px; margin-top: 16px; }
+.signer h3 { margin: 0 0 4px; font-size: 15px; color: var(--hbc-fonce); }
+.signataire { margin: 0 0 10px; font-size: 14px; }
+.stylo-cadre { position: relative; height: 170px; border: 2px dashed #b9c2cd; border-radius: 10px; background: #fff; }
+.stylo-toile { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; border-radius: 8px; }
+.stylo.desactive .stylo-toile { cursor: not-allowed; }
+.stylo-ligne { position: absolute; left: 24px; right: 24px; bottom: 38px; border-bottom: 1.5px solid #c9d1dd; pointer-events: none; }
+.stylo-invite { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; color: var(--gris-hbc); font-size: 13.5px; pointer-events: none; }
+.stylo-bas { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+@media (max-width: 760px) { .bon-visas { grid-template-columns: 1fr 1fr; } .bon-tete { grid-template-columns: 1fr; text-align: center; } .bon-numero { text-align: center; } }
+
+/* ---------- Écran Aide (tutoriel, 12/10/2026) ---------- */
+.aide { display: flex; flex-direction: column; gap: 14px; max-width: 980px; }
+.aide-intro { padding: 16px 20px; }
+.aide-intro p { margin: 0 0 12px; font-size: 15px; line-height: 1.5; }
+.aide-sommaire { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.aide-sommaire .btn { height: auto; min-height: 40px; padding: 6px 12px; }
+.aide-fiche { padding: 18px 22px; scroll-margin-top: 12px; }
+.aide-fiche-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.aide-fiche-tete h2 { margin: 0; font-size: 18px; color: var(--hbc-fonce); flex: 1; }
+.aide-icone { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--hbc-pale); color: var(--hbc); display: grid; place-items: center; }
+.aide-etapes { margin: 0 0 12px; padding-left: 0; list-style: none; counter-reset: etape; }
+.aide-etapes li { counter-increment: etape; position: relative; padding: 7px 0 7px 44px; font-size: 15px; line-height: 1.5; }
+.aide-etapes li::before { content: counter(etape); position: absolute; left: 0; top: 5px; width: 30px; height: 30px; border-radius: 50%; background: var(--hbc); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 14px; }
+.aide-astuces { background: #f5f8fb; border-left: 4px solid var(--hbc-clair); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+.aide-astuces b { color: var(--hbc-fonce); font-size: 14px; }
+.aide-astuces ul { margin: 6px 0 0; padding-left: 20px; }
+.aide-astuces li { font-size: 14.5px; line-height: 1.5; margin-bottom: 3px; }
+
+/* ---------- Écran « Réquisitions » (12/10/2026) : bons signés, PDF, trace d'impression ---------- */
+.tableau.requisitions td { height: auto; }
+.tableau.requisitions .cellule-demande { border-right: 1px solid #eef1f5; }
+.tableau.requisitions td:last-child { border-right: 0; }
+.articles-bon .article-bon { display: block; font-size: 13.5px; line-height: 1.5; }
+.articles-bon .article-bon b { display: inline-block; min-width: 34px; color: var(--hbc-fonce); }
+.cellule-demande .trace { display: block; font-size: 12px; line-height: 1.4; margin: 4px 0 0; }
+.actions-bon { white-space: nowrap; }
+.actions-bon .btn { display: flex; width: 100%; justify-content: center; margin-bottom: 7px; }
+.actions-bon .btn-details { width: 100%; justify-content: center; }
+.trace-pied { display: inline-flex; align-items: center; gap: 8px; margin-right: 12px; font-size: 13px; color: var(--gris); }
+.trace-pied .trace { display: inline; margin: 0; font-size: 12.5px; }
+.trace-pied .trace br { display: none; }
+
+/* ---------- Écran « Sorties » : confirmation de la remise (12/10/2026) ---------- */
+.fenetre-sortie .fenetre-corps { background: var(--fond); }
+.fenetre-sortie .titre-pill { margin-left: 12px; }
+.sortie-infos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #e3e7ee; border-radius: 10px; overflow: hidden; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(20, 40, 70, .08); }
+.sortie-infos > div { background: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sortie-infos span { font-size: 12.5px; color: var(--gris); }
+.sortie-infos b { font-size: 14.5px; overflow-wrap: anywhere; }
+.sortie-infos small { font-size: 12.5px; color: var(--gris); }
+.table-sortie td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+.table-sortie td.centre { text-align: center; }
+.table-sortie th.num, .table-sortie td.num { text-align: right; }
+.table-sortie .avec-unite { display: flex; align-items: center; gap: 8px; }
+.table-sortie .saisie.livree { width: 110px; height: 44px; font-size: 18px; font-weight: 800; text-align: right; }
+.table-sortie tr.ligne-erreur td { background: #fff6f5; }
+.table-sortie .partiel { display: block; color: var(--orange); font-weight: 700; font-size: 12.5px; margin-top: 4px; }
+.table-sortie .series { border: 1px solid #d9dfe8; border-radius: 8px; padding: 8px 12px 10px; margin: 8px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 18px; }
+.table-sortie .series legend + small { grid-column: 1 / -1; }
+.table-sortie .series legend { font-size: 12.5px; font-weight: 700; color: var(--hbc-fonce); padding: 0 4px; }
+.table-sortie .serie { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; cursor: pointer; min-height: 32px; }
+.table-sortie .serie input { width: 20px; height: 20px; flex: none; }
+.table-sortie .serie small { color: var(--gris); font-size: 12.5px; }
+.articles-bon .article-bon small.sur { display: inline; color: var(--gris); font-weight: 600; margin-right: 6px; font-size: 12.5px; }
+.articles-bon .article-bon b:has(+ small.sur) { min-width: 0; }
+.table-sortie .series-remis { display: block; color: var(--gris); font-size: 12.5px; margin-top: 3px; }
+.table-sortie .livree-serie b { font-size: 18px; }
+.table-sortie .livree-serie small { color: var(--gris); }
+.btn.lien.tout-livre { margin: 10px 0 0; gap: 7px; }
+.sortie-champs { display: grid; grid-template-columns: 220px 1fr; gap: 14px 18px; margin-top: 18px; background: #fff; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(20, 40, 70, .08); }
+.sortie-champs .champ-saisie { display: flex; flex-direction: column; gap: 5px; }
+.sortie-champs .champ-saisie.large { grid-column: 1 / -1; }
+.sortie-champs label { font-size: 13px; font-weight: 700; color: var(--hbc-fonce); }
+.sortie-champs .saisie { height: 42px; font-size: 15px; }
+.fenetre-sortie .bloc { margin-top: 18px; }
+.fiche-pied.verifier { background: #fff8ec; border-top-color: #f0d9a8; }
+.fiche-pied.verifier .question { font-size: 15px; }
+@media (max-width: 900px) { .sortie-infos { grid-template-columns: 1fr 1fr; } .sortie-champs { grid-template-columns: 1fr; } }

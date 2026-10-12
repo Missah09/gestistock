@@ -1,0 +1,5 @@
+# Les scripts lancés sur Render (Linux) doivent garder des fins de ligne Unix.
+*.sh text eol=lf
+render.yaml text eol=lf
+# Les .bat restent au format Windows.
+*.bat text eol=crlf

@@ -1,0 +1,23 @@
+# GestiStock sur Render (12/10/2026) : un seul service web (Django sert l'API, l'administration et l'interface React).
+# La base de données est chez Neon : coller son adresse dans DATABASE_URL lors de la création.
+services:
+  - type: web
+    name: gestistock
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: bash build.sh
+    startCommand: cd backend && gunicorn gestistock.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 60
+    healthCheckPath: /admin/login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.1
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: GESTISTOCK_EMAILS
+        value: "0"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { annulerDemande } from "../api.js";
-import { date, dateHeure, ETATS, manque, quantite, LIBELLE_PRETE } from "../format.js";
+import { date, dateHeure, ETATS, manque, quantite, LIBELLE_PRETE, ETATS_UTILISABLES, texteEtats } from "../format.js";
+import EtatsProduit from "../EtatsProduit.jsx";
 import { statutAffiche } from "./TableauDemandes.jsx";
 import Icon from "../icons.jsx";
 import FenetreBon from "./FenetreBon.jsx";
@@ -102,10 +103,16 @@ export function BlocArticle({ l, accorde, livree }) {
         <Champ libelle="Motif">{l.motif || "—"}</Champ>
         <Champ libelle="État du stock"><span className={`pill ${etat.classe}`}>{etat.libelle}</span></Champ>
         <Champ libelle="Minimum">{quantite(a.qte_minimale, a.unite)}</Champ>
+        {a.etats && (
+          <Champ libelle="État du produit disponible" large>
+            <EtatsProduit etats={a.etats} unite={a.unite} seulement={ETATS_UTILISABLES} vide="Rien de disponible" />
+          </Champ>
+        )}
         {accorde ?? (l.qte_accordee !== null && <Champ libelle="Qté accordée" large={!livree}>{quantite(l.qte_accordee, a.unite)}</Champ>)}
         {livree && (
           <Champ libelle="Qté remise par le magasin" aide={livree.exemplaires.length ? `N° de série : ${livree.exemplaires.join(", ")}` : undefined}>
             {quantite(livree.qte_livree, a.unite)}
+            {texteEtats(livree.etats) && <span className="discret"> ({texteEtats(livree.etats)})</span>}
           </Champ>
         )}
       </div>

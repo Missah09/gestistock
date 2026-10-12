@@ -26,8 +26,9 @@ async function lire(url) {
   return reponse.json();
 }
 
-export function listerArticles({ page = 1, q = "", categorie = "", magasin = "", sousSeuil = false } = {}) {
+export function listerArticles({ page = 1, q = "", categorie = "", magasin = "", sousSeuil = false, etat = "" } = {}) {
   const params = new URLSearchParams({ page });
+  if (etat) params.set("etat", etat);
   if (q.trim()) params.set("q", q.trim());
   if (categorie) params.set("categorie", categorie);
   if (magasin) params.set("magasin", magasin);
@@ -61,6 +62,11 @@ export async function modifierArticle(id, donnees) {
     throw erreur;
   }
   return corps;
+}
+
+/** « Nouvel article » (12/10/2026) : renvoie la fiche du nouvel article et un message. */
+export function creerArticle(donnees) {
+  return envoyer("/api/articles/", donnees);
 }
 
 /** Enregistre une réception de produits. En cas de refus (400), l'erreur porte le détail. */
@@ -123,6 +129,10 @@ export function lireAValider(id) {
 export function validerDemande(id, lignes, signature) {
   return envoyer(`/api/a-valider/${id}/valider/`, { lignes, signature });
 }
+/** Clic sur « Valider » : le n° de réquisition est attribué tout de suite (affiché sur le bon à signer). */
+export function attribuerNumero(id) {
+  return envoyer(`/api/a-valider/${id}/numero/`);
+}
 export function refuserDemande(id, motif) {
   return envoyer(`/api/a-valider/${id}/refuser/`, { motif });
 }
@@ -158,6 +168,37 @@ export function lireRequisition(id) {
 export function telechargerBon(id, numero) {
   return telechargerPdf(`/api/requisitions/${id}/pdf/`, `${numero}.pdf`);
 }
+/** « Imprimer » (12/10/2026) : le PDF du bon s'ouvre dans la fenêtre d'impression du navigateur.
+ *  Le serveur note l'impression (première impression par l'Agent Logistique = bon « Imprimée »). */
+export async function imprimerBon(id) {
+  const reponse = await appel(`/api/requisitions/${id}/pdf/?impression=1`);
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => ({}));
+    throw new Error(corps.general?.[0] ?? `Erreur ${reponse.status}`);
+  }
+  const lien = URL.createObjectURL(await reponse.blob());
+  document.getElementById("cadre-impression")?.remove();
+  const cadre = document.createElement("iframe");
+  cadre.id = "cadre-impression";
+  cadre.title = "Impression du bon";
+  cadre.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  cadre.src = lien;
+  // Le PDF se charge dans un cadre invisible, puis la fenêtre d'impression du navigateur s'ouvre.
+  const charge = await new Promise((ok) => {
+    const minuteur = setTimeout(() => ok(false), 8000);
+    cadre.onload = () => { clearTimeout(minuteur); ok(true); };
+    document.body.appendChild(cadre);
+  });
+  try {
+    if (!charge) throw new Error("PDF non affiché");
+    cadre.contentWindow.focus();
+    cadre.contentWindow.print();
+  } catch {
+    // Navigateur qui refuse : le PDF s'ouvre dans un onglet, imprimer avec Ctrl+P.
+    window.open(lien, "_blank");
+  }
+  setTimeout(() => URL.revokeObjectURL(lien), 10 * 60_000);
+}
 
 // ---------- Sorties (Agent Logistique) : confirmation de la remise, le stock diminue (12/10/2026) ----------
 export function listerSorties({ onglet = "a_confirmer", page = 1 } = {}) {
@@ -190,6 +231,29 @@ async function telechargerPdf(url, nom) {
 /** Copie d'archive du bon (Qté livrée remplie), après confirmation de la sortie. */
 export function telechargerArchive(id, numero) {
   return telechargerPdf(`/api/sorties/${id}/pdf/`, `${numero}-archive.pdf`);
+}
+
+// ---------- Retours (Agent Logistique) : bons de retour, le stock remonte (12/10/2026) ----------
+export function listerRetours({ onglet = "attendu", page = 1 } = {}) {
+  return lire(`/api/retours/?${new URLSearchParams({ onglet, page })}`);
+}
+export function lireRetour(id) {
+  return lire(`/api/retours/${id}/`);
+}
+/** Prépare le bon de retour (ce qui reste à rendre), signé au stylo par l'Agent Logistique. */
+export function creerBonRetour(id, signature) {
+  return envoyer(`/api/retours/${id}/bon/`, { signature });
+}
+export function annulerBonRetour(bonId) {
+  return envoyer(`/api/retours/bons/${bonId}/annuler/`);
+}
+/** donnees : { date_retour, magasinier, rendu_par, observation, lignes: [{ id, etats } | { id, exemplaires }] } */
+export function confirmerRetour(bonId, donnees) {
+  return envoyer(`/api/retours/bons/${bonId}/confirmer/`, donnees);
+}
+/** Bon de retour (ou sa copie d'archive une fois confirmé). */
+export function telechargerBonRetour(bonId, nom) {
+  return telechargerPdf(`/api/retours/bons/${bonId}/pdf/`, `${nom}.pdf`);
 }
 
 // ---------- Écran « Comptes » (administrateur) ----------

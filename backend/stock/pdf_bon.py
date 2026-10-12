@@ -155,23 +155,32 @@ def fabriquer_pdf(requisition, imprime_par=None, imprime_le=None, sortie=None):
 
     # 2. Liste des articles
     elements.append(Paragraph("2. Liste des articles", S_SECTION))
-    entetes = ["N°", "Code article", "Désignation", "Catégorie", "Qté demandée", "Qté livrée", "Motif"]
+    # Colonne « État » (12/10/2026) : remplie à la main par le magasinier, recopiée sur la copie d'archive.
+    from . import etats
+    entetes = ["N°", "Code article", "Désignation", "Catégorie", "Qté demandée", "Qté livrée", "État", "Motif"]
     donnees = [[Paragraph(e, S_ENTETE) for e in entetes]]
-    for i, (l, qte) in enumerate(lignes_du_bon(d), start=1):
+    lignes = lignes_du_bon(d)
+    # Avant la sortie, la colonne « État » reprend l'état du produit d'après la fiche article (12/10/2026).
+    reps = etats.repartitions([l.article for l, _ in lignes]) if sortie is None else {}
+    for i, (l, qte) in enumerate(lignes, start=1):
         a = l.article
         designation = _x(a.nom)
-        livree = ""
+        livree, etat = "", ""
+        if sortie is None and l.article_id in reps:
+            etat = " / ".join(etats.LIBELLES[e] for e in etats.UTILISABLES if reps[l.article_id]["etats"].get(e, 0) > 0)
         ls = livrees.get(l.id)
         if ls is not None:
             livree = quantite_texte(ls.qte_livree, a.unite)
+            etat = etats.texte(ls.etats or {})
             series = [e.numero_serie for e in ls.exemplaires.all()]
             if series:
                 designation += f"<br/><font size='7.5' color='#626262'>N° de série : {_x(', '.join(series))}</font>"
         elif sortie is not None:
             livree = "0"
         donnees.append([str(i), a.code, Paragraph(designation, S_CELLULE), Paragraph(_x(a.categorie.nom), S_CELLULE),
-                        quantite_texte(qte, a.unite), livree, Paragraph(_x(l.motif), S_CELLULE)])
-    larg = [9 * mm, 23 * mm, None, 33 * mm, 22 * mm, 19 * mm, 33 * mm]
+                        quantite_texte(qte, a.unite), livree, Paragraph(_x(etat), S_CELLULE),
+                        Paragraph(_x(l.motif), S_CELLULE)])
+    larg = [8 * mm, 21 * mm, None, 26 * mm, 20 * mm, 17 * mm, 24 * mm, 28 * mm]
     larg[2] = largeur - sum(x for x in larg if x)
     table = Table(donnees, colWidths=larg, repeatRows=1)
     table.setStyle(TableStyle([
@@ -183,9 +192,10 @@ def fabriquer_pdf(requisition, imprime_par=None, imprime_le=None, sortie=None):
     elements.append(table)
     elements.append(Spacer(1, 3))
     if sortie is None:
-        elements.append(Paragraph("Qté livrée : à remplir à la main par le magasinier lors de la remise du matériel.", S_NOTE))
+        elements.append(Paragraph("Qté livrée : à remplir à la main par le magasinier lors de la remise du matériel. "
+                                  "État : d'après la fiche article (à corriger à la main si besoin, ex. « 3 Neuf, 2 Bon »).", S_NOTE))
     else:
-        note = (f"Qté livrée : recopiée du bon signé par le magasinier. Matériel remis le {sortie.date_remise:%d/%m/%Y}"
+        note = (f"Qté livrée et État : recopiés du bon signé par le magasinier. Matériel remis le {sortie.date_remise:%d/%m/%Y}"
                 f"{' par ' + _x(sortie.magasinier) if sortie.magasinier else ''}.")
         if sortie.observation:
             note += f" Observation : {_x(sortie.observation)}"

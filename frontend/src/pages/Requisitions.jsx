@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { lireRequisition, listerRequisitions, signalerChangement, telechargerBon } from "../api.js";
+import { imprimerBon, lireRequisition, listerRequisitions, signalerChangement, telechargerBon } from "../api.js";
 import { dateHeure, jourDe, quantite } from "../format.js";
 import Icon from "../icons.jsx";
 import FenetreBon from "./FenetreBon.jsx";
@@ -10,9 +10,11 @@ const ONGLETS_BONS = [["a_imprimer", "À imprimer"], ["imprimees", "Imprimées"]
 /** Lignes qui figurent sur le bon : quantité accordée (sinon demandée), sans les articles retirés (0). */
 const lignesDuBon = (d) => d.lignes.map((l) => ({ ...l, qte: l.qte_accordee ?? l.quantite })).filter((l) => l.qte > 0);
 
-/** Trace d'impression : premier téléchargement par l'Agent Logistique, et nombre total de téléchargements. */
+/** Trace d'impression : première impression (ou premier téléchargement) par l'Agent Logistique,
+ *  puis le nombre d'impressions et de téléchargements. */
 function Impression({ r }) {
-  const n = r.nb_telechargements ?? 0;
+  const imp = r.nb_impressions ?? 0;
+  const tel = (r.nb_telechargements ?? 0) - imp;
   return (
     <>
       {r.imprimee_le ? (
@@ -21,7 +23,11 @@ function Impression({ r }) {
           <small className="trace">le {dateHeure(r.imprimee_le)}<br />{" "}par {r.imprimee_par}</small>
         </>
       ) : <span className="pill p-w">À imprimer</span>}
-      {n > 0 && <small className="trace discret">{n} téléchargement{n > 1 ? "s" : ""}</small>}
+      {(imp > 0 || tel > 0) && (
+        <small className="trace discret">
+          {[imp > 0 && `${imp} impression${imp > 1 ? "s" : ""}`, tel > 0 && `${tel} téléchargement${tel > 1 ? "s" : ""}`].filter(Boolean).join(" · ")}
+        </small>
+      )}
     </>
   );
 }
@@ -37,6 +43,22 @@ export default function Requisitions({ compte }) {
   const [erreur, setErreur] = useState(null);
   const fermer = useCallback(() => setOuverte(null), [setOuverte]);
   const agent = compte?.agent_logistique;
+
+  async function imprimer(d) {
+    setEnCours(`imp-${d.id}`); setErreur(null); setAnnonce(null);
+    try {
+      await imprimerBon(d.id);
+      const premiere = agent && !d.requisition.imprimee_le;
+      setAnnonce(premiere
+        ? `Bon ${d.requisition.numero} envoyé à l'impression : il est maintenant noté « Imprimée ». Portez-le au magasin.`
+        : `Bon ${d.requisition.numero} envoyé à l'impression.`);
+      liste.recharger(); signalerChangement();
+    } catch (e) {
+      setErreur(e.message || "L'impression a échoué. Vérifiez que le serveur est démarré.");
+    } finally {
+      setEnCours(null);
+    }
+  }
 
   async function telecharger(d) {
     setEnCours(d.id); setErreur(null); setAnnonce(null);
@@ -60,10 +82,16 @@ export default function Requisitions({ compte }) {
   const derniere = Math.max(1, Math.ceil(total / parPage));
   const debut = total === 0 ? 0 : (page - 1) * parPage + 1;
 
-  const boutonPdf = (d, classe = "btn pri") => (
-    <button type="button" className={classe} disabled={enCours === d.id} onClick={(e) => { e.stopPropagation(); telecharger(d); }}>
-      <Icon name="download" size={17} stroke={2.2} />{enCours === d.id ? "Téléchargement…" : "Télécharger le PDF"}
-    </button>
+  // « Voir le bon » (12/10/2026) : « Télécharger le PDF » et « Imprimer » se trouvent dans l'aperçu du bon.
+  const boutonsBon = (d) => (
+    <>
+      <button type="button" className="btn" disabled={Boolean(enCours)} onClick={() => telecharger(d)}>
+        <Icon name="download" size={17} stroke={2.2} />{enCours === d.id ? "Téléchargement…" : "Télécharger le PDF"}
+      </button>
+      <button type="button" className="btn pri" disabled={Boolean(enCours)} onClick={() => imprimer(d)}>
+        <Icon name="imprimante" size={17} stroke={2} />{enCours === `imp-${d.id}` ? "Préparation…" : "Imprimer"}
+      </button>
+    </>
   );
 
   return (
@@ -75,8 +103,8 @@ export default function Requisitions({ compte }) {
           <Onglets liste={liste} onglets={ONGLETS_BONS} />
           <span className="sp" />
           <span className="aide">
-            {agent ? "Bons signés par la Logistique et le Responsable : téléchargez le PDF, imprimez-le et portez-le au magasin."
-              : "Bons signés par la Logistique et par vous. Le bon est noté « Imprimée » quand l'Agent Logistique le télécharge."}
+            {agent ? "Bons signés par la Logistique et le Responsable : « Voir le bon », puis « Imprimer », et portez-le au magasin."
+              : "Bons signés par la Logistique et par vous. Le bon est noté « Imprimée » quand l'Agent Logistique l'imprime."}
           </span>
         </div>
 
@@ -103,7 +131,8 @@ export default function Requisitions({ compte }) {
               const r = d.requisition;
               const lignes = lignesDuBon(d);
               return (
-                <tbody key={d.id} className={`groupe cliquable${ouverte?.id === d.id ? " choisie" : ""}`} onClick={() => setOuverte(d)}>
+                <tbody key={d.id} className={`groupe cliquable${ouverte?.id === d.id ? " choisie" : ""}`}
+                  onClick={() => { setAnnonce(null); setErreur(null); setOuverte(d); }}>
                   <tr>
                     <td className="cellule-demande">
                       <span className="code">{r.numero}</span>
@@ -126,9 +155,8 @@ export default function Requisitions({ compte }) {
                     </td>
                     <td className="cellule-demande"><Impression r={r} /></td>
                     <td className="cellule-demande actions-bon">
-                      {boutonPdf(d)}
-                      <button type="button" className="btn-details" onClick={(e) => { e.stopPropagation(); setOuverte(d); }}>
-                        <Icon name="doc" size={15} stroke={2} />Voir le bon
+                      <button type="button" className="btn pri" onClick={(e) => { e.stopPropagation(); setAnnonce(null); setErreur(null); setOuverte(d); }}>
+                        <Icon name="doc" size={17} stroke={2} />Voir le bon
                       </button>
                     </td>
                   </tr>
@@ -156,7 +184,8 @@ export default function Requisitions({ compte }) {
 
       {ouverte && (
         <FenetreBon d={ouverte} titre={`Bon de réquisition ${ouverte.requisition.numero}`} onFermer={fermer}
-          piedGauche={<><span className="trace-pied"><Impression r={ouverte.requisition} /></span>{boutonPdf(ouverte)}</>} />
+          erreur={erreur} succes={annonce ? { titre: "C'est fait", texte: annonce } : null}
+          enTete={<Impression r={ouverte.requisition} />} piedGauche={boutonsBon(ouverte)} />
       )}
     </>
   );

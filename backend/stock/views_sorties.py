@@ -15,6 +15,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from . import etats
 from .models import Article, Exemplaire, LigneSortie, Requisition, Sortie
 from .permissions import EstAgentLogistique
 from .serializers import nom_de
@@ -53,7 +54,8 @@ def _avec_exemplaires(demandes):
     ids = {j["article"]["id"] for json in resultats for j in json["lignes"] if j["article"]["suivi_par_serie"]}
     dispo = {}
     for e in Exemplaire.objects.filter(article_id__in=ids, statut=Exemplaire.Statut.EN_STOCK).order_by("numero_serie"):
-        dispo.setdefault(e.article_id, []).append({"id": e.id, "numero_serie": e.numero_serie, "code_immo": e.code_immo})
+        dispo.setdefault(e.article_id, []).append({"id": e.id, "numero_serie": e.numero_serie, "code_immo": e.code_immo,
+                                                   "etat": e.etat, "etat_libelle": e.get_etat_display()})
     for json in resultats:
         for j in json["lignes"]:
             if j["article"]["suivi_par_serie"]:
@@ -92,6 +94,37 @@ def liste(request):
 def detail(request, pk):
     d = _bons_imprimes().filter(pk=pk).first()
     return _introuvable() if d is None else Response(_avec_exemplaires([d])[0])
+
+
+def _etats_remis(article, qte, saisie):
+    """État de ce qui a été remis (article suivi par quantité) → ({état: qté}, None) ou (None, message d'erreur).
+    `saisie` : {"NEUF": 3, "BON": 2} ; facultative quand le stock disponible n'est que dans un seul état."""
+    if qte == 0:
+        return {}, None
+    dispo = etats.disponibles_par_etat(article)
+    utilisables = {e: dispo[e] for e in etats.UTILISABLES if dispo[e] > 0}
+    if not saisie:
+        if len(utilisables) == 1:
+            return {next(iter(utilisables)): qte}, None
+        return None, ("Indiquez l'état de ce qui a été remis : le stock contient "
+                      f"{etats.texte(utilisables)}.")
+    if not isinstance(saisie, dict):
+        return None, "État incorrect."
+    repartition = {}
+    for etat, n in saisie.items():
+        n = _entier(n)
+        if etat not in etats.LIBELLES or n is None:
+            return None, "État ou quantité incorrects."
+        if etat in etats.DE_COTE and n:
+            return None, f"Le matériel « {etats.LIBELLES[etat]} » est mis de côté : il ne peut pas sortir."
+        if n:
+            repartition[etat] = n
+    if sum(repartition.values()) != qte:
+        return None, f"Le détail par état ({sum(repartition.values())}) ne correspond pas à la quantité livrée ({qte})."
+    for etat, n in repartition.items():
+        if n > dispo[etat]:
+            return None, f"Le stock n'indique que {dispo[etat]} en « {etats.LIBELLES[etat]} »."
+    return repartition, None
 
 
 def _entier(valeur):
@@ -185,7 +218,10 @@ def confirmer(request, pk):
                     erreurs_lignes[l.id] = [f"{len(exemplaires)} n° de série cochés pour {bon} sur le bon : "
                                             f"le magasinier ne peut pas remettre plus que le bon."]
                     continue
-                a_faire.append((l, a, len(exemplaires), exemplaires))
+                compte = {}
+                for e in exemplaires:
+                    compte[e.etat] = compte.get(e.etat, 0) + 1
+                a_faire.append((l, a, len(exemplaires), exemplaires, compte))
             else:
                 qte = _entier(x.get("qte_livree"))
                 if qte is None:
@@ -196,9 +232,13 @@ def confirmer(request, pk):
                     erreurs_lignes[l.id] = [f"Le stock de l'application n'indique que {a.qte_stock} : vérifiez la quantité "
                                             f"livrée, ou enregistrez d'abord la réception manquante."]
                 else:
-                    a_faire.append((l, a, qte, []))
+                    repartition, erreur = _etats_remis(a, qte, x.get("etats"))
+                    if erreur:
+                        erreurs_lignes[l.id] = [erreur]
+                    else:
+                        a_faire.append((l, a, qte, [], repartition))
 
-        if not erreurs and not erreurs_lignes and not any(q for _, _, q, _ in a_faire):
+        if not erreurs and not erreurs_lignes and not any(q for _, _, q, _, _ in a_faire):
             erreurs["general"] = ["Toutes les quantités livrées sont à 0 : si le magasin n'a rien remis, "
                                   "ne confirmez pas la sortie (le bon reste « à confirmer »)."]
         if erreurs or erreurs_lignes:
@@ -211,17 +251,22 @@ def confirmer(request, pk):
         s = Sortie.objects.create(requisition=r, date_remise=date_remise, magasinier=magasinier,
                                   observation=observation, confirmee_par=request.user)
         destinataire = nom_de(d.demandeur)
-        for l, a, qte, exemplaires in a_faire:
-            ls = LigneSortie.objects.create(sortie=s, ligne_demande=l, article=a, qte_bon=qte_du_bon(l), qte_livree=qte)
+        for l, a, qte, exemplaires, repartition in a_faire:
+            ls = LigneSortie.objects.create(sortie=s, ligne_demande=l, article=a, qte_bon=qte_du_bon(l), qte_livree=qte,
+                                            etats=repartition)
             if exemplaires:
                 ls.exemplaires.set(exemplaires)
                 Exemplaire.objects.filter(id__in=[e.id for e in exemplaires]).update(
                     statut=Exemplaire.Statut.PRETE, prete_a=destinataire[:120], chantier=(d.destination or "")[:120])
-            elif qte:
-                Article.objects.filter(id=a.id).update(qte_stock=F("qte_stock") - qte)
+                for e in exemplaires:
+                    etats.noter(a, "SORTIE", 1, etat_avant=e.etat, reference=r.numero, par=request.user, exemplaire=e)
+            else:
+                for etat, n in repartition.items():
+                    etats.retirer(a, etat, n)
+                    etats.noter(a, "SORTIE", n, etat_avant=etat, reference=r.numero, par=request.user)
 
-    livres = sum(q for _, _, q, _ in a_faire)
-    partiel = any(q < qte_du_bon(l) for l, _, q, _ in a_faire)
+    livres = sum(q for _, _, q, _, _ in a_faire)
+    partiel = any(q < qte_du_bon(l) for l, _, q, _, _ in a_faire)
     message = (f"Sortie du bon {r.numero} confirmée : le stock a été mis à jour"
                f"{' (livraison partielle)' if partiel else ''}.")
     d = _bons_imprimes().get(pk=pk)

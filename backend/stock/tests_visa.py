@@ -127,7 +127,8 @@ class VisaTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
         self.assertIsNone(r.data["email"]); self.assertTrue(r.data["email_ok"])
         self.assertEqual(self.r.get("/api/compteurs/").data, {"a_viser": 1})
-        self.assertEqual(self.a.get("/api/compteurs/").data, {"a_valider": 0, "a_imprimer": 0, "a_confirmer": 0})  # a_imprimer, a_confirmer : 12/10/2026
+        self.assertEqual(self.a.get("/api/compteurs/").data, {"a_valider": 0, "a_imprimer": 0, "a_confirmer": 0,
+                                                             "retours_en_retard": 0})  # 12/10/2026
         self.assertEqual(self.s.get("/api/compteurs/").data, {})
         self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/renvoyer-email/").status_code, 400)
         self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json")

@@ -78,6 +78,11 @@ class Article(models.Model):
     categorie = models.ForeignKey(Categorie, on_delete=models.PROTECT, related_name="articles")
     type = models.CharField(max_length=12, choices=Type.choices, default=Type.CONSOMMABLE)
     unite = models.CharField(max_length=10, choices=Unite.choices, default=Unite.PIECE)
+    # Matériel prêté dont chaque appareil a son n° de série (OTDR, soudeuse…) : choisi à la création de l'article
+    # (12/10/2026). Les n° sont alors demandés à chaque réception, même pour le tout premier exemplaire.
+    suivi_serie = models.BooleanField(
+        "suivi par n° de série", default=False,
+        help_text="Matériel prêté seulement : chaque exemplaire reçu porte un n° de série.")
     # Matériel prêté avec exemplaires (n° de série) : la quantité est calculée à partir des exemplaires.
     # Sinon (consommables, petit matériel sans n° de série) : cette quantité saisie fait foi.
     qte_stock = models.PositiveIntegerField("quantité en stock (consommables)", default=0)
@@ -124,12 +129,27 @@ class Article(models.Model):
         return f"{prefixe}-{(max(numeros, default=0) + 1):04d}"
 
 
+class Etat(models.TextChoices):
+    """État du produit : suivi tout au long du circuit (réception, stock, sortie, retour).
+    Simplifié le 12/10/2026 (après-midi) : Neuf · Bon · Moyen · Mauvais, tous disponibles.
+    (Avant : Neuf · Bon état · Usagé · À réparer · Hors service ; migration 0019.)"""
+    NEUF = "NEUF", "Neuf"
+    BON = "BON", "Bon"
+    MOYEN = "MOYEN", "Moyen"
+    MAUVAIS = "MAUVAIS", "Mauvais"
+
+
+# Tous les états comptent dans la quantité disponible (proposée dans les demandes).
+ETATS_UTILISABLES = [Etat.NEUF, Etat.BON, Etat.MOYEN, Etat.MAUVAIS]
+# Plus aucun état « mis de côté » depuis le 12/10/2026 (l'écran « Matériel à réparer » a été retiré).
+ETATS_DE_COTE = []
+
+
 class Exemplaire(models.Model):
     class Statut(models.TextChoices):
         EN_STOCK = "EN_STOCK", "En stock"
         PRETE = "PRETE", "Prêté"
-        REPARATION = "REPARATION", "En réparation"
-        HORS_SERVICE = "HORS_SERVICE", "Hors service"
+        REBUT = "REBUT", "Mis au rebut"  # ancien écran « Matériel à réparer » : gardé pour l'historique
 
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="exemplaires")
     numero_serie = models.CharField("n° de série", max_length=60, unique=True)
@@ -138,6 +158,7 @@ class Exemplaire(models.Model):
     )
     date_etalonnage = models.DateField("prochain étalonnage", null=True, blank=True)
     statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.EN_STOCK)
+    etat = models.CharField("état", max_length=12, choices=Etat.choices, default=Etat.NEUF)
     # Provisoire : sera rempli automatiquement par les écrans Sorties / Retours.
     prete_a = models.CharField("prêté à", max_length=120, blank=True)
     chantier = models.CharField(max_length=120, blank=True)
@@ -195,6 +216,7 @@ class LigneEntree(models.Model):
     quantite = models.PositiveIntegerField("quantité")
     prix_unitaire = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     numeros_serie = models.TextField("n° de série reçus", blank=True, help_text="Un par ligne")
+    etat = models.CharField("état à la réception", max_length=12, choices=Etat.choices, default=Etat.NEUF)
 
     class Meta:
         verbose_name = "ligne de réception"
@@ -245,9 +267,14 @@ class Demande(models.Model):
     traitee_le = models.DateTimeField("validée ou refusée le", null=True, blank=True)
     traitee_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
                                     related_name="demandes_traitees", verbose_name="validée ou refusée par")
+    # N° de réquisition attribué dès que l'Agent Logistique clique « Valider » (12/10/2026) : il s'affiche sur le bon
+    # qu'il signe, puis devient le n° de la réquisition. Libéré si la demande est refusée ou annulée.
+    numero_requisition = models.CharField("n° de réquisition attribué", max_length=20, blank=True)
 
     class Meta:
         ordering = ["-cree_le", "-id"]
+        constraints = [models.UniqueConstraint(fields=["numero_requisition"], condition=~Q(numero_requisition=""),
+                                               name="numero_requisition_unique_si_renseigne")]
 
     def __str__(self):
         return f"{self.numero} – {self.destination}"
@@ -346,11 +373,14 @@ class Requisition(models.Model):
 
     @staticmethod
     def _prochain_numero():
-        """RM-2026-0001, RM-2026-0002… (la numérotation repart à 1 chaque année)."""
+        """RM-2026-0001, RM-2026-0002… (la numérotation repart à 1 chaque année).
+        Les n° déjà attribués à une demande en cours de validation sont comptés (12/10/2026)."""
         from django.utils import timezone
         prefixe = f"RM-{timezone.localdate().year}-"
-        numeros = (Requisition.objects.select_for_update().filter(numero__startswith=prefixe)
-                   .values_list("numero", flat=True))
+        numeros = list(Requisition.objects.select_for_update().filter(numero__startswith=prefixe)
+                       .values_list("numero", flat=True))
+        numeros += list(Demande.objects.filter(numero_requisition__startswith=prefixe)
+                        .values_list("numero_requisition", flat=True))
         dernier = max((int(n.rsplit("-", 1)[1]) for n in numeros if n.rsplit("-", 1)[1].isdigit()), default=0)
         return f"{prefixe}{dernier + 1:04d}"
 
@@ -362,6 +392,8 @@ class TelechargementBon(models.Model):
     par = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="bons_telecharges", verbose_name="par")
     le = models.DateTimeField("le", auto_now_add=True)
     role = models.CharField("en tant que", max_length=30)
+    # Imprimé directement depuis GestiStock, ou téléchargé en PDF (12/10/2026)
+    impression = models.BooleanField("imprimé depuis l'application", default=False)
 
     class Meta:
         ordering = ["-le", "-id"]
@@ -517,6 +549,8 @@ class LigneSortie(models.Model):
     qte_livree = models.PositiveIntegerField("qté livrée")
     # Matériel suivi par n° de série : les exemplaires remis (ils passent au statut « Prêté »).
     exemplaires = models.ManyToManyField(Exemplaire, blank=True, related_name="sorties", verbose_name="exemplaires remis")
+    # État de ce qui a été remis (12/10/2026) : {"NEUF": 3, "BON": 2}. Pour les n° de série : l'état de chaque exemplaire.
+    etats = models.JSONField("état à la sortie", default=dict, blank=True)
 
     class Meta:
         ordering = ["id"]
@@ -525,3 +559,127 @@ class LigneSortie(models.Model):
 
     def __str__(self):
         return f"{self.article.nom} : {self.qte_livree} / {self.qte_bon}"
+
+
+# ---------------------------------------------------------------- État du produit (12/10/2026)
+class StockEtat(models.Model):
+    """Répartition par état du stock d'un article suivi par quantité (consommables, matériel prêté sans n° de série).
+
+    `Article.qte_stock` est la quantité disponible = somme des états. Voir etats.py pour les mouvements."""
+
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="stocks_etat")
+    etat = models.CharField("état", max_length=12, choices=Etat.choices)
+    quantite = models.PositiveIntegerField("quantité", default=0)
+
+    class Meta:
+        ordering = ["article", "etat"]
+        unique_together = [("article", "etat")]
+        verbose_name = "stock par état"
+        verbose_name_plural = "stock par état"
+
+    def __str__(self):
+        return f"{self.article.code} – {self.get_etat_display()} : {self.quantite}"
+
+
+class MouvementEtat(models.Model):
+    """Historique : chaque entrée, sortie, retour, réparation ou mise au rebut, avec l'état du produit."""
+
+    class Type(models.TextChoices):
+        RECEPTION = "RECEPTION", "Réception"
+        SORTIE = "SORTIE", "Sortie"
+        RETOUR = "RETOUR", "Retour"
+        REPARATION = "REPARATION", "Réparé"
+        REBUT = "REBUT", "Mis au rebut"
+        CORRECTION = "CORRECTION", "Correction"
+
+    article = models.ForeignKey(Article, on_delete=models.PROTECT, related_name="mouvements_etat")
+    exemplaire = models.ForeignKey(Exemplaire, on_delete=models.SET_NULL, null=True, blank=True, related_name="mouvements_etat")
+    type = models.CharField(max_length=12, choices=Type.choices)
+    quantite = models.PositiveIntegerField("quantité")
+    etat_avant = models.CharField("état avant", max_length=12, choices=Etat.choices, blank=True)
+    etat_apres = models.CharField("état après", max_length=12, choices=Etat.choices, blank=True)
+    reference = models.CharField("référence", max_length=60, blank=True, help_text="RM-…, BR-…, réception…")
+    motif = models.CharField(max_length=250, blank=True)
+    le = models.DateTimeField(auto_now_add=True)
+    par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True, related_name="mouvements_etat")
+
+    class Meta:
+        ordering = ["-le", "-id"]
+        verbose_name = "mouvement (historique des états)"
+        verbose_name_plural = "historique des états"
+
+    def __str__(self):
+        return f"{self.get_type_display()} – {self.article.code} × {self.quantite}"
+
+
+# ---------------------------------------------------------------- Retours (12/10/2026)
+class BonRetour(models.Model):
+    """Bon de retour de matériel (BR-AAAA-0001) : imprimé par l'Agent Logistique avec ce qui reste à rendre,
+    rempli à la main au magasin (Qté rendue, État au retour), puis recopié : le stock remonte.
+    Retour partiel : un bon par passage au magasin."""
+
+    class Statut(models.TextChoices):
+        A_CONFIRMER = "A_CONFIRMER", "À confirmer"
+        CONFIRME = "CONFIRME", "Retour confirmé"
+        ANNULE = "ANNULE", "Annulé"
+
+    numero = models.CharField("n°", max_length=20, unique=True, blank=True)
+    sortie = models.ForeignKey(Sortie, on_delete=models.PROTECT, related_name="bons_retour")
+    statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.A_CONFIRMER)
+    imprime_le = models.DateTimeField("imprimé le", auto_now_add=True)
+    imprime_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="bons_retour_imprimes")
+    # Visa électronique de l'Agent Logistique (stylo), imprimé dans sa case du bon.
+    signature_agent = models.TextField("signature de l'Agent Logistique", blank=True, editable=False)
+    annule_le = models.DateTimeField("annulé le", null=True, blank=True)
+    date_retour = models.DateField("matériel rendu le", null=True, blank=True)
+    magasinier = models.CharField(max_length=120, blank=True)
+    rendu_par = models.CharField("rendu par", max_length=120, blank=True)
+    observation = models.CharField(max_length=250, blank=True)
+    confirme_le = models.DateTimeField("retour confirmé le", null=True, blank=True)
+    confirme_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
+                                     related_name="retours_confirmes")
+
+    class Meta:
+        ordering = ["-imprime_le", "-id"]
+        verbose_name = "bon de retour"
+        verbose_name_plural = "bons de retour"
+
+    def __str__(self):
+        return f"{self.numero} ({self.sortie.requisition.numero})"
+
+    def save(self, *args, **kwargs):
+        if not self.numero:
+            with transaction.atomic():
+                self.numero = self._prochain_numero()
+                return super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
+
+    @staticmethod
+    def _prochain_numero():
+        """BR-2026-0001, BR-2026-0002… (la numérotation repart à 1 chaque année)."""
+        from django.utils import timezone
+        prefixe = f"BR-{timezone.localdate().year}-"
+        numeros = BonRetour.objects.select_for_update().filter(numero__startswith=prefixe).values_list("numero", flat=True)
+        dernier = max((int(n.rsplit("-", 1)[1]) for n in numeros if n.rsplit("-", 1)[1].isdigit()), default=0)
+        return f"{prefixe}{dernier + 1:04d}"
+
+
+class LigneRetour(models.Model):
+    bon = models.ForeignKey(BonRetour, on_delete=models.CASCADE, related_name="lignes")
+    ligne_sortie = models.ForeignKey(LigneSortie, on_delete=models.PROTECT, related_name="lignes_retour")
+    article = models.ForeignKey(Article, on_delete=models.PROTECT, related_name="lignes_retour")
+    qte_attendue = models.PositiveIntegerField("reste à rendre (à l'impression)")
+    qte_rendue = models.PositiveIntegerField("qté rendue", default=0)
+    # État au retour : {"BON": 6, "MAUVAIS": 2} ; pour les n° de série : {"<id exemplaire>": "BON"}.
+    etats = models.JSONField("état au retour", default=dict, blank=True)
+    exemplaires_attendus = models.ManyToManyField(Exemplaire, blank=True, related_name="+")
+    exemplaires = models.ManyToManyField(Exemplaire, blank=True, related_name="retours", verbose_name="exemplaires rendus")
+    observation = models.CharField(max_length=250, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "ligne de retour"
+        verbose_name_plural = "lignes de retour"
+
+    def __str__(self):
+        return f"{self.article.nom} : {self.qte_rendue} / {self.qte_attendue}"

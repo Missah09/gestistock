@@ -6,9 +6,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from . import etats
 from .permissions import EstAgentLogistique, LectureOuAgentLogistique
-from .models import Article, Categorie, Chantier, Demande, Emplacement, Exemplaire, Fournisseur, Magasin
-from .serializers import (ArticleFicheSerializer, ArticleListeSerializer, ArticleModificationSerializer,
+from .models import Article, Categorie, Etat, Chantier, Demande, Emplacement, Exemplaire, Fournisseur, Magasin
+from .serializers import (ArticleCreationSerializer, ArticleFicheSerializer, ArticleListeSerializer, ArticleModificationSerializer,
                           EntreeSerializer, NouvelleDemandeSerializer, article_resume, demande_en_json)
 
 
@@ -53,7 +54,7 @@ def articles_trouves(q):
     return [i for i, t in textes.items() if all(m in sans_accents(t) for m in mots)]
 
 
-class ArticleViewSet(mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet):
+class ArticleViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet):
     """Liste des articles.
 
     Paramètres possibles :
@@ -63,13 +64,32 @@ class ArticleViewSet(mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet):
       sous_seuil – « 1 » pour ne garder que les articles sous le minimum ou épuisés
     """
 
-    http_method_names = ["get", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "head", "options"]
     permission_classes = [LectureOuAgentLogistique]
 
     def get_serializer_class(self):
         if self.action == "partial_update":
             return ArticleModificationSerializer
+        if self.action == "create":
+            return ArticleCreationSerializer
         return ArticleFicheSerializer if self.action == "retrieve" else ArticleListeSerializer
+
+    def list(self, request, *args, **kwargs):
+        # Répartition par état calculée en une fois pour la page affichée.
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        contexte = self.get_serializer_context()
+        contexte["reps"] = etats.repartitions(page)
+        return self.get_paginated_response(ArticleListeSerializer(page, many=True, context=contexte).data)
+
+    def create(self, request, *args, **kwargs):
+        """« ＋ Créer l'article » depuis la fenêtre « Entrée en stock » (12/10/2026) : renvoie la fiche du nouvel article (stock à 0)."""
+        s = ArticleCreationSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        article = s.save()
+        fiche = ArticleFicheSerializer(articles_avec_quantites().prefetch_related("exemplaires").get(pk=article.pk)).data
+        return Response({**fiche, "message": f"Article {article.code} – {article.nom} créé."},
+                        status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         # Enregistre, puis renvoie la fiche complète à jour.
@@ -91,6 +111,10 @@ class ArticleViewSet(mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(categorie_id=p["categorie"])
         if p.get("magasin"):
             qs = qs.filter(emplacement__magasin_id=p["magasin"])
+        if p.get("etat") in etats.LIBELLES:
+            # Filtre « État » (12/10/2026) : articles qui ont au magasin au moins un produit dans cet état.
+            reps = etats.repartitions(Article.objects.filter(id__in=qs.values("id")))
+            qs = qs.filter(id__in=[i for i, r in reps.items() if r["etats"].get(p["etat"], 0) > 0])
         if p.get("sous_seuil") == "1":
             # Sous le minimum, ou épuisé (même si aucun minimum n'est encore fixé).
             qs = qs.filter(Q(qte_disponible__lt=F("qte_minimale")) | Q(qte_disponible__lte=0))
@@ -102,25 +126,39 @@ def filtres(request):
     """Valeurs proposées dans les listes déroulantes de la page Articles."""
     return Response({
         "categories": list(Categorie.objects.values("id", "nom")),
+        "etats": [{"valeur": v, "libelle": l} for v, l in Etat.choices],
         # Magasins permanents puis chantiers en cours (les chantiers terminés ne sont plus proposés).
         "magasins": [{"id": m.id, "nom": m.nom, "type": m.type} for m in Magasin.objects.filter(actif=True)],
     })
 
 
+def prochain_code(categorie):
+    """Même calcul que Article._prochain_code, sans verrou : simple aperçu (le vrai code est fixé à l'enregistrement)."""
+    p = categorie.prefixe
+    numeros = [int(c.split("-")[1]) for c in Article.objects.filter(code__startswith=f"{p}-").values_list("code", flat=True)
+               if c.split("-")[1].isdigit()]
+    return f"{p}-{(max(numeros, default=0) + 1):04d}"
+
+
 @api_view(["GET"])
 @permission_classes([EstAgentLogistique])
 def choix(request):
-    """Listes proposées dans le formulaire « Modifier »."""
+    """Listes proposées dans les formulaires « Modifier » et « Nouvel article »."""
     return Response({
-        "categories": list(Categorie.objects.values("id", "nom")),
+        # prochain_code : aperçu du code que recevra un nouvel article de cette catégorie (12/10/2026).
+        "categories": [{"id": c.id, "nom": c.nom, "prochain_code": prochain_code(c)} for c in Categorie.objects.all()],
+        "types": [{"valeur": v, "libelle": l} for v, l in Article.Type.choices],
         "emplacements": [{"id": e.id, "nom": e.nom, "magasin": e.magasin.nom}
-                         for e in Emplacement.objects.select_related("magasin").filter(magasin__actif=True)],
+                         for e in Emplacement.objects.select_related("magasin").filter(magasin__actif=True)
+                         .exclude(nom__in=etats.NOMS_EMPLACEMENTS_DE_COTE)],
+        "etats": [{"valeur": v, "libelle": l} for v, l in Etat.choices],
         "fournisseurs": list(Fournisseur.objects.values("id", "nom")),
         "unites": [{"valeur": v, "libelle": l} for v, l in Article.Unite.choices],
         "magasins": [{"id": m.id, "nom": m.nom, "type": m.type} for m in Magasin.objects.filter(actif=True)],
-        # Pour la fenêtre « Enregistrer des produits »
+        # Pour la fenêtre « Entrée en stock »
         "articles": [{"id": a.id, "code": a.code, "nom": a.nom, "type": a.type, "unite": a.unite, "magasin": a.emplacement.magasin_id,
-                      "prix_unitaire": float(a.prix_unitaire), "suivi_serie": a.nb_ex > 0}
+                      "prix_unitaire": float(a.prix_unitaire),
+                      "suivi_serie": a.nb_ex > 0 or (a.type == Article.Type.PRETE and a.suivi_serie)}
                      for a in Article.objects.select_related("emplacement").annotate(nb_ex=Count("exemplaires"))
                      .order_by("nom")],
     })
@@ -132,9 +170,9 @@ def enregistrer_entree(request):
     """Enregistre une réception de produits et met le stock à jour."""
     s = EntreeSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    entree = s.save()
+    entree = s.save(par=request.user)
     nb = entree.lignes.count()
-    return Response({"id": entree.id, "message": f"Réception enregistrée : {nb} article{'s' if nb > 1 else ''}, stock mis à jour."},
+    return Response({"id": entree.id, "message": f"Entrée en stock enregistrée : {nb} article{'s' if nb > 1 else ''}, stock mis à jour."},
                     status=status.HTTP_201_CREATED)
 
 
@@ -166,7 +204,8 @@ def demandes_completes():
 def en_json(demandes):
     ids = {l.article_id for d in demandes for l in d.lignes.all()}
     articles = {a.id: a for a in articles_avec_quantites().filter(id__in=ids)}
-    return [demande_en_json(d, articles) for d in demandes]
+    reps = etats.repartitions(articles.values())
+    return [demande_en_json(d, articles, reps) for d in demandes]
 
 
 @api_view(["GET", "POST"])
@@ -216,8 +255,15 @@ def annuler_demande(request, pk):
         return Response({"general": [f"Cette demande est {d.get_statut_display().lower()} : seule une demande en attente peut être annulée."]},
                         status=status.HTTP_400_BAD_REQUEST)
     d.statut = Demande.Statut.ANNULEE
-    d.save(update_fields=["statut"])
+    d.numero_requisition = ""  # n° de réquisition éventuellement attribué : libéré
+    d.save(update_fields=["statut", "numero_requisition"])
     return Response({"message": f"Demande {d.numero} annulée."})
+
+
+def _articles_avec_etats(qs):
+    articles = list(qs)
+    reps = etats.repartitions(articles)
+    return [article_resume(a, reps[a.id]) for a in articles]
 
 
 @api_view(["GET"])
@@ -230,5 +276,5 @@ def choix_demande(request):
         "magasins": [{"id": m.id, "nom": m.nom, "type": m.type} for m in Magasin.objects.filter(actif=True)],
         # Chantiers en cours (ajoutés dans l'administration ; les chantiers terminés ne sont plus proposés).
         "chantiers": list(Chantier.objects.filter(actif=True).values("id", "nom")),
-        "articles": [article_resume(a) for a in articles_avec_quantites().order_by("nom")],
+        "articles": _articles_avec_etats(articles_avec_quantites().order_by("nom")),
     })

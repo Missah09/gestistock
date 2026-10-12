@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ListeDeroulante from "../ListeDeroulante.jsx";
 import { envoyerDemande, lireChoixDemande } from "../api.js";
-import { manque, quantite, LIBELLE_PRETE } from "../format.js";
+import { manque, quantite, LIBELLE_PRETE, ETATS_UTILISABLES, texteEtats } from "../format.js";
 import Icon from "../icons.jsx";
 import ChoixArticle from "./ChoixArticle.jsx";
 
@@ -186,6 +186,7 @@ export default function NouvelleDemande({ onFermer, onEnvoyee }) {
                               <>
                                 <b className={insuffisant ? "rouge" : "vert"}>{quantite(a.qte_disponible, a.unite)}</b>
                                 {insuffisant && <span className="pill p-c">{insuffisant}</span>}
+                                {texteEtats(a.etats, ETATS_UTILISABLES) && <small className="etat-ligne">{texteEtats(a.etats, ETATS_UTILISABLES, a.unite)}</small>}
                               </>
                             )}
                           </td>

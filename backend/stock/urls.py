@@ -2,7 +2,8 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views_comptes import compteurs, connexion, deconnexion, session
-from . import views_gestion_comptes, views_requisitions, views_sorties, views_validation, views_visa
+from . import (views_gestion_comptes, views_requisitions, views_retours, views_sorties, views_validation,
+               views_visa)
 
 from .views import (ArticleViewSet, annuler_demande, choix, choix_demande, demandes, detail_demande, enregistrer_entree,
                     filtres)
@@ -21,6 +22,7 @@ urlpatterns = [path("session/", session), path("compteurs/", compteurs),
                path("demandes/<int:pk>/", detail_demande), path("demandes/<int:pk>/annuler/", annuler_demande),
                # Écran « Demandes à valider » (Agent Logistique)
                path("a-valider/", views_validation.liste), path("a-valider/<int:pk>/", views_validation.detail),
+               path("a-valider/<int:pk>/numero/", views_validation.attribuer_numero),
                path("a-valider/<int:pk>/valider/", views_validation.valider),
                path("a-valider/<int:pk>/refuser/", views_validation.refuser),
                path("a-valider/<int:pk>/renvoyer-email/", views_validation.renvoyer_email),
@@ -34,4 +36,11 @@ urlpatterns = [path("session/", session), path("compteurs/", compteurs),
                # Écran « Sorties » (Agent Logistique) : confirmation de la remise, le stock diminue (12/10/2026)
                path("sorties/", views_sorties.liste), path("sorties/<int:pk>/", views_sorties.detail),
                path("sorties/<int:pk>/confirmer/", views_sorties.confirmer),
-               path("sorties/<int:pk>/pdf/", views_sorties.pdf_archive)] + router.urls
+               path("sorties/<int:pk>/pdf/", views_sorties.pdf_archive),
+               # Écran « Retours de stock » (Agent Logistique) : bons de retour, le stock remonte (12/10/2026)
+               path("retours/", views_retours.liste), path("retours/<int:pk>/", views_retours.detail),
+               path("retours/<int:pk>/bon/", views_retours.creer_bon),
+               path("retours/bons/<int:bon_id>/pdf/", views_retours.pdf),
+               path("retours/bons/<int:bon_id>/confirmer/", views_retours.confirmer),
+               path("retours/bons/<int:bon_id>/annuler/", views_retours.annuler_bon)] + router.urls
+# L'écran « Matériel à réparer » a été retiré le 12/10/2026 (états simplifiés : Neuf · Bon · Moyen · Mauvais).

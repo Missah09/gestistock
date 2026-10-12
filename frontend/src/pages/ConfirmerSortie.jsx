@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { confirmerSortie, signalerChangement, telechargerArchive } from "../api.js";
-import { date, dateHeure, quantite } from "../format.js";
+import { PastilleEtat } from "../EtatsProduit.jsx";
+import { date, dateHeure, ETATS_PRODUIT, ETATS_UTILISABLES, quantite, texteEtats } from "../format.js";
 import Icon from "../icons.jsx";
 import FenetreBon from "./FenetreBon.jsx";
 
@@ -22,6 +23,7 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
   const lignes = useMemo(() => lignesDuBon(d), [d]);
   const [livrees, setLivrees] = useState({});       // {idLigne: "6"}
   const [series, setSeries] = useState({});         // {idLigne: [idExemplaire…]}
+  const [parEtat, setParEtat] = useState({});       // {idLigne: {NEUF: "3", BON: "2"}} quand le stock a plusieurs états
   const [dateRemise, setDateRemise] = useState(aujourdhui);
   const [magasinier, setMagasinier] = useState("");
   const [observation, setObservation] = useState("");
@@ -34,7 +36,7 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
   const corps = useRef(null);
 
   useEffect(() => {
-    setLivrees({}); setSeries({}); setDateRemise(aujourdhui()); setMagasinier(""); setObservation("");
+    setLivrees({}); setSeries({}); setParEtat({}); setDateRemise(aujourdhui()); setMagasinier(""); setObservation("");
     setVerifier(false); setErreurs({}); setSucces(null);
   }, [d.id]);
   useEffect(() => {
@@ -48,11 +50,18 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
   useEffect(() => { if ((erreurs.general || succes) && corps.current) corps.current.scrollTop = 0; }, [erreurs, succes]);
 
   const parSerie = (l) => l.article.suivi_par_serie;
-  const valeur = (l) => (parSerie(l) ? String((series[l.id] ?? []).length) : (livrees[l.id] ?? ""));
+  // État du produit (12/10/2026) : si le stock disponible a plusieurs états, on indique combien de chaque état est sorti.
+  const etatsEnStock = (l) => ETATS_UTILISABLES.filter((e) => (l.article.etats?.[e] ?? 0) > 0);
+  const plusieursEtats = (l) => !parSerie(l) && etatsEnStock(l).length > 1;
+  const sommeEtats = (l) => {
+    const v = Object.values(parEtat[l.id] ?? {}).filter((x) => String(x).trim() !== "");
+    return v.length ? String(v.reduce((t, x) => t + (Number(x) || 0), 0)) : "";
+  };
+  const valeur = (l) => (parSerie(l) ? String((series[l.id] ?? []).length) : plusieursEtats(l) ? sommeEtats(l) : (livrees[l.id] ?? ""));
   const effacer = (cle) => setErreurs((e) => ({ ...e, [cle]: undefined, general: undefined }));
 
   function toutLivre() {
-    setLivrees(Object.fromEntries(lignes.filter((l) => !parSerie(l)).map((l) => [l.id, String(l.qte)])));
+    setLivrees(Object.fromEntries(lignes.filter((l) => !parSerie(l) && !plusieursEtats(l)).map((l) => [l.id, String(l.qte)])));
     setErreurs({});
   }
 
@@ -70,6 +79,14 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
     lignes.forEach((l) => {
       if (parSerie(l)) {
         if ((series[l.id] ?? []).length > l.qte) err[l.id] = `Pas plus de ${l.qte} n° de série (quantité du bon).`;
+        return;
+      }
+      if (plusieursEtats(l)) {
+        const saisies = Object.entries(parEtat[l.id] ?? {}).filter(([, x]) => String(x).trim() !== "");
+        if (!saisies.length) err[l.id] = "Indiquez combien sont sortis dans chaque état (0 si rien n'a été remis).";
+        else if (saisies.some(([, x]) => !/^\d+$/.test(String(x).trim()))) err[l.id] = "Indiquez des nombres entiers, 0 ou plus.";
+        else if (saisies.some(([e, x]) => Number(x) > (l.article.etats?.[e] ?? 0))) err[l.id] = "Plus que le stock de cet état.";
+        else if (Number(sommeEtats(l)) > l.qte) err[l.id] = `Plus que la quantité du bon (${quantite(l.qte, l.article.unite)}).`;
         return;
       }
       const v = (livrees[l.id] ?? "").trim();
@@ -96,7 +113,10 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
     try {
       const rep = await confirmerSortie(d.id, {
         date_remise: dateRemise, magasinier: magasinier.trim(), observation: observation.trim(),
-        lignes: lignes.map((l) => (parSerie(l) ? { id: l.id, exemplaires: series[l.id] ?? [] } : { id: l.id, qte_livree: Number(livrees[l.id]) })),
+        lignes: lignes.map((l) => (parSerie(l) ? { id: l.id, exemplaires: series[l.id] ?? [] }
+          : plusieursEtats(l) ? { id: l.id, qte_livree: Number(sommeEtats(l)),
+            etats: Object.fromEntries(Object.entries(parEtat[l.id] ?? {}).map(([e, x]) => [e, Number(x) || 0])) }
+            : { id: l.id, qte_livree: Number(livrees[l.id]) })),
       });
       setSucces(rep.message); setVerifier(false);
       signalerChangement();
@@ -144,7 +164,7 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
           {erreurs.general && <div className="alerte">{erreurs.general}</div>}
           {aSaisir && (
             <div className="consigne">
-              Prenez le <b>bon signé par le magasinier</b>. Recopiez la colonne <b>« Qté livrée »</b>
+              Prenez le <b>bon signé par le magasinier</b>. Recopiez les colonnes <b>« Qté livrée »</b> et <b>« État »</b>
               {lignes.some(parSerie) && <> et cochez les <b>n° de série remis</b></>}, puis cliquez sur <b>« Confirmer la sortie »</b>.
               Le stock de GestiStock diminuera de ces quantités.
             </div>
@@ -188,12 +208,13 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
                             {(l.exemplaires_en_stock ?? []).map((e) => (
                               <label key={e.id} className="serie">
                                 <input type="checkbox" checked={(series[l.id] ?? []).includes(e.id)} onChange={() => cocher(l, e.id)} />
-                                <span className="code">{e.numero_serie}</span>{e.code_immo && <small> · immo {e.code_immo}</small>}
+                                <span className="code">{e.numero_serie}</span>{e.code_immo && <small> · immo {e.code_immo}</small>} <PastilleEtat etat={e.etat} />
                               </label>
                             ))}
                           </fieldset>
                         )}
                         {fait?.exemplaires.length > 0 && <small className="series-remis">N° de série : {fait.exemplaires.join(", ")}</small>}
+                        {fait && texteEtats(fait.etats) && <small className="series-remis">État : {texteEtats(fait.etats)}</small>}
                       </td>
                       <td className="num"><b>{quantite(l.qte, a.unite)}</b></td>
                       {aSaisir && (
@@ -205,12 +226,26 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
                         {aSaisir ? (
                           parSerie(l) ? (
                             <div className="livree-serie"><b>{v}</b> <small>coché{Number(v) > 1 ? "s" : ""} sur {l.qte}</small></div>
+                          ) : plusieursEtats(l) ? (
+                            <div className="livree-etats">
+                              {etatsEnStock(l).map((e) => (
+                                <label key={e} className="livree-etat">
+                                  <span>{ETATS_PRODUIT[e].libelle} <small>({quantite(a.etats[e], a.unite)} en stock)</small></span>
+                                  <input className={`saisie petite${erreurs[l.id] ? " invalide" : ""}`} type="number" min="0" max={a.etats[e]} step="1"
+                                    inputMode="numeric" value={parEtat[l.id]?.[e] ?? ""} disabled={envoi || verifier}
+                                    aria-label={`Qté livrée en « ${ETATS_PRODUIT[e].libelle} » : ${a.nom}`}
+                                    onChange={(ev) => { setParEtat((x) => ({ ...x, [l.id]: { ...(x[l.id] ?? {}), [e]: ev.target.value } })); effacer(l.id); }} />
+                                </label>
+                              ))}
+                              <small className="livree-total">Total livré : <b>{v === "" ? "—" : quantite(Number(v), a.unite)}</b></small>
+                            </div>
                           ) : (
                             <div className="avec-unite">
                               <input id={`livree-${l.id}`} className={`saisie livree${erreurs[l.id] ? " invalide" : ""}`} type="number" min="0" max={l.qte}
                                 step="1" inputMode="numeric" value={v} disabled={envoi || verifier} aria-label={`Qté livrée : ${a.nom}`}
                                 onChange={(e) => { setLivrees((x) => ({ ...x, [l.id]: e.target.value })); effacer(l.id); }} />
                               <small>{unite(a.unite)}</small>
+                              {etatsEnStock(l).length === 1 && <PastilleEtat etat={etatsEnStock(l)[0]} />}
                             </div>
                           )
                         ) : (

@@ -120,7 +120,10 @@ def valider(request, pk):
         d.traitee_le = maintenant
         d.traitee_par = request.user
         d.save(update_fields=["statut", "traitee_le", "traitee_par"])
-        r = Requisition.objects.create(demande=d, visa_agent=request.user, visa_agent_le=maintenant, signature_agent=signature)
+        # Le n° attribué au clic sur « Valider » (celui imprimé sur le bon signé) devient le n° de la réquisition.
+        numero = d.numero_requisition or _attribuer(d)
+        r = Requisition.objects.create(demande=d, numero=numero, visa_agent=request.user, visa_agent_le=maintenant,
+                                       signature_agent=signature)
 
     # Email au Responsable (désactivé pour l'instant : GESTISTOCK_EMAILS). Après l'enregistrement :
     # un souci d'email n'annule pas la validation.
@@ -171,7 +174,37 @@ def refuser(request, pk):
         d.motif_refus = motif
         d.traitee_le = timezone.now()
         d.traitee_par = request.user
-        d.save(update_fields=["statut", "motif_refus", "traitee_le", "traitee_par"])
+        d.numero_requisition = ""  # n° éventuellement attribué : libéré
+        d.save(update_fields=["statut", "motif_refus", "traitee_le", "traitee_par", "numero_requisition"])
     d = demandes_completes().get(pk=d.pk)
     return Response({"message": f"Demande {d.numero} refusée. Le demandeur verra le motif dans « Mes demandes ».",
                      "demande": en_json([d])[0]})
+
+
+def _attribuer(d):
+    """Attribue le prochain n° de réquisition à la demande `d` (verrouillée par l'appelant)."""
+    from django.db import IntegrityError
+    for _ in range(3):
+        try:
+            with transaction.atomic():
+                d.numero_requisition = Requisition._prochain_numero()
+                d.save(update_fields=["numero_requisition"])
+            return d.numero_requisition
+        except IntegrityError:  # deux validations au même instant : on reprend le suivant
+            d.numero_requisition = ""
+    raise RuntimeError("Impossible d'attribuer un n° de réquisition.")
+
+
+@api_view(["POST"])
+@permission_classes([EstAgentLogistique])
+def attribuer_numero(request, pk):
+    """Clic sur « Valider » (12/10/2026) : le n° de réquisition est attribué tout de suite et s'affiche sur le bon
+    à signer. Le même n° est gardé si la fenêtre est fermée puis rouverte."""
+    with transaction.atomic():
+        d = Demande.objects.select_for_update().filter(pk=pk).first()
+        if d is None:
+            return _introuvable()
+        if d.statut != Demande.Statut.EN_ATTENTE:
+            return _deja_traitee(d)
+        numero = d.numero_requisition or _attribuer(d)
+    return Response({"numero": numero})

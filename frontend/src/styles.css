@@ -513,3 +513,94 @@ th .facultatif { color: var(--gris); }
 .tableau.comptes td.une-ligne .roles { display: inline-flex; flex-wrap: nowrap; gap: 4px; }
 /* Écran étroit : le tableau défile horizontalement plutôt que de déborder. */
 .card:has(> .tableau.comptes) { overflow-x: auto; }
+
+/* ---------- État du produit (12/10/2026) ---------- */
+.etat-produit { font-weight: 600; }
+.etat-produit b { font-weight: 800; }
+.e-neuf { background: #e3f0fb; color: #1d5a8c; }
+.e-bon { background: var(--vert-clair); color: var(--vert-fonce); }
+.e-moyen { background: #f1ede4; color: #6b5a33; }
+.e-mauvais { background: var(--orange-clair); color: var(--orange); }
+.etats-produit { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.etats-produit .pill { font-size: 11.5px; padding: 2px 8px; }
+.etat-ligne { display: block; margin-top: 4px; font-size: 12px; color: var(--gris); }
+.etat-ligne .de-cote { color: var(--orange); font-weight: 700; }
+.avert-cote { display: block; color: var(--orange); font-weight: 700; font-size: 12px; margin-top: 3px; }
+.bon-table td:nth-child(7) { min-width: 70px; }
+.livree-etats { display: flex; flex-direction: column; gap: 4px; }
+.livree-etat { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.livree-etat input { width: 72px; }
+.livree-etat small { color: var(--gris); }
+.livree-total { color: var(--gris); }
+
+/* ---------- Retours de stock (12/10/2026) ---------- */
+.tableau.retours tbody.en-retard td:first-child { box-shadow: inset 4px 0 0 var(--rouge); }
+.fenetre-retour .table-retour td { vertical-align: top; }
+.retour-etats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.retour-etat span { white-space: nowrap; }
+.retour-etat { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 700; color: var(--gris); }
+.retour-etat input { width: 100%; box-sizing: border-box; text-align: right; font-weight: 800; }
+.e-neuf-bord span { color: #1d5a8c; } .e-bon-bord span { color: var(--vert-fonce); } .e-moyen-bord span { color: #6b5a33; }
+.e-mauvais-bord span { color: var(--orange); }
+.retour-total { margin-top: 6px; font-size: 13px; color: var(--gris); }
+.retour-total b { color: var(--encre); }
+.retour-total .partiel { color: var(--orange); font-weight: 700; }
+.obs-ligne { margin-top: 6px; width: 100%; box-sizing: border-box; }
+.retour-series { border: 1px solid #d9dfe8; border-radius: 8px; padding: 6px 10px 8px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.retour-series legend { font-size: 12.5px; font-weight: 700; color: var(--hbc-fonce); padding: 0 4px; }
+.retour-serie { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
+.retour-serie label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.retour-serie input[type="checkbox"] { width: 20px; height: 20px; }
+.retour-serie small { color: var(--gris); }
+.retour-serie > div, .retour-serie .liste { min-width: 150px; }
+.retour-champs { grid-template-columns: 200px 1fr 1fr; }
+.retour-champs .champ-saisie.large { grid-column: 1 / -1; }
+.bons-retour ul { list-style: none; margin: 0; padding: 6px 16px 10px; }
+.bons-retour li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #eef1f5; font-size: 13.5px; }
+.bons-retour li:last-child { border-bottom: 0; }
+.bons-retour li .discret { font-size: 13px; }
+
+/* ---------- Matériel à réparer (12/10/2026) ---------- */
+.actions-ligne { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.fenetre.fenetre-action { width: min(620px, calc(100vw - 32px)); }
+.action-quoi { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+.action-champs { grid-template-columns: 1fr 1fr; margin-top: 4px; }
+.action-champs .champ-saisie.large { grid-column: 1 / -1; }
+.choix-etat { display: flex; gap: 8px; }
+.choix-etat .btn.case.choisi { border-color: var(--hbc); background: var(--hbc-pale); font-weight: 700; }
+.etiquette-champ { font-size: 13px; font-weight: 700; color: var(--hbc-fonce); }
+.action-aide { margin: 12px 0 0; font-size: 13px; }
+.retour-serie label small { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Liste d'Articles : recherche, filtres et « Enregistrer des produits » sur une seule ligne (12/10/2026) */
+.barre.barre-articles { flex-wrap: nowrap; gap: 8px; }
+.barre-articles .recherche { flex: 1 1 200px; min-width: 150px; max-width: 360px; padding: 0 10px; gap: 8px; }
+.barre-articles .liste-deroulante.filtre { flex: 0 1 168px; width: auto; min-width: 150px; }
+.barre-articles .sp { flex: 1 0 0; min-width: 0; }
+.barre-articles .btn { padding: 0 12px; }
+.trace-pied.tete-bon { margin: 0 0 0 16px; }
+
+/* Fenêtre « Nouvel article » (12/10/2026) */
+.nouvel-article .entete-grille .pleine { grid-column: 1 / -1; }
+.nouvel-article .entete-grille small.aide { display: block; }
+.nouvel-article .roles-choix .entete-grille { margin-bottom: 0; }
+.nouvel-article .roles-choix legend .facultatif { font-weight: 500; }
+.nouvel-article .roles-choix.en-erreur { border-color: var(--rouge); }
+.nouvel-article .btn.case.sous-choix { margin-left: 28px; }
+.nouvel-article .btn.case input[type="radio"] { width: 18px; height: 18px; accent-color: var(--hbc); margin: 0; }
+.nouvel-article > .fenetre-corps > .aide { margin: 4px 0 0; font-size: 13.5px; }
+/* Écran Articles (12/10/2026, 15 h) : recherche plus étroite ; « Entrée en stock » à droite, sur la même ligne,
+   séparé des filtres par un espace. */
+.barre-articles .recherche { flex: 0 1 230px; max-width: 230px; min-width: 120px; }
+/* Les filtres ne rétrécissent pas (texte jamais coupé) : c'est la recherche qui cède la place. */
+.barre-articles .liste-deroulante.filtre { flex: 0 0 148px; min-width: 0; }
+.barre-articles .liste-deroulante.filtre.filtre-large { flex-basis: 176px; }
+.barre-articles .sp { min-width: 24px; }
+.barre-articles > .btn.pri { flex: none; white-space: nowrap; }
+
+/* Liste des articles : dernière ligne « ＋ Créer l'article… » (Entrée en stock, 12/10/2026) */
+.choix-liste li.creer { border-top: 1px solid var(--trait); margin-top: 4px; border-radius: 0 0 6px 6px; }
+.choix-liste li.creer .nom { color: var(--hbc); font-weight: 700; }
+/* Fenêtre « Nouvel article » ouverte par-dessus « Entrée en stock » */
+.voile.par-dessus { z-index: 20; }
+.fenetre.par-dessus { z-index: 21; }

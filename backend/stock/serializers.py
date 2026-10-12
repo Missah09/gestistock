@@ -1,8 +1,8 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import (Article, Chantier, Demande, Entree, Exemplaire, Fournisseur, LigneDemande, LigneEntree, Magasin,
-                     etat_stock)
+from .models import (Article, Categorie, Chantier, Demande, Emplacement, Entree, Etat, Exemplaire, Fournisseur,
+                     LigneDemande, LigneEntree, Magasin, etat_stock)
 
 
 class ArticleListeSerializer(serializers.ModelSerializer):
@@ -13,23 +13,31 @@ class ArticleListeSerializer(serializers.ModelSerializer):
     magasin = serializers.CharField(source="emplacement.magasin.nom")
     qte_disponible = serializers.IntegerField()
     etat = serializers.SerializerMethodField()
+    # État du produit (12/10/2026) : {"etats": {"NEUF": 3, …}, "disponible", "de_cote", "pretes", "par_serie"}
+    repartition = serializers.SerializerMethodField()
 
     class Meta:
         model = Article
         fields = ["id", "code", "nom", "categorie", "type", "unite",
-                  "qte_disponible", "qte_minimale", "etat", "emplacement", "magasin"]
+                  "qte_disponible", "qte_minimale", "etat", "emplacement", "magasin", "repartition"]
 
     def get_etat(self, obj):
         return etat_stock(obj.qte_disponible, obj.qte_minimale)
 
+    def get_repartition(self, obj):
+        from . import etats
+        reps = self.context.get("reps") or {}
+        return etats.en_json(reps[obj.id] if obj.id in reps else etats.repartition(obj))
+
 
 class ExemplaireSerializer(serializers.ModelSerializer):
     statut_libelle = serializers.CharField(source="get_statut_display")
+    etat_libelle = serializers.CharField(source="get_etat_display")
 
     class Meta:
         model = Exemplaire
         fields = ["id", "numero_serie", "code_immo", "date_etalonnage",
-                  "statut", "statut_libelle", "prete_a", "chantier"]
+                  "statut", "statut_libelle", "etat", "etat_libelle", "prete_a", "chantier"]
 
 
 class ArticleFicheSerializer(ArticleListeSerializer):
@@ -44,7 +52,7 @@ class ArticleFicheSerializer(ArticleListeSerializer):
     class Meta(ArticleListeSerializer.Meta):
         fields = ArticleListeSerializer.Meta.fields + [
             "type_libelle", "prix_unitaire", "montant_stock", "fournisseur",
-            "ref_fournisseur", "ref_fabricant", "marque", "modele", "exemplaires",
+            "ref_fournisseur", "ref_fabricant", "marque", "modele", "exemplaires", "suivi_serie",
         ]
 
     def get_montant_stock(self, obj):
@@ -136,6 +144,60 @@ class ArticleModificationSerializer(serializers.ModelSerializer):
         return article
 
 
+class ArticleCreationSerializer(serializers.ModelSerializer):
+    """Création d'un article (12/10/2026), depuis « Entrée en stock » : Agent Logistique (et administrateur).
+
+    Le code est créé automatiquement (préfixe de la catégorie + n°). Le stock part de 0 :
+    l'article est aussitôt placé sur la ligne de la livraison en cours (fenêtre « Entrée en stock »).
+    """
+
+    nom = serializers.CharField(max_length=150, trim_whitespace=True, error_messages={
+        "blank": "Le nom de l'article est obligatoire.", "required": "Le nom de l'article est obligatoire."})
+    categorie = serializers.PrimaryKeyRelatedField(queryset=Categorie.objects.all(), error_messages={
+        "required": "Choisissez la catégorie.", "null": "Choisissez la catégorie.",
+        "does_not_exist": "Catégorie inconnue.", "incorrect_type": "Choisissez la catégorie."})
+    type = serializers.ChoiceField(choices=Article.Type.choices, error_messages={
+        "required": "Choisissez le type d'article.", "null": "Choisissez le type d'article.",
+        "invalid_choice": "Choisissez le type d'article."})
+    unite = serializers.ChoiceField(choices=Article.Unite.choices, error_messages={
+        "required": "Choisissez l'unité.", "null": "Choisissez l'unité.", "invalid_choice": "Choisissez l'unité."})
+    emplacement = serializers.PrimaryKeyRelatedField(
+        queryset=Emplacement.objects.filter(magasin__actif=True), error_messages={
+            "required": "Choisissez l'emplacement.", "null": "Choisissez l'emplacement.",
+            "does_not_exist": "Emplacement inconnu.", "incorrect_type": "Choisissez l'emplacement."})
+    qte_minimale = serializers.IntegerField(min_value=0, required=False, default=0, error_messages={
+        "min_value": "La quantité minimale ne peut pas être négative.", "invalid": "Indiquez un nombre entier."})
+    prix_unitaire = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False, default=0,
+                                             error_messages={"min_value": "Le prix ne peut pas être négatif.",
+                                                             "invalid": "Indiquez un nombre."})
+    suivi_serie = serializers.BooleanField(required=False, default=False)
+
+    class Meta:
+        model = Article
+        fields = ["nom", "categorie", "type", "suivi_serie", "unite", "qte_minimale", "emplacement", "prix_unitaire",
+                  "fournisseur", "ref_fournisseur", "ref_fabricant", "marque", "modele"]
+        extra_kwargs = {"fournisseur": {"required": False, "allow_null": True}}
+
+    def validate_emplacement(self, e):
+        from . import etats
+        if e.nom in etats.NOMS_EMPLACEMENTS_DE_COTE:
+            raise serializers.ValidationError("Cet emplacement est réservé au matériel mis de côté.")
+        return e
+
+    def validate(self, data):
+        from .views import sans_accents
+        if data["type"] != Article.Type.PRETE:
+            data["suivi_serie"] = False  # un consommable n'a pas de n° de série
+        # Même nom dans le même magasin : sans doute un doublon (accents et majuscules ignorés).
+        cle = " ".join(sans_accents(data["nom"]).split())
+        magasin = data["emplacement"].magasin
+        for code, nom in Article.objects.filter(emplacement__magasin=magasin).values_list("code", "nom"):
+            if " ".join(sans_accents(nom).split()) == cle:
+                raise serializers.ValidationError(
+                    {"nom": [f"Cet article existe déjà à {magasin.nom} : {code} – {nom}."]})
+        return data
+
+
 class LigneEntreeSerializer(serializers.Serializer):
     article = serializers.PrimaryKeyRelatedField(queryset=Article.objects.all(),
                                                  error_messages={"does_not_exist": "Article introuvable.",
@@ -151,6 +213,9 @@ class LigneEntreeSerializer(serializers.Serializer):
     numeros_serie = serializers.ListField(child=serializers.CharField(max_length=60, trim_whitespace=True,
                                                                       allow_blank=True),
                                           required=False)
+    # État du produit reçu (12/10/2026) : « Neuf » par défaut.
+    etat = serializers.ChoiceField(choices=Etat.choices, required=False, default=Etat.NEUF,
+                                   error_messages={"invalid_choice": "État inconnu."})
 
 
 class EntreeSerializer(serializers.Serializer):
@@ -179,7 +244,7 @@ class EntreeSerializer(serializers.Serializer):
             vus.add(a.id)
             series = [s for s in ligne.get("numeros_serie", []) if s]
             ligne["numeros_serie"] = series
-            if a.exemplaires.exists():  # matériel suivi par n° de série
+            if a.exemplaires.exists() or (a.type == Article.Type.PRETE and a.suivi_serie):  # suivi par n° de série
                 if len(series) != ligne["quantite"]:
                     err["numeros_serie"] = [f"Indiquez {ligne['quantite']} n° de série (un par exemplaire reçu)."]
                 else:
@@ -198,19 +263,27 @@ class EntreeSerializer(serializers.Serializer):
         return data
 
     def create(self, data):
-        from django.db.models import F
+        from . import etats
         lignes = data.pop("lignes")
+        par = data.pop("par", None)
         with transaction.atomic():
             entree = Entree.objects.create(**data)
+            reference = f"Réception du {entree.date_reception:%d/%m/%Y}"
             for l in lignes:
-                a = l["article"]
+                a = Article.objects.select_for_update().get(pk=l["article"].pk)
+                etat = l.get("etat") or Etat.NEUF
                 LigneEntree.objects.create(entree=entree, article=a, quantite=l["quantite"],
                                            prix_unitaire=l.get("prix_unitaire"),
-                                           numeros_serie="\n".join(l["numeros_serie"]))
+                                           numeros_serie="\n".join(l["numeros_serie"]), etat=etat)
                 if l["numeros_serie"]:
-                    Exemplaire.objects.bulk_create([Exemplaire(article=a, numero_serie=s) for s in l["numeros_serie"]])
+                    nouveaux = Exemplaire.objects.bulk_create([
+                        Exemplaire(article=a, numero_serie=s, etat=etat, statut=etats.statut_pour(etat))
+                        for s in l["numeros_serie"]])
+                    for e in nouveaux:
+                        etats.noter(a, "RECEPTION", 1, etat_apres=etat, reference=reference, par=par, exemplaire=e)
                 else:
-                    Article.objects.filter(pk=a.pk).update(qte_stock=F("qte_stock") + l["quantite"])
+                    etats.ajouter(a, etat, l["quantite"])
+                    etats.noter(a, "RECEPTION", l["quantite"], etat_apres=etat, reference=reference, par=par)
                 if l.get("prix_unitaire") is not None:  # dernier prix d'achat connu
                     Article.objects.filter(pk=a.pk).update(prix_unitaire=l["prix_unitaire"])
         return entree
@@ -345,16 +418,21 @@ class NouvelleDemandeSerializer(serializers.Serializer):
         return demande
 
 
-def article_resume(a):
-    """Ce que la demande montre d'un article (tableau et panneau). `a` vient de articles_avec_quantites()."""
-    return {
+def article_resume(a, rep=None):
+    """Ce que la demande montre d'un article (tableau et panneau). `a` vient de articles_avec_quantites().
+    `rep` (12/10/2026) : répartition par état (etats.repartitions) ; Neuf, Bon, Moyen, Mauvais (tous disponibles)."""
+    from . import etats as module_etats
+    resume = {
         "id": a.id, "code": a.code, "nom": a.nom, "categorie": a.categorie.nom, "type": a.type,
         "unite": a.unite, "emplacement": a.emplacement.nom, "magasin": a.emplacement.magasin_id,
         "modele": a.modele, "marque": a.marque, "qte_disponible": a.qte_disponible,
         "qte_minimale": a.qte_minimale, "etat": etat_stock(a.qte_disponible, a.qte_minimale),
         # Matériel suivi par n° de série : à la sortie, on coche les exemplaires remis (12/10/2026).
-        "suivi_par_serie": a.type == "PRETE" and getattr(a, "nb_exemplaires", 0) > 0,
+        "suivi_par_serie": a.type == "PRETE" and (getattr(a, "nb_exemplaires", 0) > 0 or a.suivi_serie),
     }
+    if rep is not None:
+        resume["etats"] = module_etats.en_json(rep)["etats"]
+    return resume
 
 
 def heure_locale(dt):
@@ -394,13 +472,14 @@ def sortie_en_json(r):
         return None
     return {"date_remise": s.date_remise.isoformat(), "magasinier": s.magasinier, "observation": s.observation,
             "confirmee_le": heure_locale(s.confirmee_le), "confirmee_par": nom_de(s.confirmee_par),
-            "lignes": {str(ls.ligne_demande_id): {"qte_bon": ls.qte_bon, "qte_livree": ls.qte_livree,
+            "lignes": {str(ls.ligne_demande_id): {"qte_bon": ls.qte_bon, "qte_livree": ls.qte_livree, "etats": ls.etats,
                                                   "exemplaires": [e.numero_serie for e in ls.exemplaires.all()]}
                        for ls in s.lignes.prefetch_related("exemplaires")}}
 
 
-def demande_en_json(d, articles):
-    """`articles` : {id: article annoté} pour les quantités disponibles actuelles."""
+def demande_en_json(d, articles, reps=None):
+    """`articles` : {id: article annoté} pour les quantités disponibles actuelles ; `reps` : répartitions par état."""
+    reps = reps or {}
     from .models import departement_de
     dep = departement_de(d.demandeur) if d.demandeur else None
     return {
@@ -410,10 +489,11 @@ def demande_en_json(d, articles):
         "demandeur_departement": dep.nom if dep else "",
         "traitee_par": nom_de(d.traitee_par),
         "requisition": requisition_en_json(d),
+        "numero_requisition": d.numero_requisition,  # attribué au clic sur « Valider » (12/10/2026)
         "magasin": d.magasin.nom, "chantier": d.chantier.nom if d.chantier_id else "", "travail": d.travail,
         "destination": d.destination, "urgent": d.urgent, "motif_refus": d.motif_refus,
         "traitee_le": heure_locale(d.traitee_le),
         "lignes": [{"id": l.id, "quantite": l.quantite, "qte_accordee": l.qte_accordee,
                     "date_retour_prevue": l.date_retour_prevue, "motif": l.motif,
-                    "article": article_resume(articles[l.article_id])} for l in d.lignes.all()],
+                    "article": article_resume(articles[l.article_id], reps.get(l.article_id))} for l in d.lignes.all()],
     }

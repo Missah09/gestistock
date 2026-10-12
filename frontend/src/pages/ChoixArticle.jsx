@@ -1,10 +1,10 @@
 import { LIBELLE_PRETE } from "../format.js";
 import ListeDeroulante from "../ListeDeroulante.jsx";
 
-/** Choix d'un article (Nouvelle demande, Enregistrer des produits) : on tape un bout du nom ou du code,
+/** Choix d'un article (Nouvelle demande, Entrée en stock) : on tape un bout du nom ou du code,
  *  ou on déroule toute la liste. Même liste déroulante que partout ailleurs, avec le code et le type. */
 export default function ChoixArticle({ articles, valeur, onChoisir, desactive, invalide, texteVide, dejaPris = [],
-  texteDejaPris = "Déjà sur la demande" }) {
+  texteDejaPris = "Déjà sur la demande", onCreer }) {
   const options = articles.map((a) => ({
     valeur: String(a.id), code: a.code, libelle: a.nom,
     badge: a.type === "PRETE" ? <span className="pill p-i petite-pill">{LIBELLE_PRETE}</span> : null,
@@ -12,6 +12,7 @@ export default function ChoixArticle({ articles, valeur, onChoisir, desactive, i
   return (
     <ListeDeroulante options={options} valeur={valeur} onChange={onChoisir} desactive={desactive} invalide={invalide}
       placeholder={texteVide} petite recherche largeurMin={460} ariaLabel="Article" dejaPris={dejaPris}
-      texteDejaPris={texteDejaPris} texteAucun="Aucun article" />
+      texteDejaPris={texteDejaPris} texteAucun="Aucun article"
+      creer={onCreer ? { texte: (t) => (t ? `Créer l'article « ${t} »` : "Créer un nouvel article…"), onCreer } : undefined} />
   );
 }

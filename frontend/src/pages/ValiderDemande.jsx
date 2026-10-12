@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { refuserDemande, renvoyerEmail, validerDemande } from "../api.js";
+import { attribuerNumero, refuserDemande, renvoyerEmail, validerDemande } from "../api.js";
 import { quantite } from "../format.js";
 import Icon from "../icons.jsx";
 import { BlocArticle, BlocDemande, BlocRequisition, Champ, Suivi } from "./DetailDemande.jsx";
@@ -41,6 +41,7 @@ function SaisieAccorde({ l, valeur, onChange, erreur, desactive }) {
 export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMiseAJour, emails = false, signataire = "" }) {
   const enAttente = d.statut === "EN_ATTENTE";
   const [accordes, setAccordes] = useState({});
+  const [numero, setNumero] = useState(null); // n° de réquisition attribué au clic sur « Valider »
   const [mode, setMode] = useState(null); // null | "valider" (fenêtre de signature) | "refuser" (motif en bas) | "voir" (bon)
   const [motif, setMotif] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -59,7 +60,7 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
   // Nouvelle demande ouverte : les quantités accordées repartent des quantités demandées.
   useEffect(() => {
     setAccordes(Object.fromEntries(d.lignes.map((l) => [l.id, String(l.quantite)])));
-    setMode(null); setMotif(""); setErreurs({}); setSucces(null);
+    setMode(null); setMotif(""); setErreurs({}); setSucces(null); setNumero(null);
   }, [d.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // La demande a changé pendant la lecture (ex. annulée par le demandeur) : plus de confirmation en cours.
   useEffect(() => { if (!enAttente) setMode(null); }, [enAttente]);
@@ -92,7 +93,7 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
   const toutAZero = valeurs.every((v) => v !== "" && Number(v) === 0);
   const modifiees = d.lignes.filter((l, i) => valeurs[i] !== String(l.quantite)).length;
 
-  function demanderValidation() {
+  async function demanderValidation() {
     // Contrôle immédiat, avant la confirmation (le serveur vérifie aussi).
     const err = {};
     d.lignes.forEach((l, i) => {
@@ -102,7 +103,15 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
     });
     if (!Object.keys(err).length && toutAZero) err.general = "Toutes les quantités sont à 0 : accordez au moins un article, ou refusez la demande.";
     setErreurs(err);
-    if (!Object.keys(err).length) setMode("valider");
+    if (Object.keys(err).length) return;
+    // Le n° de réquisition est attribué dès ce clic : il s'affiche sur le bon à signer (12/10/2026).
+    try {
+      const rep = await attribuerNumero(d.id);
+      setNumero(rep.numero);
+      setMode("valider");
+    } catch (e) {
+      setErreurs({ general: e.details?.general?.[0] ?? "Le n° de réquisition n'a pas pu être attribué. Vérifiez que le serveur est démarré." });
+    }
   }
 
   async function envoyer(action, signature) {
@@ -218,7 +227,7 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
 
       {/* Valider = signer au stylo électronique la case « Agent Logistique » du bon */}
       {mode === "valider" && (
-        <FenetreBon d={d} role="agent" signataire={signataire}
+        <FenetreBon d={d} role="agent" numero={numero ?? d.numero_requisition} signataire={signataire}
           quantites={Object.fromEntries(d.lignes.map((l, i) => [l.id, Number(valeurs[i])]))}
           titre={`Valider la demande ${d.numero}${modifiees ? ` (${modifiees} quantité${modifiees > 1 ? "s" : ""} modifiée${modifiees > 1 ? "s" : ""})` : ""}`}
           texteBouton="Signer et valider" envoi={envoi} erreur={erreurs.general || erreurs.signature}

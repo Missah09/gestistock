@@ -3,7 +3,7 @@ import ListeDeroulante from "../ListeDeroulante.jsx";
 import { lireFiltres, listerArticles } from "../api.js";
 import { ETATS, quantite } from "../format.js";
 import Icon from "../icons.jsx";
-import EnregistrerProduits from "./EnregistrerProduits.jsx";
+import EntreeStock from "./EntreeStock.jsx";
 import FicheArticle from "./FicheArticle.jsx";
 
 const PAR_PAGE = 10;
@@ -17,7 +17,8 @@ export default function Articles({ compte }) {
   const [chargement, setChargement] = useState(true);
   const [ouvert, setOuvert] = useState(null); // id de l'article dont la fiche est ouverte
   const [rafraichir, setRafraichir] = useState(0); // +1 après une modification → recharge la liste
-  const [reception, setReception] = useState(false); // fenêtre « Enregistrer des produits » ouverte
+  // Fenêtre « Entrée en stock » (12/10/2026) : null = fermée ; { article } = ouverte (article choisi d'avance depuis une fiche).
+  const [reception, setReception] = useState(null);
   const [annonce, setAnnonce] = useState(null);      // message de réussite affiché au-dessus de la liste
 
   // Recherche et filtres
@@ -26,7 +27,8 @@ export default function Articles({ compte }) {
   const [categorie, setCategorie] = useState("");
   const [magasin, setMagasin] = useState("");
   const [sousSeuil, setSousSeuil] = useState(false);
-  const [options, setOptions] = useState({ categories: [], magasins: [] });
+  const [etatProduit, setEtatProduit] = useState(""); // filtre « État » (12/10/2026)
+  const [options, setOptions] = useState({ categories: [], magasins: [], etats: [] });
 
   // Listes Catégorie / Magasin : chargées une fois, et rechargées si le premier essai a échoué
   // (par exemple si Django n'était pas encore démarré).
@@ -46,27 +48,27 @@ export default function Articles({ compte }) {
 
   // Tout changement de filtre ramène à la première page — avant le chargement,
   // pour ne pas demander au serveur une page qui n'existe pas (ex. page 3 d'une recherche à 2 résultats).
-  const cleFiltres = JSON.stringify([recherche, categorie, magasin, sousSeuil]);
+  const cleFiltres = JSON.stringify([recherche, categorie, magasin, sousSeuil, etatProduit]);
   const [filtresVus, setFiltresVus] = useState(cleFiltres);
   if (filtresVus !== cleFiltres) { setFiltresVus(cleFiltres); setPage(1); }
 
   const fermerFiche = useCallback(() => setOuvert(null), []);
 
-  const filtreActif = recherche || categorie || magasin || sousSeuil;
+  const filtreActif = recherche || categorie || magasin || sousSeuil || etatProduit;
   function effacerFiltres() {
-    setSaisie(""); setRecherche(""); setCategorie(""); setMagasin(""); setSousSeuil(false);
+    setSaisie(""); setRecherche(""); setCategorie(""); setMagasin(""); setSousSeuil(false); setEtatProduit("");
   }
 
   useEffect(() => {
     let annule = false;
     setChargement(true);
     setErreur(null);
-    listerArticles({ page, q: recherche, categorie, magasin, sousSeuil })
+    listerArticles({ page, q: recherche, categorie, magasin, sousSeuil, etat: etatProduit })
       .then((d) => !annule && setDonnees(d))
       .catch(() => !annule && setErreur("Impossible de joindre le serveur. Vérifiez que la fenêtre du backend (runserver) est ouverte."))
       .finally(() => !annule && setChargement(false));
     return () => { annule = true; };
-  }, [page, recherche, categorie, magasin, sousSeuil, rafraichir]);
+  }, [page, recherche, categorie, magasin, sousSeuil, etatProduit, rafraichir]);
 
   const total = donnees?.count ?? 0;
   const debut = total === 0 ? 0 : (page - 1) * PAR_PAGE + 1;
@@ -79,38 +81,42 @@ export default function Articles({ compte }) {
       <div className="body">
         {erreur && <div className="alerte">{erreur}</div>}
 
-        <div className="barre">
+        <div className="barre barre-articles">
           <label className="recherche">
             <Icon name="search" size={19} />
             <input
               type="search"
-              placeholder="Rechercher un article…"
+              placeholder="Rechercher…"
             title="Recherche par nom, code article, n° de série ou code immo"
               value={saisie}
               onChange={(e) => setSaisie(e.target.value)}
               aria-label="Rechercher un article"
             />
           </label>
-          <ListeDeroulante className="filtre" ariaLabel="Catégorie" recherche={false} valeur={categorie} onChange={setCategorie}
+          <ListeDeroulante className="filtre filtre-large" ariaLabel="Catégorie" recherche={false} valeur={categorie} onChange={setCategorie}
             options={[{ valeur: "", libelle: "Catégorie : Toutes" },
               ...options.categories.map((c) => ({ valeur: String(c.id), libelle: c.nom, texte: `Catégorie : ${c.nom}` }))]} />
           <ListeDeroulante className="filtre" ariaLabel="Magasin" recherche={false} valeur={magasin} onChange={setMagasin}
             options={[{ valeur: "", libelle: "Magasin : Tous" },
               ...options.magasins.map((m) => ({ valeur: String(m.id), libelle: m.type === "CHANTIER" ? `Chantier : ${m.nom}` : m.nom,
                 texte: `Magasin : ${m.nom}` }))]} />
-          <label className="btn case">
+          <ListeDeroulante className="filtre" ariaLabel="État du produit" recherche={false} valeur={etatProduit} onChange={setEtatProduit}
+            options={[{ valeur: "", libelle: "État : Tous" },
+              ...(options.etats ?? []).map((e) => ({ valeur: e.valeur, libelle: e.libelle, texte: `État : ${e.libelle}` }))]} />
+          <label className="btn case" title="Articles sous la quantité minimale, ou épuisés">
             <input type="checkbox" checked={sousSeuil} onChange={(e) => setSousSeuil(e.target.checked)} />
-            Sous le seuil seulement
+            Sous le seuil
           </label>
           {filtreActif && (
             <button className="btn lien effacer" type="button" onClick={effacerFiltres}>
-              <Icon name="x" size={14} stroke={2.2} />Effacer les filtres
+              <Icon name="x" size={14} stroke={2.2} />Effacer
             </button>
           )}
           <span className="sp" />
           {gestion && (
-            <button className="btn pri" type="button" onClick={() => { setAnnonce(null); setReception(true); }}>
-              <Icon name="plus" size={18} stroke={2.4} />Enregistrer des produits
+            <button className="btn pri" type="button" title="Une livraison est arrivée : augmenter le stock (un article absent peut y être créé)"
+              onClick={() => { setAnnonce(null); setReception({ article: null }); }}>
+              <Icon name="plus" size={18} stroke={2.4} />Entrée en stock
             </button>
           )}
         </div>
@@ -158,7 +164,9 @@ export default function Articles({ compte }) {
                     <td>{a.categorie}</td>
                     <td className="num centre">{quantite(a.qte_disponible, a.unite)}</td>
                     <td className="discret centre">{quantite(a.qte_minimale, a.unite)}</td>
-                    <td><span className={`pill ${etat.classe}`}>{etat.libelle}</span></td>
+                    <td>
+                      <span className={`pill ${etat.classe}`}>{etat.libelle}</span>
+                    </td>
                     <td>{a.emplacement}</td>
                   </tr>
                 );
@@ -182,12 +190,19 @@ export default function Articles({ compte }) {
       </div>
 
       {reception && (
-        <EnregistrerProduits
-          onFermer={() => setReception(false)}
-          onEnregistre={(message) => { setReception(false); setAnnonce(message); setRafraichir((n) => n + 1); }}
+        <EntreeStock
+          articleInitial={reception.article}
+          onFermer={() => { const id = reception.article; setReception(null); if (id) setOuvert(id); }}
+          onArticleCree={() => setRafraichir((n) => n + 1)}
+          onEnregistre={(message) => {
+            const id = reception.article;
+            setReception(null); setAnnonce(message); setRafraichir((n) => n + 1);
+            if (id) setOuvert(id); // depuis une fiche : on la rouvre, avec le stock à jour
+          }}
         />
       )}
-      {ouvert && <FicheArticle id={ouvert} modifiable={gestion} onFermer={fermerFiche} onModifie={() => setRafraichir((n) => n + 1)} />}
+      {ouvert && <FicheArticle id={ouvert} modifiable={gestion} onFermer={fermerFiche} onModifie={() => setRafraichir((n) => n + 1)}
+        onEntreeStock={(id) => { setAnnonce(null); setOuvert(null); setReception({ article: id }); }} />}
     </>
   );
 }

@@ -8,27 +8,43 @@ class ExemplaireInline(admin.TabularInline):
     extra = 0
 
 
+class StockEtatInline(admin.TabularInline):
+    """Répartition par état (12/10/2026) : mise à jour par GestiStock (entrées en stock, sorties, retours)."""
+    from .models import StockEtat
+    model = StockEtat
+    extra = 0
+    can_delete = False
+    fields = ("etat", "quantite")
+    readonly_fields = fields
+    verbose_name_plural = "Stock par état (Neuf, Bon, Moyen, Mauvais)"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
     list_display = ("code", "nom", "categorie", "type", "qte_stock", "qte_minimale", "emplacement")
     list_filter = ("type", "categorie", "emplacement__magasin")
     search_fields = ("code", "nom", "exemplaires__numero_serie", "exemplaires__code_immo")
     readonly_fields = ("code",)
-    inlines = [ExemplaireInline]
+    inlines = [StockEtatInline, ExemplaireInline]
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         form.base_fields["qte_stock"].label = "Quantité en stock"
         form.base_fields["qte_stock"].help_text = (
-            "Pour le matériel avec n° de série, laissez 0 : la quantité se calcule à partir des exemplaires « En stock »."
+            "Quantité disponible (Neuf + Bon + Moyen + Mauvais). Pour le matériel avec n° de série, laissez 0 : la quantité se "
+            "calcule à partir des exemplaires « En stock ». Si vous la corrigez ici, l'écart est compté en « Neuf » "
+            "(consommable) ou « Bon » (matériel prêté)."
         )
         return form
 
 
 @admin.register(Exemplaire)
 class ExemplaireAdmin(admin.ModelAdmin):
-    list_display = ("numero_serie", "article", "code_immo", "statut", "prete_a", "date_etalonnage")
-    list_filter = ("statut",)
+    list_display = ("numero_serie", "article", "code_immo", "statut", "etat", "prete_a", "date_etalonnage")
+    list_filter = ("statut", "etat")
     search_fields = ("numero_serie", "code_immo", "article__nom")
 
 
@@ -89,8 +105,8 @@ class TelechargementBonInline(admin.TabularInline):
     model = TelechargementBon
     extra = 0
     can_delete = False
-    readonly_fields = ("par", "le", "role")
-    fields = ("par", "le", "role")
+    readonly_fields = ("par", "le", "role", "impression")
+    fields = ("par", "le", "role", "impression")
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -196,6 +212,53 @@ class SortieAdmin(admin.ModelAdmin):
     search_fields = ("requisition__numero", "requisition__demande__numero", "magasinier")
     readonly_fields = ("requisition", "date_remise", "magasinier", "observation", "confirmee_le", "confirmee_par")
     inlines = [LigneSortieInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+# ---------------------------------------------------------------- État du produit et retours (12/10/2026)
+from .models import BonRetour, LigneRetour, MouvementEtat  # noqa: E402
+
+
+@admin.register(MouvementEtat)
+class MouvementEtatAdmin(admin.ModelAdmin):
+    """Historique des états : chaque réception, sortie, retour, réparation et mise au rebut (consultation)."""
+    list_display = ("le", "type", "article", "exemplaire", "quantite", "etat_avant", "etat_apres", "reference", "par")
+    list_filter = ("type", "etat_apres")
+    search_fields = ("article__code", "article__nom", "exemplaire__numero_serie", "reference", "motif")
+    readonly_fields = [f.name for f in MouvementEtat._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class LigneRetourInline(admin.TabularInline):
+    model = LigneRetour
+    extra = 0
+    can_delete = False
+    fields = ("article", "qte_attendue", "qte_rendue", "etats", "exemplaires", "observation")
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(BonRetour)
+class BonRetourAdmin(admin.ModelAdmin):
+    """Les retours se confirment dans GestiStock (écran « Retours de stock ») : consultation seulement."""
+    list_display = ("numero", "sortie", "statut", "imprime_le", "date_retour", "confirme_par")
+    list_filter = ("statut",)
+    search_fields = ("numero", "sortie__requisition__numero")
+    readonly_fields = ("numero", "sortie", "statut", "imprime_le", "imprime_par", "date_retour", "magasinier", "rendu_par",
+                       "observation", "confirme_le", "confirme_par", "annule_le")
+    inlines = [LigneRetourInline]
 
     def has_add_permission(self, request):
         return False

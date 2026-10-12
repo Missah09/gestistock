@@ -14,10 +14,12 @@ const texteDe = (o) => (o ? o.texte ?? (o.code ? `${o.code} · ${o.libelle}` : o
  *    - valeur "" : choix « vide » (ex. « — Aucun — »)
  *  recherche : on peut taper pour filtrer (activée d'office pour les longues listes).
  *  dejaPris  : valeurs déjà utilisées ailleurs (sur une autre ligne) : visibles mais non choisissables.
+ *  creer     : { texte(saisie), onCreer(saisie) } : dernière ligne « ＋ Créer… » (ex. créer un article absent, 12/10/2026).
  *  La liste s'ouvre toujours vers le bas. */
 export default function ListeDeroulante({
   options, valeur, onChange, placeholder = "", desactive, invalide, petite, className = "", ariaLabel,
   recherche, largeurMin = 0, dejaPris = [], texteDejaPris = "Déjà sur une autre ligne", texteAucun = "Aucun résultat",
+  creer,
 }) {
   const filtrable = recherche ?? options.length > 8;
   const choisi = options.find((o) => String(o.valeur) === String(valeur ?? ""));
@@ -40,7 +42,10 @@ export default function ListeDeroulante({
   }, [options, texte, filtrer]);
 
   const estPris = (o) => o && o.valeur !== "" && dejaPris.map(String).includes(String(o.valeur)) && String(o.valeur) !== String(valeur);
-  const libres = resultats.map((o, i) => (estPris(o) ? -1 : i)).filter((i) => i >= 0);
+  // La ligne « ＋ Créer… » (si elle existe) vient après les résultats : index resultats.length.
+  const CREER = resultats.length;
+  const libres = [...resultats.map((o, i) => (estPris(o) ? -1 : i)).filter((i) => i >= 0), ...(creer ? [CREER] : [])];
+  const saisie = filtrer ? texte.trim() : "";
   const premierLibre = (depuis = 0) => libres.find((i) => i >= depuis) ?? libres[0] ?? 0;
 
   // La liste s'affiche par-dessus la fenêtre, juste sous le champ (toujours vers le bas).
@@ -72,6 +77,12 @@ export default function ListeDeroulante({
     setTexte(texteDe(o));
     setOuvert(false);
   }
+  function lancerCreation() {
+    const t = saisie;
+    setOuvert(false);
+    setTexte(texteDe(choisi));
+    creer.onCreer(t);
+  }
   function fermer() {
     setOuvert(false);
     setTexte(texteDe(choisi)); // texte tapé sans choisir : on revient au choix actuel
@@ -93,7 +104,8 @@ export default function ListeDeroulante({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (!ouvert) return ouvrirTout();
-      if (resultats[actif] && !estPris(resultats[actif])) choisir(resultats[actif]);
+      if (creer && actif === CREER) lancerCreation();
+      else if (resultats[actif] && !estPris(resultats[actif])) choisir(resultats[actif]);
     } else if (e.key === " " && !filtrable) {
       e.preventDefault();
       if (ouvert) fermer(); else ouvrirTout();
@@ -143,6 +155,12 @@ export default function ListeDeroulante({
               </Fragment>
             );
           })}
+          {creer && (
+            <li role="option" aria-selected={false} data-actif={actif === CREER ? "1" : "0"}
+              className={`creer${actif === CREER ? " actif" : ""}`} onMouseEnter={() => setActif(CREER)} onClick={lancerCreation}>
+              <span className="nom">＋ {creer.texte(saisie)}</span>
+            </li>
+          )}
         </ul>, document.body)}
     </div>
   );

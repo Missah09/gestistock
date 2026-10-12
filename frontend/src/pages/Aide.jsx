@@ -86,7 +86,7 @@ const FICHES = [
       "Cliquez sur une demande et vérifiez chaque article.",
       "Modifiez au besoin la « Qté accordée » (0 = article retiré). La quantité demandée d'origine reste visible.",
       "Pour refuser : « Refuser… », écrivez le motif (il sera montré au demandeur), puis « Refuser la demande ».",
-      "Pour valider : « Valider… ». Le bon de réquisition s'affiche : relisez-le.",
+      "Pour valider : « Valider… ». Le n° de réquisition (RM-…) est attribué à ce moment ; le bon s'affiche avec ce n° : relisez-le.",
       "Signez dans le cadre en bas avec la souris (bouton gauche enfoncé), puis « Signer et valider ».",
     ],
     astuces: [
@@ -97,14 +97,20 @@ const FICHES = [
     ],
   },
   {
-    id: "reception", role: AGENT, icone: "box", titre: "Enregistrer une réception de produits", ecran: "Liste d'Articles",
+    id: "reception", role: AGENT, icone: "box", titre: "Entrée en stock : enregistrer une livraison", ecran: "Liste d'Articles",
     etapes: [
-      "Menu « Liste d'Articles », bouton « Enregistrer des produits ».",
+      "Menu « Liste d'Articles », bouton « Entrée en stock » (en haut à droite).",
       "Indiquez le fournisseur, le n° de facture ou de bon de livraison, la date et le magasin.",
-      "Pour chaque article reçu : l'article, la quantité, le prix unitaire (facultatif) et les n° de série s'il y en a.",
+      "Pour chaque article reçu : tapez un bout de son nom ou de son code et choisissez-le, puis la quantité, le prix unitaire (facultatif), l'état (« Neuf » par défaut) et les n° de série s'il y en a.",
       "Cliquez sur « Enregistrer » : le stock augmente aussitôt.",
     ],
-    astuces: ["Un article qui n'existe pas encore doit d'abord être créé par l'administrateur (service Informatique)."],
+    astuces: [
+      "Livraison d'un seul article : ouvrez sa fiche et cliquez sur « Entrée en stock » ; l'article est déjà choisi.",
+      "Produit jamais reçu auparavant : tapez son nom, puis cliquez sur « ＋ Créer l'article » en bas de la liste. Indiquez la catégorie (le code est créé automatiquement), le type, l'unité, l'emplacement et le seuil d'alerte ; l'article est aussitôt placé sur la ligne de la livraison.",
+      "Appareil avec un n° de série (OTDR, soudeuse…) : à la création, choisissez « Non consommable · à rendre » et cochez « Suivi par n° de série ». Le type et ce choix ne peuvent plus être changés ensuite.",
+      "État du produit reçu : Neuf, Bon, Moyen ou Mauvais. Tous les états comptent dans la quantité disponible.",
+      "Dans la liste, sous l'état du stock, la répartition par état (ex. « 12 Bon · 3 Moyen ») ; le filtre « État » trouve par exemple tous les articles qui ont du matériel en mauvais état.",
+    ],
   },
   {
     id: "modifier", role: AGENT, icone: "edit", titre: "Modifier la fiche d'un article", ecran: "Liste d'Articles",
@@ -129,13 +135,14 @@ const FICHES = [
     id: "imprimer", role: AGENT, icone: "doc", titre: "Imprimer le bon de réquisition", ecran: "Liste Réquisitions",
     etapes: [
       "Menu « Liste Réquisitions », onglet « À imprimer » : les bons signés par vous et par le Responsable HBC. La pastille rouge les compte.",
-      "« Voir le bon » pour le relire ; « Télécharger le PDF » pour l'enregistrer (fichier RM-2026-0001.pdf, par exemple).",
-      "Ouvrez le PDF et imprimez-le (format A4), puis portez le bon au magasin.",
+      "Cliquez sur « Voir le bon » pour le relire.",
+      "En bas de l'aperçu : « Imprimer » ouvre la fenêtre d'impression (format A4) ; « Télécharger le PDF » l'enregistre (fichier RM-2026-0001.pdf, par exemple).",
+      "Portez le bon imprimé au magasin.",
       "Le magasinier remplit la « Qté livrée » et signe ; le demandeur signe à la réception du matériel.",
     ],
     astuces: [
-      "Votre premier téléchargement fait passer le bon dans l'onglet « Imprimées », avec la date, l'heure et votre nom.",
-      "Vous pouvez le retélécharger autant de fois que nécessaire : chaque téléchargement est noté.",
+      "Votre première impression (ou votre premier téléchargement) fait passer le bon dans l'onglet « Imprimées », avec la date, l'heure et votre nom.",
+      "Vous pouvez le réimprimer ou le retélécharger autant de fois que nécessaire : chaque fois est noté.",
       "Les articles retirés à la validation (quantité 0) ne figurent pas sur le bon.",
     ],
   },
@@ -145,7 +152,8 @@ const FICHES = [
       "Quand le bon signé par le magasinier revient, ouvrez le menu « Sorties de stock », onglet « À confirmer ». La pastille rouge compte les bons en attente.",
       "Cliquez sur « Confirmer la sortie » à droite du bon.",
       "Recopiez, pour chaque article, la « Qté livrée » écrite par le magasinier (0 si rien n'a été remis). Si tout a été livré, le lien « Tout a été livré comme sur le bon » remplit les cases.",
-      "Matériel avec n° de série : cochez les n° de série remis.",
+      "Recopiez aussi la colonne « État » : si le stock de l'article a plusieurs états (ex. Bon et Moyen), indiquez combien de chaque état est sorti.",
+      "Matériel avec n° de série : cochez les n° de série remis (leur état est affiché à côté).",
       "Vérifiez la date de remise, écrivez au besoin le nom du magasinier et une observation.",
       "Cliquez sur « Confirmer la sortie… », relisez, puis « Oui, confirmer la sortie ». Le stock diminue aussitôt.",
     ],
@@ -157,13 +165,28 @@ const FICHES = [
     ],
   },
   {
+    id: "retour", role: AGENT, icone: "back", titre: "Enregistrer un retour de matériel", ecran: "Retours de stock",
+    etapes: [
+      "Menu « Retours de stock », onglet « Matériel attendu » : le matériel prêté sorti et pas encore rentré (jamais les consommables). Les retards sont en rouge ; la pastille du menu les compte.",
+      "Quand le demandeur rapporte le matériel, cliquez sur « Préparer le bon de retour », signez dans le cadre, puis « Signer et préparer le bon » : le BON DE RETOUR (BR-…) se télécharge avec tout ce qui reste à rendre. Imprimez-le.",
+      "Au magasin, le magasinier remplit à la main « Qté rendue » et « État au retour » ; le demandeur et lui signent.",
+      "Au retour du bon, cliquez sur « Confirmer le retour ». Recopiez, pour chaque ligne, combien sont rendus dans chaque état (Neuf, Bon, Moyen, Mauvais) ; pour le matériel avec n° de série, cochez les n° rendus et choisissez leur état.",
+      "Cliquez sur « Confirmer le retour… », relisez, puis « Oui, confirmer le retour ». Le stock remonte et l'état est mis à jour.",
+    ],
+    astuces: [
+      "Retour partiel : confirmez seulement ce qui est rendu. Le reste reste attendu ; le bon suivant (BR-…) ne listera que lui.",
+      "Si le matériel n'est pas venu, « Annuler ce bon… » libère la réquisition pour préparer un autre bon.",
+      "Après confirmation, la « Copie d'archive » du bon de retour garde les colonnes remplies.",
+    ],
+  },
+  {
     id: "bons", role: RESPONSABLE, icone: "doc", titre: "Consulter les bons signés", ecran: "Liste Réquisitions",
     etapes: [
       "Menu « Liste Réquisitions » : tous les bons signés par la Logistique et par vous.",
       "La colonne « Impression » indique si l'Agent Logistique a déjà imprimé le bon, quand, et combien de fois il a été téléchargé.",
-      "« Voir le bon » ou « Télécharger le PDF » pour le consulter.",
+      "« Voir le bon » pour le consulter ; en bas de l'aperçu, « Imprimer » ou « Télécharger le PDF ».",
     ],
-    astuces: ["Votre téléchargement est une simple consultation : il ne fait pas passer le bon en « Imprimée »."],
+    astuces: ["Votre impression ou téléchargement est une simple consultation : il ne fait pas passer le bon en « Imprimée »."],
   },
   {
     id: "comptes", role: ADMIN, icone: "users", titre: "Créer et gérer les comptes", ecran: "Comptes",

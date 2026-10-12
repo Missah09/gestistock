@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import ListeDeroulante from "../ListeDeroulante.jsx";
 import { lireArticle, lireChoix, modifierArticle } from "../api.js";
-import { date, datePassee, ETATS, montant, quantite, LIBELLE_PRETE } from "../format.js";
+import { date, datePassee, ETATS, ETATS_UTILISABLES, montant, quantite, LIBELLE_PRETE } from "../format.js";
+import EtatsProduit, { PastilleEtat } from "../EtatsProduit.jsx";
 import Icon from "../icons.jsx";
 
 /** Un champ : le libellé au-dessus, la valeur (ou la zone de saisie) en dessous. */
@@ -50,7 +51,7 @@ function versFormulaire(a, choix) {
 }
 
 /** Panneau latéral « fiche article », en lecture ou en modification. */
-export default function FicheArticle({ id, onFermer, onModifie, modifiable = true }) {
+export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, modifiable = true }) {
   const [a, setA] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [choix, setChoix] = useState(null);
@@ -206,6 +207,12 @@ export default function FicheArticle({ id, onFermer, onModifie, modifiable = tru
                   ) : (
                     <Champ libelle="Magasin">{a.magasin}</Champ>
                   )}
+                  {!enModification && a.repartition && (
+                    <Champ libelle="État du produit" large
+                      aide={a.repartition.par_serie && a.repartition.pretes ? `et ${a.repartition.pretes} prêté${a.repartition.pretes > 1 ? "s" : ""} (hors magasin)` : null}>
+                      <EtatsProduit etats={a.repartition.etats} unite={a.unite} seulement={ETATS_UTILISABLES} vide="Rien de disponible" />
+                    </Champ>
+                  )}
                   {enModification && (
                     <Champ libelle="Catégorie" large erreur={err("categorie")}>
                       <ListeDeroulante ariaLabel="Catégorie" valeur={form.categorie} onChange={choisirListe("categorie")}
@@ -251,13 +258,20 @@ export default function FicheArticle({ id, onFermer, onModifie, modifiable = tru
                 </div>
               </Bloc>
 
+              {/* Article suivi par n° de série, encore jamais reçu (créé avec « Nouvel article », 12/10/2026) */}
+              {prete && a.suivi_serie && a.exemplaires.length === 0 && (
+                <Bloc titre="Exemplaires (0)">
+                  <p className="aide" style={{ margin: 0, padding: "12px 16px" }}>Suivi par n° de série : les n° seront saisis à l'entrée en stock.</p>
+                </Bloc>
+              )}
+
               {/* Section affichée seulement pour le matériel suivi par n° de série */}
               {prete && a.exemplaires.length > 0 && (
                 <Bloc titre={`Exemplaires (${a.exemplaires.length})`}>
                   <div className="ex">
                     <table className="tableau">
                       <thead>
-                        <tr><th>N° de série</th><th>Code immo</th><th>Étalonnage</th><th>Où il se trouve</th></tr>
+                        <tr><th>N° de série</th><th>Code immo</th><th>Étalonnage</th><th>État</th><th>Où il se trouve</th></tr>
                       </thead>
                       <tbody>
                         {a.exemplaires.map((e, i) => (
@@ -283,14 +297,16 @@ export default function FicheArticle({ id, onFermer, onModifie, modifiable = tru
                                 <td className={datePassee(e.date_etalonnage) ? "depasse" : ""}>{date(e.date_etalonnage)}</td>
                               </>
                             )}
+                            <td><PastilleEtat etat={e.etat} /></td>
                             <td>
-                              <span className={`pill ${e.statut === "EN_STOCK" ? "p-ok" : e.statut === "PRETE" ? "p-i" : "p-w"}`}>{e.statut_libelle}</span>{" "}
-                              {e.statut === "PRETE" ? [e.prete_a, e.chantier].filter(Boolean).join(" · ") : a.emplacement}
+                              <span className={`pill ${e.statut === "EN_STOCK" ? "p-ok" : e.statut === "PRETE" ? "p-i" : e.statut === "REBUT" ? "p-g" : "p-w"}`}>{e.statut_libelle}</span>{" "}
+                              {e.statut === "PRETE" ? [e.prete_a, e.chantier].filter(Boolean).join(" · ")
+                                : e.statut === "REBUT" ? "" : a.emplacement}
                             </td>
                           </tr>
                         ))}
                         {a.exemplaires.length === 0 && (
-                          <tr><td colSpan={4} className="vide">Aucun exemplaire enregistré.</td></tr>
+                          <tr><td colSpan={5} className="vide">Aucun exemplaire enregistré.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -316,6 +332,13 @@ export default function FicheArticle({ id, onFermer, onModifie, modifiable = tru
               {modifiable && (
                 <button key="modifier" className="btn pri" type="button" onClick={(e) => { e.preventDefault(); commencerModification(); }} disabled={!a}>
                   <Icon name="edit" size={18} stroke={2} />Modifier
+                </button>
+              )}
+              {/* Entrée en stock de cet article (12/10/2026) : la fenêtre s'ouvre avec l'article déjà choisi. */}
+              {modifiable && onEntreeStock && (
+                <button key="entree" className="btn" type="button" disabled={!a} title="Une livraison de cet article est arrivée"
+                  onClick={(e) => { e.preventDefault(); onEntreeStock(id); }}>
+                  <Icon name="plus" size={18} stroke={2.4} />Entrée en stock
                 </button>
               )}
               <span className="sp" />

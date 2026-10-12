@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ListeDeroulante from "../ListeDeroulante.jsx";
 import ChoixArticle from "./ChoixArticle.jsx";
+import NouvelArticle from "./NouvelArticle.jsx";
 import { enregistrerEntree, lireChoix } from "../api.js";
 import { montant } from "../format.js";
 import Icon from "../icons.jsx";
@@ -11,28 +12,56 @@ const aujourdhui = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 const premier = (x) => (Array.isArray(x) ? x[0] : x);
-const ligneVide = () => ({ cle: Math.random(), article: "", quantite: "", prix_unitaire: "", series: "" });
+// État du produit reçu (12/10/2026) : « Neuf » par défaut.
+const ligneVide = () => ({ cle: Math.random(), article: "", quantite: "", prix_unitaire: "", series: "", etat: "NEUF" });
 const UNITES = { m: "m", paire: "paire(s)", piece: "pièce(s)" };
 
-/** Fenêtre « Enregistrer des produits » : réception d'une livraison, qui augmente le stock. */
-export default function EnregistrerProduits({ onFermer, onEnregistre }) {
+/** Fenêtre « Entrée en stock » (anciennement « Enregistrer des produits », renommée le 12/10/2026) :
+ *  réception d'une livraison, qui augmente le stock.
+ *  - articleInitial : ouverte depuis la fiche d'un article, avec cet article déjà sur la 1re ligne.
+ *  - Un article absent se crée depuis la liste des articles (« ＋ Créer l'article… ») : il est aussitôt placé sur la ligne. */
+export default function EntreeStock({ onFermer, onEnregistre, articleInitial = null, onArticleCree }) {
   const [choix, setChoix] = useState(null);
   const [entete, setEntete] = useState({ fournisseur: "", numero_facture: "", date_reception: aujourdhui(), magasin: "" });
   const [lignes, setLignes] = useState([ligneVide()]);
   const [erreurs, setErreurs] = useState({});
   const [envoi, setEnvoi] = useState(false);
+  const [creation, setCreation] = useState(null); // { ligne, nom } : fenêtre « Nouvel article » ouverte par-dessus
+  const [info, setInfo] = useState(null);         // ex. « Article CAB-0049 créé et ajouté à la livraison. »
 
   useEffect(() => {
     lireChoix()
-      .then((c) => { setChoix(c); setEntete((e) => ({ ...e, magasin: e.magasin || c.magasins[0]?.id || "" })); })
+      .then((c) => {
+        setChoix(c);
+        const a = articleInitial && c.articles.find((x) => String(x.id) === String(articleInitial));
+        if (a) {
+          // Depuis la fiche : le magasin de l'article, et l'article sur la 1re ligne.
+          setEntete((e) => ({ ...e, magasin: a.magasin }));
+          setLignes([{ ...ligneVide(), article: String(a.id), prix_unitaire: a.prix_unitaire > 0 ? String(a.prix_unitaire) : "" }]);
+        } else {
+          setEntete((e) => ({ ...e, magasin: e.magasin || c.magasins[0]?.id || "" }));
+        }
+      })
       .catch(() => setErreurs({ general: ["Impossible de charger les listes. Vérifiez que le serveur est démarré."] }));
   }, []);
 
   useEffect(() => {
-    const touche = (e) => e.key === "Escape" && !envoi && onFermer();
+    const touche = (e) => e.key === "Escape" && !envoi && !creation && onFermer();
     window.addEventListener("keydown", touche);
     return () => window.removeEventListener("keydown", touche);
-  }, [onFermer, envoi]);
+  }, [onFermer, envoi, creation]);
+
+  /** Article créé depuis la ligne `creation.ligne` : on recharge les listes et on le place sur cette ligne. */
+  async function articleCree(fiche) {
+    const ligne = creation.ligne;
+    setCreation(null);
+    try { setChoix(await lireChoix()); } catch { /* la ligne garde l'id : l'enregistrement fonctionnera quand même */ }
+    setLignes((ls) => ls.map((l, j) => (j === ligne
+      ? { ...l, article: String(fiche.id), prix_unitaire: fiche.prix_unitaire > 0 ? String(fiche.prix_unitaire) : "" } : l)));
+    setErreurs({});
+    setInfo(`Article ${fiche.code} – ${fiche.nom} créé et ajouté à la livraison. Indiquez la quantité reçue.`);
+    onArticleCree?.();
+  }
 
   const articlesDuMagasin = useMemo(
     () => (choix ? choix.articles.filter((a) => String(a.magasin) === String(entete.magasin)) : []),
@@ -81,6 +110,7 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
           quantite: l.quantite === "" ? null : Number(l.quantite),
           prix_unitaire: l.prix_unitaire === "" ? null : l.prix_unitaire,
           numeros_serie: l.series.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean),
+          etat: l.etat,
         })),
     };
     try {
@@ -98,10 +128,10 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
 
   return (
     <>
-      <div className="voile" onClick={() => !envoi && onFermer()} />
-      <form className="fenetre" role="dialog" aria-modal="true" aria-label="Enregistrer des produits" onSubmit={enregistrer}>
+      <div className="voile" onClick={() => !envoi && !creation && onFermer()} />
+      <form className="fenetre" role="dialog" aria-modal="true" aria-label="Entrée en stock" onSubmit={enregistrer}>
         <div className="fenetre-tete">
-          <h2>Enregistrer des produits</h2>
+          <h2>Entrée en stock</h2>
           <button className="fermer" type="button" onClick={onFermer} aria-label="Fermer"><Icon name="x" size={22} stroke={2.2} /></button>
         </div>
 
@@ -109,6 +139,7 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
           {(err("general") || Object.keys(erreurs).length > 0) && (
             <div className="alerte">{err("general") ?? "Certaines informations sont à corriger (en rouge ci-dessous)."}</div>
           )}
+          {info && Object.keys(erreurs).length === 0 && <div className="succes">{info}</div>}
 
           {!choix ? <p className="vide">Chargement…</p> : (
             <>
@@ -141,8 +172,8 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
               <div className="lignes">
                 <table className="tableau">
                   <thead>
-                    <tr><th style={{ width: "36%" }}>Article reçu</th><th style={{ width: "15%" }}>Quantité</th>
-                      <th style={{ width: "17%" }}>Prix unitaire (Ar)</th>{colonneSerie && <th>N° de série</th>}<th style={{ width: 52 }} /></tr>
+                    <tr><th style={{ width: "32%" }}>Article reçu</th><th style={{ width: "13%" }}>Quantité</th>
+                      <th style={{ width: "15%" }}>Prix unitaire (Ar)</th><th style={{ width: "15%" }}>État</th>{colonneSerie && <th>N° de série</th>}<th style={{ width: 52 }} /></tr>
                   </thead>
                   <tbody>
                     {lignes.map((l, i) => {
@@ -152,7 +183,8 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
                           <td>
                             <ChoixArticle articles={articlesDuMagasin} valeur={l.article} invalide={Boolean(errLigne(i, "article"))}
                               dejaPris={lignes.map((x) => x.article).filter(Boolean)} texteDejaPris="Déjà sur la réception"
-                              texteVide="Taper un nom ou un code, ou choisir…" onChoisir={(v) => changerLigne(i, "article", v)} />
+                              texteVide="Taper un nom ou un code, ou choisir…" onChoisir={(v) => changerLigne(i, "article", v)}
+                              onCreer={(nom) => setCreation({ ligne: i, nom })} />
                             {errLigne(i, "article") && <em className="msg-erreur">{errLigne(i, "article")}</em>}
                           </td>
                           <td>
@@ -168,6 +200,12 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
                             <input className={`saisie petite${errLigne(i, "prix_unitaire") ? " invalide" : ""}`} type="number" min="0" step="0.01"
                               placeholder="Facultatif" value={l.prix_unitaire} onChange={(e) => changerLigne(i, "prix_unitaire", e.target.value)} />
                             {errLigne(i, "prix_unitaire") && <em className="msg-erreur">{errLigne(i, "prix_unitaire")}</em>}
+                          </td>
+                          <td>
+                            <ListeDeroulante ariaLabel="État du produit reçu" recherche={false} valeur={l.etat}
+                              invalide={Boolean(errLigne(i, "etat"))} onChange={(v) => changerLigne(i, "etat", v)}
+                              options={(choix.etats ?? []).map((e) => ({ valeur: e.valeur, libelle: e.libelle }))} />
+                            {errLigne(i, "etat") && <em className="msg-erreur">{errLigne(i, "etat")}</em>}
                           </td>
                           {colonneSerie && <td>
                             {a?.suivi_serie ? (
@@ -193,14 +231,14 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
                 </button>
               </div>
               {articlesDuMagasin.length === 0 && (
-                <p className="discret">Aucun article dans ce magasin. Créez d'abord l'article dans l'administration.</p>
+                <p className="discret">Aucun article dans ce magasin : tapez son nom dans « Article reçu », puis « ＋ Créer l'article ».</p>
               )}
             </>
           )}
         </div>
 
         <div className="fiche-pied">
-          <span className="total">Montant de la réception : <b>{montant(total)}</b></span>
+          <span className="total">Montant de la livraison : <b>{montant(total)}</b></span>
           <span className="sp" />
           <button key="annuler" className="btn" type="button" onClick={onFermer} disabled={envoi}>Annuler</button>
           <button key="enregistrer" className="btn pri" type="submit" disabled={envoi || !choix}>
@@ -208,6 +246,10 @@ export default function EnregistrerProduits({ onFermer, onEnregistre }) {
           </button>
         </div>
       </form>
+      {creation && choix && (
+        <NouvelArticle nomInitial={creation.nom} onFermer={() => setCreation(null)} onCree={articleCree}
+          magasinImpose={choix.magasins.find((m) => String(m.id) === String(entete.magasin))?.nom ?? ""} />
+      )}
     </>
   );
 }

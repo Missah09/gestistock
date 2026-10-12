@@ -6,7 +6,7 @@ import StyloSignature from "./StyloSignature.jsx";
 /** Fenêtre « bon de réquisition » : aperçu du bon, et, si `role` est donné, le cadre de signature au stylo électronique.
  *  role : "agent" | "responsable" | undefined (simple lecture)
  *  signataire : nom imprimé (celui du compte connecté) ; onSigner(image) ; piedGauche : boutons en plus (ex. Refuser…). */
-export default function FenetreBon({ d, role, signataire, quantites, titre, texteBouton = "Signer", onSigner, onFermer,
+export default function FenetreBon({ d, role, signataire, quantites, numero, titre, enTete, texteBouton = "Signer", onSigner, onFermer,
   envoi = false, erreur, succes, piedGauche, remplacerPied }) {
   const [image, setImage] = useState(null);
   const [maintenant, setMaintenant] = useState(() => new Date());
@@ -27,6 +27,7 @@ export default function FenetreBon({ d, role, signataire, quantites, titre, text
       <div className="fenetre fenetre-bon" role="dialog" aria-modal="true" aria-label={titre}>
         <div className="fenetre-tete">
           <h2>{titre}</h2>
+          {enTete && <span className="trace-pied tete-bon">{enTete}</span>}
           <span className="sp" />
           <button className="fermer" type="button" onClick={onFermer} disabled={envoi} aria-label="Fermer"><Icon name="x" size={22} stroke={2.2} /></button>
         </div>
@@ -44,7 +45,7 @@ export default function FenetreBon({ d, role, signataire, quantites, titre, text
               et cliquez sur <b>« {texteBouton} »</b>.
             </div>
           )}
-          <BonRequisition d={d} quantites={quantites} visas={visas} aSigner={role && !succes ? role : undefined} dateBon={maintenant.toISOString()} />
+          <BonRequisition d={d} quantites={quantites} numero={numero} visas={visas} aSigner={role && !succes ? role : undefined} dateBon={maintenant.toISOString()} />
           {role && !succes && (
             <section className="signer">
               <h3>Votre signature <span className="facultatif">(case « {libelleRole} » du bon)</span></h3>
@@ -58,7 +59,7 @@ export default function FenetreBon({ d, role, signataire, quantites, titre, text
         <div className="fiche-pied">
           {remplacerPied ?? (
             <>
-              {!succes && piedGauche}
+              {(!succes || !role) && piedGauche}
               <span className="sp" />
               {role && !succes ? (
                 <>

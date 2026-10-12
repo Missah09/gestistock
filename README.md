@@ -88,6 +88,35 @@ Pour arrêter : fermez les deux fenêtres noires.
 - **« Copie d'archive (PDF) »** : le bon avec la Qté livrée remplie (`RM-2026-0001-archive.pdf`).
 - Le demandeur voit l'étape « Remise » cochée dans « Mes demandes ». Administration › « Sorties » : consultation seulement.
 
+## État du produit et Retours (depuis le 12/10/2026)
+- **État du produit** partout : **Neuf · Bon · Moyen · Mauvais** (simplifié le 12/10/2026 après-midi). Choisi à l'entrée en stock
+  (« Neuf » par défaut), indiqué à la sortie et au retour, visible dans la liste Articles (filtre « État ») et dans les fiches.
+  **Tous les états sont disponibles** (comptés dans le stock, proposés dans les demandes). Le bon de réquisition a une colonne « État ».
+- Anciennes valeurs converties par la migration 0019 : Usagé → Moyen ; À réparer et Hors service → Mauvais, **remis dans le stock
+  disponible** (une ligne « Correction » est ajoutée à l'historique). Ce qui avait été mis au rebut reste hors stock.
+  Les emplacements vides « Atelier – À réparer » et « Rebut » sont supprimés. **À lancer : `python manage.py migrate`.**
+- L'écran **« Matériel à réparer » a été retiré** (sauvegarde : `sauvegarde-avant-4-etats-12-10`).
+- Menu **« Retours de stock »** (Agent Logistique) : le matériel prêté attendu (retards en rouge, pastille du menu).
+  « Préparer le bon de retour » (signature au stylo) → BON DE RETOUR BR-AAAA-0001 en PDF, rempli à la main au magasin →
+  « Confirmer le retour » : le stock remonte. Retour partiel : un bon par passage, le suivant ne liste que le reste.
+- Historique de chaque changement d'état : Administration › « Historique des états ».
+
+## Entrée en stock et création d'articles (depuis le 12/10/2026)
+- L'ancien bouton « Enregistrer des produits » s'appelle désormais **« Entrée en stock »** (écran Liste d'Articles, en haut à droite).
+  Il n'y a **pas de bouton séparé** pour créer un article : un produit nouveau arrive toujours avec une livraison.
+- **Créer un article** : dans « Entrée en stock », taper le nom dans « Article reçu » ; en bas de la liste, **« ＋ Créer l'article « … » »**.
+  La fenêtre « Nouvel article » s'ouvre par-dessus (nom repris, magasin de la livraison). Après « Créer l'article », il est placé
+  sur la ligne : il ne reste qu'à saisir la quantité. Si la livraison est ensuite annulée, l'article reste créé (stock 0).
+- **Depuis une fiche article** : bouton **« Entrée en stock »** à côté de « Modifier » ; la fenêtre s'ouvre avec cet article déjà choisi,
+  et la fiche se rouvre ensuite avec le stock à jour.
+- Agent Logistique et administrateur seulement.
+- Création : code automatique (aperçu affiché), catégorie, unité, type, emplacement, seuil d'alerte ; prix, fournisseur, références facultatifs.
+  Matériel « Non consommable · à rendre » : case **« Suivi par n° de série »** (OTDR, soudeuse…) : n° exigés dès la 1re entrée en stock.
+  Type et suivi par n° de série fixés à la création. Doublon refusé : même nom (accents/majuscules ignorés) dans le même magasin.
+- **Mise à jour de la base nécessaire** (colonne `suivi_serie`) : `python manage.py migrate` (migration 0018 ; le matériel qui a déjà
+  des exemplaires est marqué « suivi par n° de série » automatiquement).
+- Sauvegardes : `sauvegarde-avant-nouvel-article-12-10`, `sauvegarde-avant-entree-en-stock-12-10`. Tests : `stock/tests_nouvel_article.py`.
+
 ## Mise en ligne : GitHub + Render + Neon (depuis le 12/10/2026)
 - **Un seul service Render** : Django sert l'API, l'administration et l'interface React (construite par `build.sh`).
   Réglages dans `render.yaml`. La base est chez **Neon** (variable `DATABASE_URL` sur Render).

@@ -30,7 +30,8 @@ def _signees():
     """Demandes dont la réquisition est signée par l'Agent Logistique et le Responsable HBC."""
     return demandes_completes().select_related("requisition__imprimee_par") \
         .filter(requisition__statut=Requisition.Statut.VISEE) \
-        .annotate(nb_telechargements=Count("requisition__telechargements"))
+        .annotate(nb_telechargements=Count("requisition__telechargements"),
+                  nb_impressions=Count("requisition__telechargements", filter=Q(requisition__telechargements__impression=True)))
 
 
 @api_view(["GET"])
@@ -64,6 +65,7 @@ def _avec_telechargements(demandes):
     resultats = en_json(demandes)
     for d, json in zip(demandes, resultats):
         json["requisition"]["nb_telechargements"] = getattr(d, "nb_telechargements", 0)
+        json["requisition"]["nb_impressions"] = getattr(d, "nb_impressions", 0)
     return resultats
 
 
@@ -76,7 +78,8 @@ def detail(request, pk):
         return _introuvable()
     json = _avec_telechargements([d])[0]
     json["requisition"]["telechargements"] = [
-        {"par": t.par.get_full_name() or t.par.username, "le": timezone.localtime(t.le).isoformat(), "role": t.role}
+        {"par": t.par.get_full_name() or t.par.username, "le": timezone.localtime(t.le).isoformat(), "role": t.role,
+         "impression": t.impression}
         for t in d.requisition.telechargements.select_related("par")[:20]]
     return Response(json)
 
@@ -84,7 +87,10 @@ def detail(request, pk):
 @api_view(["GET"])
 @permission_classes([EstAgentOuResponsable])
 def pdf(request, pk):
-    """Télécharge le bon de réquisition en PDF (pk = id de la demande). Chaque téléchargement est noté."""
+    """Télécharge le bon de réquisition en PDF (pk = id de la demande). Chaque téléchargement est noté.
+    ?impression=1 (12/10/2026) : bouton « Imprimer » de l'application (le PDF s'ouvre dans l'aperçu d'impression).
+    Le premier téléchargement ou la première impression par l'Agent Logistique marque le bon « Imprimée »."""
+    impression = request.query_params.get("impression") == "1"
     # ReportLab est chargé ici seulement : s'il manque, le reste de GestiStock fonctionne quand même (12/10/2026).
     try:
         from .pdf_bon import fabriquer_pdf
@@ -101,13 +107,14 @@ def pdf(request, pk):
             return Response({"general": ["Ce bon n'est pas encore signé par le Responsable HBC : il ne peut pas être imprimé."]},
                             status=status.HTTP_404_NOT_FOUND if r is None else status.HTTP_400_BAD_REQUEST)
         maintenant = timezone.now()
-        TelechargementBon.objects.create(requisition=r, par=request.user,
+        TelechargementBon.objects.create(requisition=r, par=request.user, impression=impression,
                                          role=ROLE_AGENT if agent else ROLE_RESPONSABLE)
         if agent and r.imprimee_le is None:
             r.imprimee_le, r.imprimee_par = maintenant, request.user
             r.save(update_fields=["imprimee_le", "imprimee_par"])
     contenu = fabriquer_pdf(r, imprime_par=request.user, imprime_le=maintenant)
     reponse = HttpResponse(contenu, content_type="application/pdf")
-    reponse["Content-Disposition"] = f'attachment; filename="{r.numero}.pdf"'
+    # Impression : affiché dans le navigateur (aperçu d'impression) au lieu d'être enregistré comme fichier.
+    reponse["Content-Disposition"] = f'{"inline" if impression else "attachment"}; filename="{r.numero}.pdf"'
     reponse["Cache-Control"] = "no-store"
     return reponse

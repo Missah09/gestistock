@@ -10,10 +10,11 @@ import AValider from "./pages/AValider.jsx";
 import AViser from "./pages/AViser.jsx";
 import Demandes from "./pages/Demandes.jsx";
 import Requisitions from "./pages/Requisitions.jsx";
+import Retours from "./pages/Retours.jsx";
 import Sorties from "./pages/Sorties.jsx";
 
 // Écrans déjà développés ; les autres entrées du menu affichent « en préparation ».
-const ECRANS = { Aide, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, Comptes };
+const ECRANS = { Aide, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, "Retours de stock": Retours, Comptes };
 
 /** Menu selon le rôle (ordre fixé le 11/10/2026).
  *  Articles (consultation) pour tous ; Tableau de bord pour l'Agent Logistique et le Responsable HBC. */
@@ -32,7 +33,7 @@ function menuPour(compte) {
 }
 
 // Compteur affiché à droite de l'entrée du menu (ce qui attend l'utilisateur).
-const COMPTEUR_DU_MENU = { "Demandes à valider": "a_valider", "Demandes à viser": "a_viser", "Liste Réquisitions": "a_imprimer", "Sorties de stock": "a_confirmer" };
+const COMPTEUR_DU_MENU = { "Demandes à valider": "a_valider", "Demandes à viser": "a_viser", "Liste Réquisitions": "a_imprimer", "Sorties de stock": "a_confirmer", "Retours de stock": "retours_en_retard" };
 
 /** Lien de l'email au Responsable : http://…/#a-viser/<id de la demande> → écran « Demandes à viser », réquisition ouverte. */
 function lienDeLEmail() {
@@ -118,7 +119,8 @@ export default function App() {
             <a key={label} className={label === actif ? "on" : ""} href="#" aria-current={label === actif ? "page" : undefined}
               onClick={(e) => { e.preventDefault(); setOuvrirId(null); setEcran(label); }}><Icon name={icon} />{label}
               {compteurs[COMPTEUR_DU_MENU[label]] > 0 && (
-                <span className="pastille" title="En attente de votre part">{compteurs[COMPTEUR_DU_MENU[label]]}</span>
+                <span className={`pastille${label === "Retours de stock" ? " retard" : ""}`}
+                  title={label === "Retours de stock" ? "Matériel en retard (date de retour dépassée)" : "En attente de votre part"}>{compteurs[COMPTEUR_DU_MENU[label]]}</span>
               )}</a>
           ))}
         </nav>

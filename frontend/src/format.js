@@ -64,3 +64,35 @@ export function dateHeure(iso) {
 // Libellé des deux types d'article (le même dans toutes les fenêtres).
 export const LIBELLE_PRETE = "Non consommable · à rendre";
 export const LIBELLE_CONSOMMABLE = "Consommable";
+
+// ---------- État du produit : le même partout dans l'application ----------
+// Simplifié le 12/10/2026 (après-midi) : Neuf · Bon · Moyen · Mauvais, tous disponibles.
+export const ETATS_PRODUIT = {
+  NEUF: { libelle: "Neuf", classe: "e-neuf" },
+  BON: { libelle: "Bon", classe: "e-bon" },
+  MOYEN: { libelle: "Moyen", classe: "e-moyen" },
+  MAUVAIS: { libelle: "Mauvais", classe: "e-mauvais" },
+};
+export const ORDRE_ETATS = ["NEUF", "BON", "MOYEN", "MAUVAIS"];
+/** États disponibles (proposés dans les demandes, peuvent sortir) : tous. */
+export const ETATS_UTILISABLES = ORDRE_ETATS;
+
+/** {"NEUF": 3, "BON": 2} → « 3 Neuf · 2 Bon » (zéros omis ; `unite` : « 14 600 m Neuf »). */
+export function texteEtats(etats, liste = ORDRE_ETATS, unite) {
+  return liste.filter((e) => etats?.[e] > 0).map((e) => `${quantite(etats[e], unite)} ${ETATS_PRODUIT[e].libelle}`).join(" · ");
+}
+
+/** Nombre de jours de retard (date prévue dépassée). */
+export function joursDeRetard(iso) {
+  if (!iso) return 0;
+  const [a, m, j] = iso.split("-").map(Number);
+  const prevue = new Date(a, m - 1, j);
+  const auj = new Date(new Date().toDateString());
+  return Math.max(0, Math.round((auj - prevue) / 86_400_000));
+}
+
+
+/** État d'un article tel qu'il figure sur le bon avant la sortie (d'après la fiche) : « Neuf », « Bon / Moyen ». */
+export function etatsDisponibles(etats) {
+  return ETATS_UTILISABLES.filter((e) => etats?.[e] > 0).map((e) => ETATS_PRODUIT[e].libelle).join(" / ");
+}

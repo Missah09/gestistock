@@ -7,7 +7,7 @@ import { Onglets, useDemandeOuverte, useListeDemandes } from "./TableauDemandes.
 
 const ONGLETS_SORTIES = [["a_confirmer", "À confirmer"], ["confirmees", "Confirmées"], ["toutes", "Toutes"]];
 
-/** Écran « Sorties » (Agent Logistique, 12/10/2026) : les bons imprimés et portés au magasin.
+/** Écran « Sorties de stock » (Agent Logistique, 12/10/2026) : les bons imprimés et portés au magasin.
  *  Au retour du bon signé par le magasinier, on confirme la sortie en recopiant les quantités livrées :
  *  c'est à ce moment que le stock de GestiStock diminue. */
 export default function Sorties() {
@@ -24,7 +24,7 @@ export default function Sorties() {
 
   return (
     <>
-      <header className="top"><h1>Sorties</h1></header>
+      <header className="top"><h1>Sorties de stock</h1></header>
       <div className="body">
         {liste.erreur && <div className="alerte">{liste.erreur}</div>}
         <div className="barre">
@@ -107,7 +107,7 @@ export default function Sorties() {
             {!chargement && donnees?.results.length === 0 && (
               <tbody><tr><td colSpan={6} className="vide">
                 {liste.onglet === "a_confirmer"
-                  ? "Aucune sortie à confirmer. Les bons apparaissent ici dès qu'ils sont imprimés (écran « Réquisitions »)."
+                  ? "Aucune sortie à confirmer. Les bons apparaissent ici dès qu'ils sont imprimés (écran « Liste Réquisitions »)."
                   : "Aucune sortie confirmée."}
               </td></tr></tbody>
             )}

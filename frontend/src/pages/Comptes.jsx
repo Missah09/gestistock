@@ -250,15 +250,15 @@ export default function Comptes({ compte: moi }) {
             <tbody>
               {liste.map((c) => (
                 <tr key={c.id} className={`cliquable${c.actif ? "" : " inactif"}`} onClick={() => { setAnnonce(null); setOuvert(c); }}>
-                  <td className="nom">{c.prenom || c.nom ? `${c.prenom} ${c.nom}`.trim() : <span className="a-completer">Nom à compléter</span>}</td>
+                  <td className="nom une-ligne">{c.prenom || c.nom ? `${c.prenom} ${c.nom}`.trim() : <span className="a-completer">Nom à compléter</span>}</td>
                   <td><span className="code">{c.identifiant}</span></td>
                   <td>{c.departement_nom || <span className="discret">—</span>}</td>
-                  <td><Roles c={c} /></td>
-                  <td>
+                  <td className="une-ligne"><Roles c={c} /></td>
+                  <td className="une-ligne">
                     <span className={`pill ${c.actif ? "p-ok" : "p-g"}`}>{c.actif ? "Actif" : "Désactivé"}</span>
                     {c.connecte && <span className="connecte" title="Connecté en ce moment">● Connecté</span>}
                   </td>
-                  <td className="discret">{c.derniere_connexion ? dateHeure(c.derniere_connexion) : "Jamais"}</td>
+                  <td className="discret une-ligne">{c.derniere_connexion ? dateHeure(c.derniere_connexion) : "Jamais"}</td>
                   <td><button type="button" className="btn-details"><Icon name="edit" size={15} stroke={2} />Modifier</button></td>
                 </tr>
               ))}

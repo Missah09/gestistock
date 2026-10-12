@@ -71,9 +71,9 @@ const FICHES = [
     ],
   },
   {
-    id: "articles", role: POUR_TOUS, icone: "box", titre: "Consulter les articles", ecran: "Articles",
+    id: "articles", role: POUR_TOUS, icone: "box", titre: "Consulter les articles", ecran: "Liste d'Articles",
     etapes: [
-      "Menu « Articles » : la liste du stock, 10 articles par page.",
+      "Menu « Liste d'Articles » : la liste du stock, 10 articles par page.",
       "Tapez dans « Rechercher un article… » un nom, un code, un n° de série ou un code immo (les accents et majuscules ne comptent pas).",
       "Filtrez par catégorie ou par magasin ; cochez « Sous le seuil seulement » pour voir ce qui manque.",
       "Cliquez sur « Détails » pour ouvrir la fiche de l'article.",
@@ -97,9 +97,9 @@ const FICHES = [
     ],
   },
   {
-    id: "reception", role: AGENT, icone: "box", titre: "Enregistrer une réception de produits", ecran: "Articles",
+    id: "reception", role: AGENT, icone: "box", titre: "Enregistrer une réception de produits", ecran: "Liste d'Articles",
     etapes: [
-      "Menu « Articles », bouton « Enregistrer des produits ».",
+      "Menu « Liste d'Articles », bouton « Enregistrer des produits ».",
       "Indiquez le fournisseur, le n° de facture ou de bon de livraison, la date et le magasin.",
       "Pour chaque article reçu : l'article, la quantité, le prix unitaire (facultatif) et les n° de série s'il y en a.",
       "Cliquez sur « Enregistrer » : le stock augmente aussitôt.",
@@ -107,17 +107,17 @@ const FICHES = [
     astuces: ["Un article qui n'existe pas encore doit d'abord être créé par l'administrateur (service Informatique)."],
   },
   {
-    id: "modifier", role: AGENT, icone: "edit", titre: "Modifier la fiche d'un article", ecran: "Articles",
+    id: "modifier", role: AGENT, icone: "edit", titre: "Modifier la fiche d'un article", ecran: "Liste d'Articles",
     etapes: [
-      "Menu « Articles », « Détails » sur la ligne de l'article, puis « Modifier ».",
+      "Menu « Liste d'Articles », « Détails » sur la ligne de l'article, puis « Modifier ».",
       "Changez le nom, l'emplacement, le minimum, le prix, le fournisseur…, puis « Enregistrer ».",
     ],
     astuces: ["Le code, le type et la quantité ne se modifient pas ici : la quantité change par les réceptions et les sorties."],
   },
   {
-    id: "viser", role: RESPONSABLE, icone: "sign", titre: "Viser (signer) une réquisition", ecran: "À viser",
+    id: "viser", role: RESPONSABLE, icone: "sign", titre: "Viser (signer) une réquisition", ecran: "Demandes à viser",
     etapes: [
-      "Menu « À viser » : la pastille rouge indique combien de réquisitions attendent votre signature.",
+      "Menu « Demandes à viser » : la pastille rouge indique combien de réquisitions attendent votre signature.",
       "Cliquez sur une réquisition : le bon s'ouvre tel qu'il sera imprimé.",
       "Relisez-le, puis signez dans le cadre en bas avec la souris (bouton gauche enfoncé).",
       "Cliquez sur « Signer ». Votre nom, la date et l'heure sont ajoutés automatiquement.",
@@ -126,9 +126,9 @@ const FICHES = [
     astuces: ["Le motif du refus est montré à la Logistique et au demandeur."],
   },
   {
-    id: "imprimer", role: AGENT, icone: "doc", titre: "Imprimer le bon de réquisition", ecran: "Réquisitions",
+    id: "imprimer", role: AGENT, icone: "doc", titre: "Imprimer le bon de réquisition", ecran: "Liste Réquisitions",
     etapes: [
-      "Menu « Réquisitions », onglet « À imprimer » : les bons signés par vous et par le Responsable HBC. La pastille rouge les compte.",
+      "Menu « Liste Réquisitions », onglet « À imprimer » : les bons signés par vous et par le Responsable HBC. La pastille rouge les compte.",
       "« Voir le bon » pour le relire ; « Télécharger le PDF » pour l'enregistrer (fichier RM-2026-0001.pdf, par exemple).",
       "Ouvrez le PDF et imprimez-le (format A4), puis portez le bon au magasin.",
       "Le magasinier remplit la « Qté livrée » et signe ; le demandeur signe à la réception du matériel.",
@@ -140,9 +140,9 @@ const FICHES = [
     ],
   },
   {
-    id: "sortie", role: AGENT, icone: "out", titre: "Confirmer la sortie (matériel remis)", ecran: "Sorties",
+    id: "sortie", role: AGENT, icone: "out", titre: "Confirmer la sortie (matériel remis)", ecran: "Sorties de stock",
     etapes: [
-      "Quand le bon signé par le magasinier revient, ouvrez le menu « Sorties », onglet « À confirmer ». La pastille rouge compte les bons en attente.",
+      "Quand le bon signé par le magasinier revient, ouvrez le menu « Sorties de stock », onglet « À confirmer ». La pastille rouge compte les bons en attente.",
       "Cliquez sur « Confirmer la sortie » à droite du bon.",
       "Recopiez, pour chaque article, la « Qté livrée » écrite par le magasinier (0 si rien n'a été remis). Si tout a été livré, le lien « Tout a été livré comme sur le bon » remplit les cases.",
       "Matériel avec n° de série : cochez les n° de série remis.",
@@ -150,16 +150,16 @@ const FICHES = [
       "Cliquez sur « Confirmer la sortie… », relisez, puis « Oui, confirmer la sortie ». Le stock diminue aussitôt.",
     ],
     astuces: [
-      "Le bon apparaît dans « Sorties » dès que vous l'avez imprimé (écran « Réquisitions »).",
+      "Le bon apparaît dans « Sorties de stock » dès que vous l'avez imprimé (écran « Liste Réquisitions »).",
       "La sortie ne peut pas être confirmée deux fois, ni annulée dans GestiStock : vérifiez bien les quantités.",
       "Après confirmation, « Copie d'archive (PDF) » donne le bon avec la colonne « Qté livrée » remplie.",
       "Le demandeur voit l'étape « Remise » cochée dans « Mes demandes ».",
     ],
   },
   {
-    id: "bons", role: RESPONSABLE, icone: "doc", titre: "Consulter les bons signés", ecran: "Réquisitions",
+    id: "bons", role: RESPONSABLE, icone: "doc", titre: "Consulter les bons signés", ecran: "Liste Réquisitions",
     etapes: [
-      "Menu « Réquisitions » : tous les bons signés par la Logistique et par vous.",
+      "Menu « Liste Réquisitions » : tous les bons signés par la Logistique et par vous.",
       "La colonne « Impression » indique si l'Agent Logistique a déjà imprimé le bon, quand, et combien de fois il a été téléchargé.",
       "« Voir le bon » ou « Télécharger le PDF » pour le consulter.",
     ],

@@ -26,7 +26,7 @@ function Impression({ r }) {
   );
 }
 
-/** Écran « Réquisitions » (Agent Logistique et Responsable HBC, 12/10/2026) :
+/** Écran « Liste Réquisitions » (Agent Logistique et Responsable HBC, 12/10/2026) :
  *  les bons signés par la Logistique et le Responsable, à télécharger en PDF pour impression.
  *  Le premier téléchargement par l'Agent Logistique marque le bon « imprimé » (c'est lui qui le porte au magasin). */
 export default function Requisitions({ compte }) {
@@ -68,7 +68,7 @@ export default function Requisitions({ compte }) {
 
   return (
     <>
-      <header className="top"><h1>Réquisitions</h1></header>
+      <header className="top"><h1>Liste Réquisitions</h1></header>
       <div className="body">
         {(liste.erreur || erreur) && <div className="alerte">{liste.erreur || erreur}</div>}
         <div className="barre">

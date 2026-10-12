@@ -18,7 +18,7 @@
 body { margin: 0; font-family: "Segoe UI", Lato, system-ui, sans-serif; font-size: 14px; color: var(--encre); background: var(--fond); }
 button, input, select { font: inherit; color: inherit; }
 
-.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 .side { background: var(--hbc); color: #eef3f8; display: flex; flex-direction: column; padding: 16px 10px; position: sticky; top: 0; height: 100vh; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 2px 6px 24px; }
 .logo-rond { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #fff; display: grid; place-items: center; overflow: hidden; box-shadow: 0 0 0 3px rgba(255,255,255,.18); }
@@ -498,3 +498,18 @@ th .facultatif { color: var(--gris); }
 .fiche-pied.verifier { background: #fff8ec; border-top-color: #f0d9a8; }
 .fiche-pied.verifier .question { font-size: 15px; }
 @media (max-width: 900px) { .sortie-infos { grid-template-columns: 1fr 1fr; } .sortie-champs { grid-template-columns: 1fr; } }
+
+/* Menu de gauche élargi (12/10/2026) : les titres tiennent sur une ligne. */
+.nav a { white-space: nowrap; }
+/* Compteurs du menu plus petits (12/10/2026). */
+.nav a .pastille { min-width: 19px; height: 18px; padding: 0 5px; font-size: 11px; font-weight: 700; }
+/* Nom de l'utilisateur plus petit, sur une ligne (12/10/2026) ; nom complet au survol si trop long. */
+.compte-nom { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compte-info { font-size: 11.5px; }
+/* Département : information secondaire, en italique et plus pâle (12/10/2026). */
+.compte-dep { font-style: italic; color: #a9bccf; }
+/* Comptes : noms, rôles, état et dernière connexion sur une seule ligne (12/10/2026). */
+.tableau.comptes td.une-ligne { white-space: nowrap; }
+.tableau.comptes td.une-ligne .roles { display: inline-flex; flex-wrap: nowrap; gap: 4px; }
+/* Écran étroit : le tableau défile horizontalement plutôt que de déborder. */
+.card:has(> .tableau.comptes) { overflow-x: auto; }

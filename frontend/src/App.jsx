@@ -13,7 +13,7 @@ import Requisitions from "./pages/Requisitions.jsx";
 import Sorties from "./pages/Sorties.jsx";
 
 // Écrans déjà développés ; les autres entrées du menu affichent « en préparation ».
-const ECRANS = { Aide, Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "À viser": AViser, Réquisitions: Requisitions, Sorties, Comptes };
+const ECRANS = { Aide, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, Comptes };
 
 /** Menu selon le rôle (ordre fixé le 11/10/2026).
  *  Articles (consultation) pour tous ; Tableau de bord pour l'Agent Logistique et le Responsable HBC. */
@@ -21,20 +21,20 @@ function menuPour(compte) {
   const agent = compte.agent_logistique;
   const menu = [];
   if (agent || compte.responsable) menu.push(["home", "Tableau de bord"]);
-  menu.push(["box", "Articles"], ["clip", "Mes demandes"]);
+  menu.push(["box", "Liste d'Articles"], ["clip", "Mes demandes"]);
   if (agent) menu.push(["check", "Demandes à valider"]);
-  if (compte.responsable) menu.push(["sign", "À viser"]);
+  if (compte.responsable) menu.push(["sign", "Demandes à viser"]);
   // Réquisitions (bons signés, PDF) : Agent Logistique et Responsable HBC (12/10/2026)
-  if (agent || compte.responsable) menu.push(["doc", "Réquisitions"]);
-  if (agent) menu.push(["out", "Sorties"], ["back", "Retours"], ["chart", "Rapports"], ["clock", "Historique"]);
+  if (agent || compte.responsable) menu.push(["doc", "Liste Réquisitions"]);
+  if (agent) menu.push(["out", "Sorties de stock"], ["back", "Retours de stock"], ["chart", "Générer Rapports"], ["clock", "Historique"]);
   if (compte.administrateur) menu.push(["users", "Comptes"]);
   return menu;
 }
 
 // Compteur affiché à droite de l'entrée du menu (ce qui attend l'utilisateur).
-const COMPTEUR_DU_MENU = { "Demandes à valider": "a_valider", "À viser": "a_viser", Réquisitions: "a_imprimer", Sorties: "a_confirmer" };
+const COMPTEUR_DU_MENU = { "Demandes à valider": "a_valider", "Demandes à viser": "a_viser", "Liste Réquisitions": "a_imprimer", "Sorties de stock": "a_confirmer" };
 
-/** Lien de l'email au Responsable : http://…/#a-viser/<id de la demande> → écran « À viser », réquisition ouverte. */
+/** Lien de l'email au Responsable : http://…/#a-viser/<id de la demande> → écran « Demandes à viser », réquisition ouverte. */
 function lienDeLEmail() {
   const m = window.location.hash.match(/^#a-viser\/(\d+)$/);
   return m ? Number(m[1]) : null;
@@ -78,7 +78,7 @@ export default function App() {
   // Le lien a servi (une fois connecté) : on le retire de la barre d'adresse.
   useEffect(() => {
     if (compte && ouvrirId) {
-      if (compte.responsable) setEcran("À viser");
+      if (compte.responsable) setEcran("Demandes à viser");
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [compte]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,7 +93,7 @@ export default function App() {
 
   if (compte === undefined) return <div className="connexion-fond" />;
   if (compte === null) return <Connexion message={raisonDeconnexion}
-    onConnecte={(c) => { setRaisonDeconnexion(null); setEcran(ouvrirId && c.responsable ? "À viser" : "Mes demandes"); setCompte(c); }} />;
+    onConnecte={(c) => { setRaisonDeconnexion(null); setEcran(ouvrirId && c.responsable ? "Demandes à viser" : "Mes demandes"); setCompte(c); }} />;
 
   const menu = menuPour(compte);
   const actif = ecran === "Aide" || menu.some(([, l]) => l === ecran) ? ecran : "Mes demandes";
@@ -128,16 +128,16 @@ export default function App() {
           {compte.administrateur && <a href="/admin/" target="_blank" rel="noreferrer"><Icon name="sliders" />Administration</a>}
         </nav>
         <div className="carte-compte">
-          <div className="compte-nom">{compte.nom}</div>
-          {compte.departement && <div className="compte-info">{compte.departement}</div>}
+          <div className="compte-nom" title={compte.nom}>{compte.nom}</div>
           {!compte.administrateur && (
             <div className="compte-info">{compte.roles.filter((r) => r !== "Saisisseur").join(" · ") || "Saisisseur"}</div>
           )}
+          {compte.departement && <div className="compte-info compte-dep">{/^d[ée]partement/i.test(compte.departement) ? compte.departement : `Département ${compte.departement}`}</div>}
           <button className="btn compte-sortie" onClick={deconnecter}><Icon name="logout" />Se déconnecter</button>
         </div>
       </aside>
       <main className="main">
-        {Ecran ? <Ecran key={actif} compte={compte} ouvrirId={actif === "À viser" ? ouvrirId : null}
+        {Ecran ? <Ecran key={actif} compte={compte} ouvrirId={actif === "Demandes à viser" ? ouvrirId : null}
           allerA={setEcran} ecransDuMenu={menu.map(([, l]) => l)} /> : (
           <>
             <header className="top"><h1>{actif}</h1></header>

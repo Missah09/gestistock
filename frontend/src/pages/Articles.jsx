@@ -75,7 +75,7 @@ export default function Articles({ compte }) {
 
   return (
     <>
-      <header className="top"><h1>Articles</h1></header>
+      <header className="top"><h1>Liste d'Articles</h1></header>
       <div className="body">
         {erreur && <div className="alerte">{erreur}</div>}
 

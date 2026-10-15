@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import Icon from "../icons.jsx";
 import BonRequisition, { visasDe } from "./BonRequisition.jsx";
-import StyloSignature from "./StyloSignature.jsx";
+import ZoneSignature from "./ZoneSignature.jsx";
 
 /** Fenêtre « bon de réquisition » : aperçu du bon, et, si `role` est donné, le cadre de signature au stylo électronique.
  *  role : "agent" | "responsable" | undefined (simple lecture)
- *  signataire : nom imprimé (celui du compte connecté) ; onSigner(image) ; piedGauche : boutons en plus (ex. Refuser…). */
+ *  signataire : nom imprimé (celui du compte connecté) ; onSigner(corps) : corps de ZoneSignature (signature + mot de passe) ;
+ *  erreurSignature : erreur du serveur sur la signature ou le mot de passe ; piedGauche : boutons en plus (ex. Refuser…). */
 export default function FenetreBon({ d, role, signataire, quantites, numero, titre, enTete, texteBouton = "Signer", onSigner, onFermer,
-  envoi = false, erreur, succes, piedGauche, remplacerPied }) {
-  const [image, setImage] = useState(null);
+  envoi = false, erreur, erreurSignature, succes, piedGauche, remplacerPied }) {
+  const [sig, setSig] = useState({ image: null, pret: false, corps: null });
+  const image = sig.image;
   const [maintenant, setMaintenant] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setMaintenant(new Date()), 30_000); return () => clearInterval(t); }, []);
   useEffect(() => {
@@ -41,8 +43,8 @@ export default function FenetreBon({ d, role, signataire, quantites, numero, tit
           {erreur && <div className="alerte">{erreur}</div>}
           {role && !succes && (
             <div className="consigne">
-              Relisez le bon de réquisition, puis <b>signez dans le cadre en bas de la fenêtre</b> (faites défiler vers le bas),
-              et cliquez sur <b>« {texteBouton} »</b>.
+              Relisez le bon de réquisition, puis <b>signez en bas de la fenêtre</b> (faites défiler vers le bas) : signature enregistrée,
+              signature scannée ou dessinée à la souris. Retapez votre mot de passe et cliquez sur <b>« {texteBouton} »</b>.
             </div>
           )}
           <BonRequisition d={d} quantites={quantites} numero={numero} visas={visas} aSigner={role && !succes ? role : undefined} dateBon={maintenant.toISOString()} />
@@ -52,7 +54,7 @@ export default function FenetreBon({ d, role, signataire, quantites, numero, tit
               <p className="signataire">
                 Signataire : <b>{signataire}</b>, {libelleRole} · {maintenant.toLocaleDateString("fr-FR")} à {maintenant.getHours()} h {String(maintenant.getMinutes()).padStart(2, "0")}
               </p>
-              <StyloSignature onChange={setImage} desactive={envoi} />
+              <ZoneSignature onChange={setSig} desactive={envoi} erreur={erreurSignature} />
             </section>
           )}
         </div>
@@ -64,8 +66,8 @@ export default function FenetreBon({ d, role, signataire, quantites, numero, tit
               {role && !succes ? (
                 <>
                   <button className="btn" type="button" onClick={onFermer} disabled={envoi}>Annuler</button>
-                  <button className="btn pri" type="button" disabled={envoi || !image} onClick={() => onSigner(image)}
-                    title={image ? undefined : "Signez d'abord dans le cadre"}>
+                  <button className="btn pri" type="button" disabled={envoi || !sig.pret} onClick={() => onSigner(sig.corps)}
+                    title={sig.pret ? undefined : image ? "Retapez votre mot de passe" : "Signez d'abord (en bas de la fenêtre)"}>
                     <Icon name="sign" size={18} stroke={2} />{envoi ? "Enregistrement…" : texteBouton}
                   </button>
                 </>

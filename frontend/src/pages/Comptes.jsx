@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { activerCompte, changerMotDePasse, creerCompte, deconnecterCompte, listerComptes, modifierCompte } from "../api.js";
+import { activerCompte, changerMotDePasse, creerCompte, deconnecterCompte, listerComptes, modifierCompte, retirerSignatureCompte } from "../api.js";
 import { dateHeure } from "../format.js";
 import Icon from "../icons.jsx";
 import ListeDeroulante from "../ListeDeroulante.jsx";
@@ -43,7 +43,7 @@ function FenetreCompte({ compte: c, departements, moi, onFermer, onEnregistre })
   }));
   const [erreurs, setErreurs] = useState({});
   const [envoi, setEnvoi] = useState(false);
-  const [action, setAction] = useState(null); // "mdp" | "desactiver" (confirmation en bas)
+  const [action, setAction] = useState(null); // "mdp" | "desactiver" | "signature" (confirmation en bas)
   const [nouveauMdp, setNouveauMdp] = useState("");
   const [info, setInfo] = useState(null);
   const lui = c && moi && c.identifiant === moi;
@@ -186,6 +186,39 @@ function FenetreCompte({ compte: c, departements, moi, onFermer, onEnregistre })
                     ? <button type="button" className="btn danger" onClick={() => { setInfo(null); setAction("desactiver"); }}>Désactiver le compte</button>
                     : <button type="button" className="btn" disabled={envoi} onClick={() => faire(activerCompte(c.id, true), false)}>Réactiver le compte</button>)}
                 </div>
+              )}
+            </fieldset>
+          )}
+
+          {!nouveau && (
+            <fieldset className="roles-choix signature-compte">
+              <legend>Signature scannée</legend>
+              {c.signature_enregistree ? (
+                <>
+                  <div className="signature-compte-image">
+                    <img src={`/api/comptes/${c.id}/signature/?v=${encodeURIComponent(c.signature_le ?? "")}`} alt={`Signature enregistrée de ${c.nom_complet}`} />
+                  </div>
+                  <p className="aide">
+                    Enregistrée par {lui ? "vous" : "la personne"}{c.signature_le ? ` le ${dateHeure(c.signature_le)}` : ""}.
+                    La retirer n'efface pas les bons déjà signés ; {lui ? "vous pourrez" : "la personne pourra"} en importer une autre en signant.
+                  </p>
+                  {action === "signature" ? (
+                    <div className="boutons">
+                      <span className="question">Retirer la signature enregistrée de « {c.identifiant} » ?</span>
+                      <span className="sp" />
+                      <button type="button" className="btn" disabled={envoi} onClick={() => setAction(null)}>Non</button>
+                      <button type="button" className="btn danger plein" disabled={envoi} onClick={() => faire(retirerSignatureCompte(c.id), false)}>
+                        {envoi ? "Retrait…" : "Oui, retirer"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="boutons">
+                      <button type="button" className="btn danger" onClick={() => { setErreurs({}); setInfo(null); setAction("signature"); }}>Retirer la signature…</button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="aide">Aucune signature scannée enregistrée dans ce compte (elle s'enregistre au moment de signer un bon).</p>
               )}
             </fieldset>
           )}

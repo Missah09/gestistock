@@ -378,6 +378,8 @@ th .facultatif { color: var(--gris); }
 .roles-choix .btn.case span { display: flex; flex-direction: column; text-align: left; }
 .roles-choix .btn.case small { color: var(--gris); font-size: 12.5px; }
 .roles-choix .boutons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.signature-compte-image { height: 96px; border: 1px solid #d9dfe8; border-radius: 8px; background: #fff; display: grid; place-items: center; padding: 8px; }
+.signature-compte-image img { max-width: 100%; max-height: 80px; }
 .mdp-saisie { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
 
 /* ---------- Bon de réquisition à l'écran + signature au stylo électronique (11/10/2026) ---------- */
@@ -428,6 +430,35 @@ th .facultatif { color: var(--gris); }
 .stylo-ligne { position: absolute; left: 24px; right: 24px; bottom: 38px; border-bottom: 1.5px solid #c9d1dd; pointer-events: none; }
 .stylo-invite { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; color: var(--gris-hbc); font-size: 13.5px; pointer-events: none; }
 .stylo-bas { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+/* Zone de signature : signature enregistrée / scannée / dessinée + mot de passe (15/10/2026) */
+.zs-onglets { display: inline-flex; flex-wrap: wrap; margin-bottom: 10px; }
+.zs-panneau { display: flex; flex-direction: column; gap: 8px; }
+.zs-aide { font-size: 12.5px; color: var(--gris); }
+.zs-depot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 170px; width: 100%;
+  border: 2px dashed #b9c2cd; border-radius: 10px; background: #fafbfd; color: var(--gris); font-size: 13px; cursor: pointer; padding: 14px; text-align: center; }
+.zs-depot b { color: var(--hbc-fonce); font-size: 14.5px; }
+.zs-depot svg { color: var(--hbc); }
+.zs-depot:hover:not(:disabled) { border-color: var(--hbc-clair); background: var(--hbc-pale); }
+.zs-depot:disabled { cursor: not-allowed; opacity: .6; }
+.zs-apercu { height: 170px; border: 1px solid #d9dfe8; border-radius: 10px; background: #fff; display: grid; place-items: center; padding: 10px; }
+.zs-apercu img { max-width: 100%; max-height: 148px; }
+/* damier léger : montre que le fond est bien transparent */
+.zs-apercu.damier { background-color: #fff; background-image: linear-gradient(45deg, #f1f3f6 25%, transparent 25%), linear-gradient(-45deg, #f1f3f6 25%, transparent 25%),
+  linear-gradient(45deg, transparent 75%, #f1f3f6 75%), linear-gradient(-45deg, transparent 75%, #f1f3f6 75%);
+  background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+.zs-reglages, .zs-bas { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.zs-reglages .btn, .zs-bas .btn { height: 36px; }
+.zs-bas .zs-aide { flex: 1 1 300px; }
+.zs-niveaux .onglet { height: 30px; padding: 0 10px; }
+.zs-fichier { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--gris); }
+.zs-etiquette { font-size: 13px; font-weight: 600; }
+.zs-coche { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #d9dfe8; border-radius: 8px; background: #fafbfd; cursor: pointer; }
+.zs-coche input { margin-top: 3px; width: 17px; height: 17px; flex: none; }
+.zs-coche span { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.zs-coche small { color: var(--gris); font-size: 12.5px; }
+.zs-mdp { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e6eaf0; max-width: 420px; }
+.zs-mdp label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-weight: 700; font-size: 13.5px; margin-bottom: 5px; color: var(--hbc-fonce); }
+.zone-signature .msg-erreur { margin: 0; }
 @media (max-width: 760px) { .bon-visas { grid-template-columns: 1fr 1fr; } .bon-tete { grid-template-columns: 1fr; text-align: center; } .bon-numero { text-align: center; } }
 
 /* ---------- Écran Aide (tutoriel, 12/10/2026) ---------- */

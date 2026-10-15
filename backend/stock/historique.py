@@ -120,6 +120,11 @@ def mouvements(du, au):
     return lignes
 
 
+def _origine(origine):
+    """« (signature importée) » / « (signature dessinée) » ; rien pour les visas d'avant la signature électronique."""
+    return {"DESSINEE": " (signature dessinée)", "IMPORTEE": " (signature importée)"}.get(origine or "", "")
+
+
 def evenements_du_circuit(du, au):
     """Lignes des étapes du circuit des demandes (sans effet sur le stock)."""
     lignes = []
@@ -139,7 +144,7 @@ def evenements_du_circuit(du, au):
         if d.statut == Demande.Statut.REFUSEE and r is None:
             ajouter(d.traitee_le, "refus", d, d.traitee_par, d.numero, f"Refusée par la Logistique : {d.motif_refus}")
         elif r is not None:
-            ajouter(d.traitee_le, "validation", d, d.traitee_par, r.numero, f"Demande {d.numero} validée et signée")
+            ajouter(d.traitee_le, "validation", d, d.traitee_par, r.numero, f"Demande {d.numero} validée et signée{_origine(r.origine_signature_agent)}")
     reqs = Requisition.objects.select_related("demande", "visa_responsable", "imprimee_par").prefetch_related(
         "demande__lignes__article")
     for r in reqs.filter(visa_responsable_le__isnull=False, **_dans("visa_responsable_le", du, au)):
@@ -148,7 +153,7 @@ def evenements_du_circuit(du, au):
                     f"Refusé par le Responsable : {r.motif_refus}")
         else:
             ajouter(r.visa_responsable_le, "visa", r.demande, r.visa_responsable, r.numero,
-                    f"Demande {r.demande.numero} signée par le Responsable HBC")
+                    f"Demande {r.demande.numero} signée par le Responsable HBC{_origine(r.origine_signature_responsable)}")
     for r in reqs.filter(imprimee_le__isnull=False, **_dans("imprimee_le", du, au)):
         ajouter(r.imprimee_le, "impression", r.demande, r.imprimee_par, r.numero,
                 f"Demande {r.demande.numero} : bon imprimé pour le magasin")

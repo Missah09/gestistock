@@ -18,10 +18,10 @@ export default function ViserDemande({ demande: d, signataire, onFermer, onTrait
 
   useEffect(() => { setRefus(false); setMotif(""); setErreurs({}); setSucces(null); }, [d.id]);
 
-  async function envoyer(action, image) {
+  async function envoyer(action, corps) {
     setEnvoi(true); setErreurs({});
     try {
-      const rep = action === "viser" ? await viserRequisition(d.id, image) : await refuserRequisition(d.id, motif.trim());
+      const rep = action === "viser" ? await viserRequisition(d.id, corps) : await refuserRequisition(d.id, motif.trim());
       setSucces(action === "viser"
         ? { titre: "Réquisition signée", texte: rep.message }
         : { refus: true, titre: "Réquisition refusée", texte: rep.message });
@@ -29,7 +29,7 @@ export default function ViserDemande({ demande: d, signataire, onFermer, onTrait
       onTraitee(rep.message, rep.demande);
     } catch (err) {
       const det = err.details;
-      setErreurs(det ? { general: det.general?.[0] ?? det.signature?.[0], motif: det.motif?.[0] }
+      setErreurs(det ? { general: det.general?.[0], signature: det.signature?.[0] ?? det.mot_de_passe?.[0], motif: det.motif?.[0] }
         : { general: "L'envoi a échoué. Vérifiez que le serveur est démarré." });
     } finally {
       setEnvoi(false);
@@ -58,8 +58,8 @@ export default function ViserDemande({ demande: d, signataire, onFermer, onTrait
 
   return (
     <FenetreBon d={d} role={aViser ? "responsable" : undefined} signataire={signataire} titre={titre}
-      texteBouton="Signer" envoi={envoi} erreur={erreurs.general} succes={succes}
-      onSigner={(image) => envoyer("viser", image)} onFermer={onFermer}
+      texteBouton="Signer" envoi={envoi} erreur={erreurs.general} erreurSignature={erreurs.signature} succes={succes}
+      onSigner={(corps) => envoyer("viser", corps)} onFermer={onFermer}
       piedGauche={aViser ? <button className="btn danger" type="button" onClick={() => { setErreurs({}); setRefus(true); }}>Refuser…</button> : null}
       remplacerPied={refus && !succes ? <div className="pied-refus">{piedRefus}</div> : undefined} />
   );

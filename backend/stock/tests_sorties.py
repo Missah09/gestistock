@@ -50,9 +50,9 @@ class SortiesTests(TestCase):
         ls = list(d.lignes.all())
         accord = [{"id": ls[0].id, "qte_accordee": 8}, {"id": ls[1].id, "qte_accordee": 0}]
         accord += [{"id": l.id, "qte_accordee": l.quantite} for l in ls[2:]]
-        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": accord},
+        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": accord},
                                      format="json").status_code, 200)
-        self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json").status_code, 200)
+        self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
         if imprimer:
             self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
         return d

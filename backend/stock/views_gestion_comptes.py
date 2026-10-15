@@ -32,6 +32,8 @@ def compte_json(u):
         "agent": ROLE_AGENT in roles, "responsable": ROLE_RESPONSABLE in roles, "administrateur": u.is_superuser,
         "actif": u.is_active, "connecte": u.is_active and session_ouverte(p),
         "derniere_connexion": heure_locale(u.last_login), "cree_le": heure_locale(u.date_joined),
+        # Signature scannée enregistrée par la personne (15/10/2026) ; l'image se lit à part (comptes/<id>/signature/)
+        "signature_enregistree": bool(p.signature), "signature_le": heure_locale(p.signature_le),
     }
 
 
@@ -187,3 +189,29 @@ def deconnecter(request, pk):
                         status=status.HTTP_400_BAD_REQUEST)
     fermer_session(u.profil.cle_session)
     return Response({"message": f"« {u.username} » a été déconnecté.", "compte": compte_json(u)})
+
+
+@api_view(["GET", "DELETE"])
+@permission_classes([EstAdministrateur])
+def signature(request, pk):
+    """Signature scannée enregistrée dans un compte (15/10/2026).
+    GET : l'image (PNG), pour la vérifier ; DELETE : la retire du compte (ex. départ de la personne, signature
+    qui ne convient pas). Les bons déjà signés gardent leur signature."""
+    from django.http import HttpResponse
+    from .signatures import image
+    u = _compte(pk)
+    if u is None:
+        return _introuvable()
+    p, _ = Profil.objects.get_or_create(user=u)
+    if request.method == "GET":
+        if not p.signature:
+            return Response({"general": ["Aucune signature enregistrée dans ce compte."]}, status=status.HTTP_404_NOT_FOUND)
+        reponse = HttpResponse(image(p.signature), content_type="image/png")
+        reponse["Cache-Control"] = "no-store"
+        return reponse
+    if not p.signature:
+        return Response({"general": ["Aucune signature enregistrée dans ce compte."]}, status=status.HTTP_400_BAD_REQUEST)
+    p.signature, p.signature_le = "", None
+    p.save(update_fields=["signature", "signature_le"])
+    return Response({"message": f"Signature enregistrée de « {u.username} » retirée. Les bons déjà signés ne changent pas.",
+                     "compte": compte_json(u)})

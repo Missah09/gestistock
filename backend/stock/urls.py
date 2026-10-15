@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views_comptes import compteurs, connexion, deconnexion, session
+from .views_comptes import compteurs, connexion, deconnexion, ma_signature, session
 from . import (views_gestion_comptes, views_rapports, views_requisitions, views_retours, views_sorties, views_tableau, views_validation,
                views_visa)
 
@@ -12,6 +12,8 @@ router = DefaultRouter()
 router.register("articles", ArticleViewSet, basename="article")
 
 urlpatterns = [path("session/", session), path("compteurs/", compteurs),
+               # Signature scannée enregistrée dans le compte connecté (15/10/2026)
+               path("ma-signature/", ma_signature),
                # Écran « Tableau de bord » (Agent Logistique et Responsable HBC, 12/10/2026)
                path("tableau-de-bord/", views_tableau.tableau_de_bord),
                # Écrans « Générer Rapports » et « Historique » (Agent Logistique, 15/10/2026)
@@ -21,7 +23,8 @@ urlpatterns = [path("session/", session), path("compteurs/", compteurs),
                path("comptes/", views_gestion_comptes.comptes), path("comptes/<int:pk>/", views_gestion_comptes.modifier),
                path("comptes/<int:pk>/activer/", views_gestion_comptes.activer),
                path("comptes/<int:pk>/mot-de-passe/", views_gestion_comptes.mot_de_passe),
-               path("comptes/<int:pk>/deconnecter/", views_gestion_comptes.deconnecter), path("connexion/", connexion), path("deconnexion/", deconnexion),
+               path("comptes/<int:pk>/deconnecter/", views_gestion_comptes.deconnecter),
+               path("comptes/<int:pk>/signature/", views_gestion_comptes.signature), path("connexion/", connexion), path("deconnexion/", deconnexion),
                path("filtres/", filtres), path("choix/", choix), path("entrees/", enregistrer_entree),
                path("demandes/", demandes), path("demandes/choix/", choix_demande),
                path("demandes/<int:pk>/", detail_demande), path("demandes/<int:pk>/annuler/", annuler_demande),

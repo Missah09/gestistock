@@ -57,9 +57,9 @@ class EtatEtRetoursTests(TestCase):
         self.assertEqual(rep.status_code, 201, rep.data)
         d = Demande.objects.get(id=rep.data["id"])
         accord = [{"id": l.id, "qte_accordee": l.quantite} for l in d.lignes.all()]
-        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": accord},
+        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": accord},
                                      format="json").status_code, 200)
-        self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json").status_code, 200)
+        self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
         self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
         ls = {l.article_id: l for l in d.lignes.all()}
         envoi = [{"id": ls[self.casque.id].id, "qte_livree": casques}, {"id": ls[self.conso.id].id, "qte_livree": 3}]
@@ -101,9 +101,9 @@ class EtatEtRetoursTests(TestCase):
             {"article": self.casque.id, "quantite": 5, "date_retour_prevue": retour}]}, format="json")
         d = Demande.objects.get(id=rep.data["id"])
         l = d.lignes.get()
-        self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l.id, "qte_accordee": 5}]},
+        self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l.id, "qte_accordee": 5}]},
                     format="json")
-        self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json")
+        self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.a.get(f"/api/requisitions/{d.id}/pdf/")
         base = {"date_remise": timezone.localdate().isoformat()}
         # Deux états en stock : il faut dire lesquels sont sortis
@@ -135,11 +135,11 @@ class EtatEtRetoursTests(TestCase):
 
         # Bon de retour : signature obligatoire, un seul à la fois
         self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {}, format="json").status_code, 400)
-        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE}, format="json")
+        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
         b = BonRetour.objects.get(id=rep.data["bon"])
         self.assertTrue(b.numero.startswith(f"BR-{timezone.localdate().year}-"))
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE}, format="json").status_code, 400)
+        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
         pdf = self.a.get(f"/api/retours/bons/{b.id}/pdf/")
         self.assertEqual(pdf.status_code, 200)
         self.assertTrue(pdf.content.startswith(b"%PDF"))
@@ -175,7 +175,7 @@ class EtatEtRetoursTests(TestCase):
         self.assertEqual(self.a.get(f"/api/retours/bons/{b.id}/pdf/").status_code, 200)  # copie d'archive
 
         # Second bon : seulement ce qui reste
-        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE}, format="json")
+        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         bon2 = rep.data["demande"]["retour"]["bon_ouvert"]
         self.assertEqual(sorted(l["qte_attendue"] for l in bon2["lignes"]), [1, 2])
         l2c = next(l for l in bon2["lignes"] if l["article"]["id"] == self.casque.id)
@@ -188,7 +188,7 @@ class EtatEtRetoursTests(TestCase):
         self.assertTrue(rep.data["demande"]["retour"]["solde"])
         self.assertEqual(self.a.get("/api/retours/?onglet=soldes").data["count"], 1)
         self.assertEqual(Exemplaire.objects.get(id=ex[1]).statut, "EN_STOCK")
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE}, format="json").status_code, 400)
+        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
 
     def test_annuler_un_bon_et_retards(self):
         d = self.sortie(avec_serie=False)
@@ -196,12 +196,12 @@ class EtatEtRetoursTests(TestCase):
         d.lignes.filter(article=self.casque).update(date_retour_prevue=timezone.localdate() - datetime.timedelta(days=1))
         self.assertEqual(self.a.get("/api/compteurs/").data["retours_en_retard"], 1)
         self.assertEqual(self.a.get("/api/retours/?onglet=en_retard").data["count"], 1)
-        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE}, format="json")
+        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         b = rep.data["bon"]
         rep = self.a.post(f"/api/retours/bons/{b}/annuler/")
         self.assertEqual(rep.status_code, 200)
         self.assertIsNone(rep.data["demande"]["retour"]["bon_ouvert"])
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE}, format="json").status_code, 201)
+        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 201)
 
     # ---------------------------------------------------------------- « Matériel à réparer » retiré
     def test_ecran_materiel_a_reparer_retire(self):
@@ -266,23 +266,23 @@ class NumeroEtImpressionTests(TestCase):
         self.assertEqual(self.s.post(f"/api/a-valider/{d1.id}/numero/").status_code, 403)
         # d2 validée d'abord : elle garde son n°
         l2 = d2.lignes.get()
-        rep = self.a.post(f"/api/a-valider/{d2.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l2.id, "qte_accordee": 2}]},
+        rep = self.a.post(f"/api/a-valider/{d2.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l2.id, "qte_accordee": 2}]},
                           format="json")
         self.assertEqual(rep.data["demande"]["requisition"]["numero"], f"RM-{annee}-0002")
         # d1 refusée : son n° est libéré ; une nouvelle demande validée sans clic préalable prend le suivant libre
         self.a.post(f"/api/a-valider/{d1.id}/refuser/", {"motif": "non"}, format="json")
         d3 = self.demande()
         l3 = d3.lignes.get()
-        rep = self.a.post(f"/api/a-valider/{d3.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l3.id, "qte_accordee": 1}]},
+        rep = self.a.post(f"/api/a-valider/{d3.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l3.id, "qte_accordee": 1}]},
                           format="json")
         self.assertEqual(rep.data["demande"]["requisition"]["numero"], f"RM-{annee}-0003")
 
     def test_imprimer_marque_le_bon(self):
         d = self.demande()
         l = d.lignes.get()
-        self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l.id, "qte_accordee": 2}]},
+        self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l.id, "qte_accordee": 2}]},
                     format="json")
-        self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json")
+        self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         rep = self.r.get(f"/api/requisitions/{d.id}/pdf/?impression=1")  # Responsable : consultation
         self.assertTrue(rep["Content-Disposition"].startswith("inline"))
         self.assertEqual(self.a.get("/api/requisitions/?onglet=imprimees").data["count"], 0)

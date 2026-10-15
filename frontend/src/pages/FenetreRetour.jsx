@@ -4,7 +4,7 @@ import { annulerBonRetour, confirmerRetour, creerBonRetour, signalerChangement, 
 import { PastilleEtat } from "../EtatsProduit.jsx";
 import { date, dateHeure, ETATS_PRODUIT, joursDeRetard, ORDRE_ETATS, quantite } from "../format.js";
 import Icon from "../icons.jsx";
-import StyloSignature from "./StyloSignature.jsx";
+import ZoneSignature from "./ZoneSignature.jsx";
 
 const TEXTE_MAX = 120;
 const OBSERVATION_MAX = 250;
@@ -21,7 +21,7 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
   const ret = d.retour;
   const bon = ret.bon_ouvert;
   const [mode, setMode] = useState(null);           // null | "signer" (préparer le bon)
-  const [signature, setSignature] = useState(null);
+  const [signature, setSignature] = useState({ image: null, pret: false, corps: null }); // ZoneSignature
   const [saisie, setSaisie] = useState({});          // {idLigneBon: {etats: {BON: "6"}, exemplaires: {id: "BON"}, observation}}
   const [champs, setChamps] = useState({ date_retour: aujourdhui(), rendu_par: "", magasinier: "", observation: "" });
   const [verifier, setVerifier] = useState(false);
@@ -34,7 +34,7 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
 
   const cleBon = bon?.id ?? null;
   useEffect(() => {
-    setSaisie({}); setVerifier(false); setAnnuler(false); setErreurs({}); setMode(null); setSignature(null);
+    setSaisie({}); setVerifier(false); setAnnuler(false); setErreurs({}); setMode(null); setSignature({ image: null, pret: false, corps: null });
     setChamps({ date_retour: aujourdhui(), rendu_par: d.demandeur || "", magasinier: "", observation: "" });
   }, [d.id, cleBon]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setSucces(null); }, [d.id]);
@@ -55,14 +55,16 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
   async function preparerBon() {
     setEnvoi(true); setErreurs({});
     try {
-      const rep = await creerBonRetour(d.id, signature);
+      const rep = await creerBonRetour(d.id, signature.corps);
       setSucces({ titre: `Bon de retour ${rep.numero} prêt`, texte: "Il se télécharge : imprimez-le et portez-le au magasin avec le matériel." });
       signalerChangement();
       onChange(rep.message, rep.demande);
       try { await telechargerBonRetour(rep.bon, rep.numero); } catch (e) { setErreurs({ general: e.message }); }
     } catch (err) {
       const det = err.details;
-      setErreurs({ general: det?.general?.[0] ?? det?.signature?.[0] ?? "L'enregistrement a échoué. Vérifiez que le serveur est démarré." });
+      const surSignature = det?.signature?.[0] ?? det?.mot_de_passe?.[0];
+      setErreurs(surSignature && !det?.general ? { signature: surSignature }
+        : { general: det?.general?.[0] ?? "L'enregistrement a échoué. Vérifiez que le serveur est démarré." });
     } finally {
       setEnvoi(false);
     }
@@ -385,7 +387,7 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
             <section className="signer">
               <h3>Votre signature <span className="facultatif">(case « Agent Logistique » du bon de retour)</span></h3>
               <p className="signataire">Le bon est daté d'aujourd'hui, {new Date().toLocaleDateString("fr-FR")}.</p>
-              <StyloSignature onChange={setSignature} desactive={envoi} />
+              <ZoneSignature onChange={setSignature} desactive={envoi} erreur={erreurs.signature} />
             </section>
           )}
 
@@ -453,8 +455,8 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
             <>
               <span className="sp" />
               <button className="btn" type="button" disabled={envoi} onClick={() => setMode(null)}>Annuler</button>
-              <button className="btn pri" type="button" disabled={envoi || !signature} onClick={preparerBon}
-                title={signature ? undefined : "Signez d'abord dans le cadre"}>
+              <button className="btn pri" type="button" disabled={envoi || !signature.pret} onClick={preparerBon}
+                title={signature.pret ? undefined : signature.image ? "Retapez votre mot de passe" : "Signez d'abord"}>
                 <Icon name="sign" size={18} stroke={2} />{envoi ? "Préparation…" : "Signer et préparer le bon"}
               </button>
             </>

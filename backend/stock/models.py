@@ -322,6 +322,12 @@ class LigneDemande(models.Model):
         return f"{self.article.nom} × {self.quantite}"
 
 
+class OrigineSignature(models.TextChoices):
+    """Comment la signature a été posée (15/10/2026) : visible dans l'administration et l'Historique, pas sur le bon."""
+    DESSINEE = "DESSINEE", "dessinée à la souris"
+    IMPORTEE = "IMPORTEE", "importée (signature scannée)"
+
+
 class Requisition(models.Model):
     """Réquisition matière (bon de sortie), créée en un clic quand l'Agent Logistique valide une demande.
     Cette validation vaut visa électronique de l'Agent Logistique ; le Responsable HBC vise ensuite."""
@@ -347,6 +353,10 @@ class Requisition(models.Model):
     # Signatures dessinées au stylo électronique (image PNG en base64), imprimées dans les cases du bon (11/10/2026).
     signature_agent = models.TextField("signature de l'Agent Logistique", blank=True, editable=False)
     signature_responsable = models.TextField("signature du Responsable HBC", blank=True, editable=False)
+    origine_signature_agent = models.CharField("signature de l'Agent", max_length=10, choices=OrigineSignature.choices,
+                                               blank=True, editable=False)
+    origine_signature_responsable = models.CharField("signature du Responsable", max_length=10,
+                                                     choices=OrigineSignature.choices, blank=True, editable=False)
     # Email au Responsable HBC (envoyé à la validation ; « Renvoyer l'email » possible)
     email_envoye_le = models.DateTimeField("email envoyé le", null=True, blank=True)
     email_etat = models.CharField("état de l'email", max_length=300, blank=True)
@@ -435,6 +445,10 @@ class Profil(models.Model):
                                     limit_choices_to={"actif": True})
     # Une seule connexion à la fois (11/10/2026) : la session de l'appareil connecté en dernier.
     cle_session = models.CharField("session en cours", max_length=40, blank=True, editable=False)
+    # Signature scannée enregistrée une fois dans le compte (15/10/2026) : PNG transparent en base64,
+    # réutilisée d'un clic (avec le mot de passe retapé) pour valider, viser ou préparer un bon de retour.
+    signature = models.TextField("signature enregistrée", blank=True, editable=False)
+    signature_le = models.DateTimeField("signature enregistrée le", null=True, blank=True, editable=False)
 
     class Meta:
         verbose_name = "profil GestiStock"
@@ -633,6 +647,8 @@ class BonRetour(models.Model):
     imprime_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="bons_retour_imprimes")
     # Visa électronique de l'Agent Logistique (stylo), imprimé dans sa case du bon.
     signature_agent = models.TextField("signature de l'Agent Logistique", blank=True, editable=False)
+    origine_signature_agent = models.CharField("signature de l'Agent", max_length=10, choices=OrigineSignature.choices,
+                                               blank=True, editable=False)
     annule_le = models.DateTimeField("annulé le", null=True, blank=True)
     date_retour = models.DateField("matériel rendu le", null=True, blank=True)
     magasinier = models.CharField(max_length=120, blank=True)

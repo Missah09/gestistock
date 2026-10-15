@@ -169,7 +169,8 @@ class RequisitionAdmin(admin.ModelAdmin):
     list_display = ("numero", "demande", "statut", "visa_agent", "visa_agent_le", "visa_responsable", "visa_responsable_le")
     list_filter = ("statut",)
     search_fields = ("numero", "demande__numero")
-    readonly_fields = ("numero", "demande", "visa_agent", "visa_agent_le", "creee_le", "email_envoye_le", "email_etat",
+    readonly_fields = ("numero", "demande", "visa_agent", "visa_agent_le", "origine_signature_agent",
+                       "origine_signature_responsable", "creee_le", "email_envoye_le", "email_etat",
                        "imprimee_le", "imprimee_par")
     inlines = [TelechargementBonInline]
 
@@ -201,7 +202,17 @@ class ProfilInline(admin.StackedInline):
     can_delete = False
     min_num = 1
     max_num = 1
-    verbose_name_plural = "Département"
+    verbose_name_plural = "Département et signature"
+    fields = ("departement", "signature_enregistree")
+    readonly_fields = ("signature_enregistree",)
+
+    @admin.display(description="signature scannée enregistrée")
+    def signature_enregistree(self, obj):
+        # Enregistrée par la personne elle-même au moment de signer (15/10/2026) ; elle peut la retirer depuis la fenêtre de signature.
+        if not obj or not obj.signature:
+            return "non"
+        from django.utils import timezone
+        return f"oui, depuis le {timezone.localtime(obj.signature_le):%d/%m/%Y à %H:%M}" if obj.signature_le else "oui"
 
 
 class CompteAdmin(UserAdmin):
@@ -230,6 +241,15 @@ class CompteAdmin(UserAdmin):
     @admin.display(description="rôles")
     def roles(self, obj):
         return ", ".join(r for r in roles_de(obj) if r != "Saisisseur") or "Saisisseur"
+
+    actions = ["retirer_signature"]
+
+    @admin.action(description="Retirer la signature scannée enregistrée")
+    def retirer_signature(self, request, queryset):
+        # 15/10/2026 : les bons déjà signés gardent leur signature.
+        n = Profil.objects.filter(user__in=queryset).exclude(signature="").update(signature="", signature_le=None)
+        self.message_user(request, f"Signature enregistrée retirée de {n} compte(s)." if n
+                          else "Aucun de ces comptes n'avait de signature enregistrée.")
 
     def get_inline_instances(self, request, obj=None):
         # Le département se choisit après la première étape (identifiant + mot de passe).
@@ -308,7 +328,7 @@ class BonRetourAdmin(admin.ModelAdmin):
     list_filter = ("statut",)
     search_fields = ("numero", "sortie__requisition__numero")
     readonly_fields = ("numero", "sortie", "statut", "imprime_le", "imprime_par", "date_retour", "magasinier", "rendu_par",
-                       "observation", "confirme_le", "confirme_par", "annule_le")
+                       "observation", "confirme_le", "confirme_par", "annule_le", "origine_signature_agent")
     inlines = [LigneRetourInline]
 
     def has_add_permission(self, request):

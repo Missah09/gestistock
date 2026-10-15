@@ -17,7 +17,7 @@ from rest_framework.response import Response
 
 from .models import Demande, Requisition
 from .notifications import email_actif, prevenir_responsable
-from .signatures import lire_signature
+from .signatures import ErreurSignature, enregistrer_si_demande, signature_de_la_requete
 from .permissions import EstAgentLogistique
 from .views import ONGLETS, PAR_PAGE_DEMANDES, demandes_completes, en_json
 
@@ -74,9 +74,9 @@ def valider(request, pk):
         return Response({"general": ["Données incorrectes."]}, status=status.HTTP_400_BAD_REQUEST)
     # La validation vaut visa : l'Agent Logistique signe au stylo électronique (case « Agent Logistique » du bon).
     try:
-        signature = lire_signature(request.data.get("signature"))
-    except ValueError as exc:
-        return Response({"signature": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+        sig = signature_de_la_requete(request)  # signature + mot de passe retapé (15/10/2026)
+    except ErreurSignature as exc:
+        return exc.reponse()
 
     with transaction.atomic():
         d = Demande.objects.select_for_update().filter(pk=pk).first()
@@ -123,7 +123,8 @@ def valider(request, pk):
         # Le n° attribué au clic sur « Valider » (celui imprimé sur le bon signé) devient le n° de la réquisition.
         numero = d.numero_requisition or _attribuer(d)
         r = Requisition.objects.create(demande=d, numero=numero, visa_agent=request.user, visa_agent_le=maintenant,
-                                       signature_agent=signature)
+                                       signature_agent=sig.b64, origine_signature_agent=sig.origine)
+        enregistrer_si_demande(request.user, sig)
 
     # Email au Responsable (désactivé pour l'instant : GESTISTOCK_EMAILS). Après l'enregistrement :
     # un souci d'email n'annule pas la validation.

@@ -60,9 +60,9 @@ class RapportsEtHistoriqueTests(TestCase):
         self.assertEqual(rep.status_code, 201, rep.data)
         d = Demande.objects.get(id=rep.data["id"])
         accord = [{"id": l.id, "qte_accordee": l.quantite} for l in d.lignes.all()]
-        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": accord},
+        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": accord},
                                      format="json").status_code, 200)
-        self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json").status_code, 200)
+        self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
         self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
         ls = {l.article_id: l for l in d.lignes.all()}
         ids = list(Exemplaire.objects.filter(numero_serie__startswith="RP-SN-").values_list("id", flat=True))

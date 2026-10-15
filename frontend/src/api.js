@@ -125,9 +125,10 @@ export function listerAValider({ onglet = "attente", page = 1 } = {}) {
 export function lireAValider(id) {
   return lire(`/api/a-valider/${id}/`);
 }
-/** lignes : [{ id, qte_accordee }] ; signature : image du stylo électronique – valide et crée la réquisition matière. */
+/** lignes : [{ id, qte_accordee }] ; signature : corps de ZoneSignature ({ source, signature?, enregistrer?, mot_de_passe })
+ *  – valide et crée la réquisition matière. */
 export function validerDemande(id, lignes, signature) {
-  return envoyer(`/api/a-valider/${id}/valider/`, { lignes, signature });
+  return envoyer(`/api/a-valider/${id}/valider/`, { lignes, ...signature });
 }
 /** Clic sur « Valider » : le n° de réquisition est attribué tout de suite (affiché sur le bon à signer). */
 export function attribuerNumero(id) {
@@ -148,9 +149,17 @@ export function listerAViser({ onglet = "attente", page = 1 } = {}) {
 export function lireAViser(id) {
   return lire(`/api/a-viser/${id}/`);
 }
-/** signature : image du stylo électronique (« data:image/png;base64,… »). */
+/** signature : corps de ZoneSignature ({ source, signature?, enregistrer?, mot_de_passe }). */
 export function viserRequisition(id, signature) {
-  return envoyer(`/api/a-viser/${id}/viser/`, { signature });
+  return envoyer(`/api/a-viser/${id}/viser/`, signature);
+}
+
+// ---------- Signature scannée enregistrée dans le compte (15/10/2026) ----------
+export function lireMaSignature() {
+  return lire("/api/ma-signature/");
+}
+export function retirerMaSignature() {
+  return envoyer("/api/ma-signature/", undefined, "DELETE");
 }
 export function refuserRequisition(id, motif) {
   return envoyer(`/api/a-viser/${id}/refuser/`, { motif });
@@ -242,7 +251,7 @@ export function lireRetour(id) {
 }
 /** Prépare le bon de retour (ce qui reste à rendre), signé au stylo par l'Agent Logistique. */
 export function creerBonRetour(id, signature) {
-  return envoyer(`/api/retours/${id}/bon/`, { signature });
+  return envoyer(`/api/retours/${id}/bon/`, signature);
 }
 export function annulerBonRetour(bonId) {
   return envoyer(`/api/retours/bons/${bonId}/annuler/`);
@@ -274,6 +283,10 @@ export function changerMotDePasse(id, mot_de_passe) {
 }
 export function deconnecterCompte(id) {
   return envoyer(`/api/comptes/${id}/deconnecter/`);
+}
+/** Retire la signature scannée enregistrée dans un compte (administrateur, 15/10/2026). */
+export function retirerSignatureCompte(id) {
+  return envoyer(`/api/comptes/${id}/signature/`, undefined, "DELETE");
 }
 
 // ---------- Générer Rapports et Historique (Agent Logistique, 15/10/2026) ----------

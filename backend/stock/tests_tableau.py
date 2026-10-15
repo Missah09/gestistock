@@ -73,9 +73,9 @@ class TableauDeBordTests(TestCase):
         did = rep.data["id"]
         lignes = self.a.get(f"/api/a-valider/{did}/").data["lignes"]
         self.assertEqual(self.a.post(f"/api/a-valider/{did}/valider/", {
-            "signature": SIGNATURE, "lignes": [{"id": l["id"], "qte_accordee": l["quantite"]} for l in lignes]},
+            "signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l["id"], "qte_accordee": l["quantite"]} for l in lignes]},
             format="json").status_code, 200)
-        self.assertEqual(self.r.post(f"/api/a-viser/{did}/viser/", {"signature": SIGNATURE}, format="json").status_code, 200)
+        self.assertEqual(self.r.post(f"/api/a-viser/{did}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
         d = self.a.get("/api/tableau-de-bord/").data
         types = [x["type"] for x in d["activite"]]
         self.assertEqual(set(types), {"demande", "validation", "visa"})

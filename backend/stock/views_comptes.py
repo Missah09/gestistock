@@ -96,3 +96,19 @@ def connexion(request):
 def deconnexion(request):
     logout(request)
     return Response({"connecte": False})
+
+
+@api_view(["GET", "DELETE"])
+def ma_signature(request):
+    """Signature scannée enregistrée dans le compte connecté (15/10/2026).
+    GET : {"enregistree", "image" (data:image/png;base64,…), "le"} ; DELETE : la retire du compte.
+    Elle s'enregistre au moment de signer (case « Enregistrer dans mon compte »), avec le mot de passe retapé."""
+    from .serializers import heure_locale
+    from .signatures import en_data_url, profil_de
+    p = profil_de(request.user)
+    if request.method == "DELETE":
+        p.signature, p.signature_le = "", None
+        p.save(update_fields=["signature", "signature_le"])
+        return Response({"enregistree": False, "image": None, "le": None,
+                         "message": "Signature enregistrée retirée de votre compte."})
+    return Response({"enregistree": bool(p.signature), "image": en_data_url(p.signature), "le": heure_locale(p.signature_le)})

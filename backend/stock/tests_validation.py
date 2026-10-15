@@ -35,7 +35,7 @@ class ValidationTests(TestCase):
         d = self.nouvelle()
         for c in (self.s, self.r()):
             self.assertEqual(c.get("/api/a-valider/").status_code, 403)
-            self.assertEqual(c.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE}, format="json").status_code, 403)
+            self.assertEqual(c.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 403)
             self.assertEqual(c.post(f"/api/a-valider/{d.id}/refuser/", {"motif": "x"}, format="json").status_code, 403)
         self.assertEqual(APIClient().get("/api/a-valider/").status_code, 401)
 
@@ -65,7 +65,7 @@ class ValidationTests(TestCase):
         d = self.nouvelle()
         l1, l2 = d.lignes.order_by("id")
         stock_avant = Article.objects.get(id=l1.article_id).qte_stock
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l1.id, "qte_accordee": 2},
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l1.id, "qte_accordee": 2},
                                                                         {"id": l2.id, "qte_accordee": 0}]}, format="json")
         self.assertEqual(r.status_code, 200, r.data)
         annee = d.cree_le.year
@@ -84,30 +84,30 @@ class ValidationTests(TestCase):
         self.assertEqual(vue["traitee_par"], "Hery Agent")
         # Numérotation suivante
         d2 = self.nouvelle()
-        r = self.a.post(f"/api/a-valider/{d2.id}/valider/", {"signature": SIGNATURE}, format="json")  # sans modification
+        r = self.a.post(f"/api/a-valider/{d2.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")  # sans modification
         self.assertEqual(r.data["demande"]["requisition"]["numero"], f"RM-{annee}-0002")
         self.assertEqual(sorted(d2.lignes.values_list("qte_accordee", flat=True)), [3, 5])
 
     def test_valider_controles(self):
         d = self.nouvelle()
         l1, l2 = d.lignes.order_by("id")
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l1.id, "qte_accordee": -1},
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l1.id, "qte_accordee": -1},
                                                                         {"id": l2.id, "qte_accordee": "abc"}]}, format="json")
         self.assertEqual(r.status_code, 400)
         self.assertIn(str(l1.id), r.data["lignes"]); self.assertIn(str(l2.id), r.data["lignes"])
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l1.id, "qte_accordee": ""}]}, format="json")
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l1.id, "qte_accordee": ""}]}, format="json")
         self.assertIn("0 pour retirer", r.data["lignes"][str(l1.id)][0])
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l1.id, "qte_accordee": 0},
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l1.id, "qte_accordee": 0},
                                                                         {"id": l2.id, "qte_accordee": "0"}]}, format="json")
         self.assertEqual(r.status_code, 400); self.assertIn("refusez", r.data["general"][0])
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": 999999, "qte_accordee": 1}]}, format="json")
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": 999999, "qte_accordee": 1}]}, format="json")
         self.assertEqual(r.status_code, 400)
         d.refresh_from_db(); self.assertEqual(d.statut, "EN_ATTENTE"); self.assertFalse(Requisition.objects.exists())
         # Plus que demandé : permis (l'agent corrige au besoin)
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l1.id, "qte_accordee": "8"}]}, format="json")
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l1.id, "qte_accordee": "8"}]}, format="json")
         self.assertEqual(r.status_code, 200, r.data)
         # Déjà validée : ni revalidation ni refus
-        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE}, format="json").status_code, 400)
+        self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
         r = self.a.post(f"/api/a-valider/{d.id}/refuser/", {"motif": "x"}, format="json")
         self.assertEqual(r.status_code, 400); self.assertIn("déjà validée", r.data["general"][0])
         self.assertEqual(Requisition.objects.count(), 1)
@@ -117,7 +117,7 @@ class ValidationTests(TestCase):
     def test_demande_annulee_ne_peut_plus_etre_validee(self):
         d = self.nouvelle()
         self.s.post(f"/api/demandes/{d.id}/annuler/")
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE}, format="json")
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(r.status_code, 400); self.assertIn("annulée", r.data["general"][0])
 
     def test_refuser(self):

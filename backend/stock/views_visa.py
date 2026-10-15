@@ -13,7 +13,7 @@ from rest_framework.response import Response
 
 from .models import Requisition
 from .permissions import EstResponsable
-from .signatures import image, lire_signature
+from .signatures import ErreurSignature, enregistrer_si_demande, image, signature_de_la_requete
 from .views import PAR_PAGE_DEMANDES, demandes_completes, en_json
 
 MOTIF_MAX = 250
@@ -79,11 +79,12 @@ def _verrouiller(pk):
 @api_view(["POST"])
 @permission_classes([EstResponsable])
 def viser(request, pk):
-    """Vise la réquisition : signature dessinée au stylo électronique + nom (du compte) + date et heure."""
+    """Vise la réquisition : signature (dessinée, importée ou enregistrée) + mot de passe retapé
+    + nom (du compte) + date et heure."""
     try:
-        signature = lire_signature(request.data.get("signature"))
-    except ValueError as exc:
-        return Response({"signature": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+        sig = signature_de_la_requete(request)
+    except ErreurSignature as exc:
+        return exc.reponse()
     with transaction.atomic():
         r, erreur = _verrouiller(pk)
         if erreur:
@@ -91,8 +92,11 @@ def viser(request, pk):
         r.statut = Requisition.Statut.VISEE
         r.visa_responsable = request.user
         r.visa_responsable_le = timezone.now()
-        r.signature_responsable = signature
-        r.save(update_fields=["statut", "visa_responsable", "visa_responsable_le", "signature_responsable"])
+        r.signature_responsable = sig.b64
+        r.origine_signature_responsable = sig.origine
+        r.save(update_fields=["statut", "visa_responsable", "visa_responsable_le", "signature_responsable",
+                              "origine_signature_responsable"])
+        enregistrer_si_demande(request.user, sig)
     d = _a_viser().get(pk=pk)
     return Response({"message": f"Réquisition {r.numero} signée et visée. L'Agent Logistique peut maintenant imprimer le bon.",
                      "demande": en_json([d])[0]})

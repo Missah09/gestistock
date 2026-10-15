@@ -108,7 +108,7 @@ class CorrectionsTests(TestCase):
         self.assertEqual(d.demandeur, self.agent)
         self.assertIn(d.id, [x["id"] for x in a.get("/api/a-valider/").data["results"]])
         l = d.lignes.first()
-        r = a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l.id, "qte_accordee": 2}]},
+        r = a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "Mot-de-passe-1", "lignes": [{"id": l.id, "qte_accordee": 2}]},
                    format="json")
         self.assertEqual(r.status_code, 200, r.data)
         self.assertEqual(Requisition.objects.get(demande=d).statut, Requisition.Statut.ATTENTE_VISA)

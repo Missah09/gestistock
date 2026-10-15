@@ -34,7 +34,7 @@ class VisaTests(TestCase):
                                            "lignes": [{"article": self.article.id, "quantite": 4}]}, format="json")
         d = Demande.objects.get(id=r.data["id"])
         l = d.lignes.first()
-        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [{"id": l.id, "qte_accordee": 3}]}, format="json")
+        r = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l.id, "qte_accordee": 3}]}, format="json")
         self.assertEqual(r.status_code, 200, r.data)
         return d, r
 
@@ -82,7 +82,7 @@ class VisaTests(TestCase):
         d, _ = self.demande_validee()
         for c in (self.s, self.a):
             self.assertEqual(c.get("/api/a-viser/").status_code, 403)
-            self.assertEqual(c.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json").status_code, 403)
+            self.assertEqual(c.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 403)
         self.assertEqual(APIClient().get("/api/a-viser/").status_code, 401)
 
     def test_liste_et_visa(self):
@@ -93,16 +93,16 @@ class VisaTests(TestCase):
         self.assertEqual([x["numero"] for x in r["results"]], [d2.numero, d1.numero])  # urgente d'abord
         self.assertEqual(r["compteurs"], {"attente": 2, "visees": 0, "refusees": 0, "toutes": 2})
         self.assertEqual(self.r.get(f"/api/a-viser/{d1.id}/").status_code, 200)
-        r = self.r.post(f"/api/a-viser/{d1.id}/viser/", {"signature": SIGNATURE}, format="json")
+        r = self.r.post(f"/api/a-viser/{d1.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(r.status_code, 200, r.data); self.assertIn("visée", r.data["message"])
         rq = Requisition.objects.get(demande=d1)
         self.assertEqual((rq.statut, rq.visa_responsable), ("VISEE", self.resp)); self.assertIsNotNone(rq.visa_responsable_le)
-        self.assertEqual(self.r.post(f"/api/a-viser/{d1.id}/viser/", {"signature": SIGNATURE}, format="json").status_code, 400)  # déjà visée
+        self.assertEqual(self.r.post(f"/api/a-viser/{d1.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)  # déjà visée
         self.assertEqual(self.r.post(f"/api/a-viser/{d1.id}/refuser/", {"motif": "x"}, format="json").status_code, 400)
         self.assertEqual(self.r.get("/api/a-viser/?onglet=visees").data["count"], 1)
         # Le demandeur voit l'étape « Visée »
         self.assertEqual(self.s.get(f"/api/demandes/{d1.id}/").data["requisition"]["statut"], "VISEE")
-        self.assertEqual(self.r.post("/api/a-viser/999999/viser/", {"signature": SIGNATURE}, format="json").status_code, 404)
+        self.assertEqual(self.r.post("/api/a-viser/999999/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 404)
 
     def test_refus_du_responsable(self):
         d, _ = self.demande_validee()
@@ -131,7 +131,7 @@ class VisaTests(TestCase):
                                                              "retours_en_retard": 0})  # 12/10/2026
         self.assertEqual(self.s.get("/api/compteurs/").data, {})
         self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/renvoyer-email/").status_code, 400)
-        self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json")
+        self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(self.r.get("/api/compteurs/").data, {"a_viser": 0})
         self.assertFalse(self.s.get("/api/session/").data["emails"])
 
@@ -160,14 +160,14 @@ class SignatureTests(TestCase):
             rep = a.post(f"/api/a-valider/{d['id']}/valider/", {"signature": mauvaise}, format="json")
             self.assertEqual(rep.status_code, 400, mauvaise); self.assertIn("signature", rep.data)
         self.assertEqual(Demande.objects.get(id=d["id"]).statut, "EN_ATTENTE")
-        rep = a.post(f"/api/a-valider/{d['id']}/valider/", {"signature": SIGNATURE}, format="json")
+        rep = a.post(f"/api/a-valider/{d['id']}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         self.assertTrue(rep.data["demande"]["requisition"]["signature_agent"])
         self.assertFalse(rep.data["demande"]["requisition"]["signature_responsable"])
         # Le Responsable doit signer aussi
         rep = r.post(f"/api/a-viser/{d['id']}/viser/", {}, format="json")
         self.assertEqual(rep.status_code, 400); self.assertIn("Signez", rep.data["signature"][0])
-        rep = r.post(f"/api/a-viser/{d['id']}/viser/", {"signature": SIGNATURE}, format="json")
+        rep = r.post(f"/api/a-viser/{d['id']}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data); self.assertTrue(rep.data["demande"]["requisition"]["signature_responsable"])
         # Images : Agent, Responsable et demandeur peuvent les voir ; un autre compte non
         for c in (a, r, s):

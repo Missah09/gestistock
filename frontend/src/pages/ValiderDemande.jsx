@@ -126,7 +126,7 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
     } catch (err) {
       const det = err.details;
       if (det) {
-        setErreurs({ general: det.general?.[0], motif: det.motif?.[0], signature: det.signature?.[0],
+        setErreurs({ general: det.general?.[0], motif: det.motif?.[0], signature: det.signature?.[0] ?? det.mot_de_passe?.[0],
           ...Object.fromEntries(Object.entries(det.lignes ?? {}).map(([k, v]) => [k, v[0]])) });
         // Erreur sur les quantités : on ferme la fenêtre du bon pour les montrer ; sinon elle reste ouverte.
         if (det.lignes || (action === "refuser" && !det.motif)) setMode(null);
@@ -230,8 +230,8 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
         <FenetreBon d={d} role="agent" numero={numero ?? d.numero_requisition} signataire={signataire}
           quantites={Object.fromEntries(d.lignes.map((l, i) => [l.id, Number(valeurs[i])]))}
           titre={`Valider la demande ${d.numero}${modifiees ? ` (${modifiees} quantité${modifiees > 1 ? "s" : ""} modifiée${modifiees > 1 ? "s" : ""})` : ""}`}
-          texteBouton="Signer et valider" envoi={envoi} erreur={erreurs.general || erreurs.signature}
-          onSigner={(image) => envoyer("valider", image)} onFermer={() => { if (!envoi) { setMode(null); setErreurs({}); } }} />
+          texteBouton="Signer et valider" envoi={envoi} erreur={erreurs.general} erreurSignature={erreurs.signature}
+          onSigner={(corps) => envoyer("valider", corps)} onFermer={() => { if (!envoi) { setMode(null); setErreurs({}); } }} />
       )}
       {mode === "voir" && d.requisition && (
         <FenetreBon d={d} titre={`Bon de réquisition ${d.requisition.numero}`} onFermer={() => setMode(null)} />

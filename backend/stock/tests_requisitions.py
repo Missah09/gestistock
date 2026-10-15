@@ -33,11 +33,11 @@ class RequisitionsTests(TestCase):
             {"article": self.articles[0].id, "quantite": 4}, {"article": self.articles[1].id, "quantite": 2}]}, format="json")
         d = Demande.objects.get(id=rep.data["id"])
         l1, l2 = d.lignes.all()
-        rep = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "lignes": [
+        rep = self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [
             {"id": l1.id, "qte_accordee": 3}, {"id": l2.id, "qte_accordee": 0}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         if viser:
-            rep = self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE}, format="json")
+            rep = self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
             self.assertEqual(rep.status_code, 200, rep.data)
         return d
 

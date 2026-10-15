@@ -24,7 +24,7 @@ from . import etats
 from .models import Article, BonRetour, Exemplaire, LigneRetour, LigneSortie, Requisition, Sortie
 from .permissions import EstAgentLogistique
 from .serializers import heure_locale, nom_de
-from .signatures import lire_signature
+from .signatures import ErreurSignature, enregistrer_si_demande, signature_de_la_requete
 from .views import PAR_PAGE_DEMANDES, demandes_completes, en_json
 
 TEXTE_MAX = 120
@@ -207,9 +207,9 @@ def detail(request, pk):
 def creer_bon(request, pk):
     """Prépare le bon de retour (ce qui reste à rendre) ; signature de l'Agent Logistique au stylo."""
     try:
-        signature = lire_signature(request.data.get("signature") if isinstance(request.data, dict) else None)
-    except ValueError as exc:
-        return Response({"signature": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+        sig = signature_de_la_requete(request)  # signature + mot de passe retapé (15/10/2026)
+    except ErreurSignature as exc:
+        return exc.reponse()
     with transaction.atomic():
         r = Requisition.objects.select_for_update(of=("self",)).filter(demande_id=pk).first()
         s = _sortie_de(pk)
@@ -223,7 +223,9 @@ def creer_bon(request, pk):
         restantes = [l for l in lignes_a_rendre(s) if l["reste"] > 0]
         if not restantes:
             return Response({"general": ["Tout le matériel de ce bon est déjà rentré."]}, status=status.HTTP_400_BAD_REQUEST)
-        b = BonRetour.objects.create(sortie=s, imprime_par=request.user, signature_agent=signature)
+        b = BonRetour.objects.create(sortie=s, imprime_par=request.user, signature_agent=sig.b64,
+                                     origine_signature_agent=sig.origine)
+        enregistrer_si_demande(request.user, sig)
         for l in restantes:
             lr = LigneRetour.objects.create(bon=b, ligne_sortie_id=l["ligne_sortie"], article_id=l["article"]["id"],
                                             qte_attendue=l["reste"])

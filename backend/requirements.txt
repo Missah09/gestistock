@@ -3,6 +3,8 @@ djangorestframework>=3.15
 psycopg[binary]>=3.2
 python-dotenv>=1.0
 reportlab>=4.2,<6
+# Exports Excel des écrans Rapports et Historique (15/10/2026)
+openpyxl>=3.1,<4
 # Mise en ligne (Render + Neon, 12/10/2026)
 gunicorn>=23.0
 whitenoise>=6.7

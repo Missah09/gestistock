@@ -9,13 +9,15 @@ import Connexion from "./pages/Connexion.jsx";
 import AValider from "./pages/AValider.jsx";
 import AViser from "./pages/AViser.jsx";
 import Demandes from "./pages/Demandes.jsx";
+import Historique from "./pages/Historique.jsx";
+import Rapports from "./pages/Rapports.jsx";
 import Requisitions from "./pages/Requisitions.jsx";
 import Retours from "./pages/Retours.jsx";
 import Sorties from "./pages/Sorties.jsx";
 import TableauDeBord from "./pages/TableauDeBord.jsx";
 
 // Écrans déjà développés ; les autres entrées du menu affichent « en préparation ».
-const ECRANS = { Aide, "Tableau de bord": TableauDeBord, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, "Retours de stock": Retours, Comptes };
+const ECRANS = { Aide, "Tableau de bord": TableauDeBord, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, "Retours de stock": Retours, "Générer Rapports": Rapports, Historique, Comptes };
 
 /** Menu selon le rôle (ordre fixé le 11/10/2026).
  *  Articles (consultation) pour tous ; Tableau de bord pour l'Agent Logistique et le Responsable HBC. */

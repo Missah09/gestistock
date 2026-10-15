@@ -652,3 +652,65 @@ button.tdb-carte:focus-visible { outline: 3px solid var(--hbc-pale); outline-off
 
 @media (max-width: 1250px) { .tdb-cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1000px) { .tdb-grille { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Générer Rapports (15/10/2026) : six cartes, fenêtre du rapport ---------- */
+.rapports { display: flex; flex-direction: column; gap: 14px; padding-top: 20px; }
+.rapports-intro { margin: 0; font-size: 15px; color: var(--gris); }
+.rapports-intro b { color: var(--encre); }
+.rapports-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.rapport-tuile { padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; }
+.rapport-tuile h2 { margin: 6px 0 0; font-size: 18px; }
+.rapport-tuile p { margin: 0 0 6px; color: var(--gris); font-size: 14px; line-height: 1.45; flex: 1; }
+.rapport-boutons { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.rapport-btn { height: 44px; padding: 0 14px; font-size: 14.5px; font-weight: 700; }
+.rapport-icone { flex: none; width: 50px; height: 50px; border-radius: 12px; display: grid; place-items: center; }
+.rapport-icone.bleu { background: var(--hbc-pale); color: var(--hbc); }
+.rapport-icone.vert { background: var(--vert-clair); color: var(--vert-fonce); }
+.rapport-icone.orange { background: var(--orange-clair); color: #c27a0e; }
+.rapport-icone.bleu-clair { background: #e3f0fb; color: #2b78b5; }
+.rapport-icone.violet { background: var(--violet-clair); color: var(--violet); }
+.rapport-icone.rouge { background: var(--rouge-clair); color: var(--rouge); }
+.fenetre-tete .rapport-icone { width: 40px; height: 40px; border-radius: 10px; margin-right: 12px; }
+.fenetre.fenetre-rapport { width: min(1400px, calc(100vw - 32px)); height: calc(100vh - 40px); }
+.fenetre-rapport .fenetre-corps { background: var(--fond); }
+.fenetre-rapport .fenetre-tete { gap: 0; }
+.rapport-actions { display: flex; gap: 8px; margin-right: 12px; }
+.rapport-entete { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 12px; }
+.rapport-sous-titre { color: var(--gris); font-size: 14px; }
+.rapport-resume { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.rapport-resume span { background: #fff; border: 1px solid #d3dbe4; border-radius: 999px; padding: 5px 14px; font-size: 14px; color: var(--gris); }
+.rapport-resume b { color: var(--encre); margin-left: 4px; }
+.card.rapport-carte { overflow-x: auto; }
+.tableau.rapport-table td { height: 42px; padding-top: 6px; padding-bottom: 6px; }
+.tableau.rapport-table th.droite, .tableau.rapport-table td.droite { text-align: right; }
+.rapport-table tr.rapport-section td { background: var(--hbc-pale); color: var(--hbc-fonce); font-weight: 800; font-size: 14px;
+  height: 38px; border-left: 4px solid var(--hbc-clair); }
+.rapport-table tbody + tbody tr.rapport-section td { border-top: 10px solid #fff; }
+.rapport-table tr.rapport-total td { background: #f3f5f8; font-weight: 800; }
+.rapport-table tr.rapport-total.general td { background: var(--hbc-pale); color: var(--hbc-fonce); font-size: 15px; border-top: 2px solid var(--hbc-clair); }
+.rapport-table tbody tr.rapport-section:hover td, .rapport-table tbody tr.rapport-total:hover td { background: inherit; }
+.tableau tr.ligne-alerte-fond td { background: #fff6f5; }
+.detail-cellule { display: block; font-size: 12.5px; color: var(--gris); font-weight: 500; margin-top: 2px; overflow-wrap: anywhere; }
+.texte-orange { color: var(--orange); font-weight: 700; }
+.texte-bleu { color: #1d5a8c; font-weight: 700; }
+.texte-violet { color: var(--violet); font-weight: 700; }
+.rapport-note { margin: 10px 2px 0; font-size: 13px; color: var(--gris); font-style: italic; }
+.vide-rapport { padding: 40px; text-align: center; color: var(--gris); font-size: 15px; }
+.en-chargement { opacity: .55; transition: opacity .15s; }
+.date-filtre { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--gris); }
+.date-filtre .saisie { height: 40px; width: 160px; font-weight: 600; }
+.fiche-au-dessus { position: relative; z-index: 25; }
+@media (max-width: 1150px) { .rapports-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .rapports-grille { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Historique (15/10/2026) ---------- */
+.barre-historique .recherche { flex: 0 1 280px; }
+.barre-historique .liste-deroulante.filtre { flex: 0 0 160px; }
+.barre-historique .liste-deroulante.filtre.filtre-large { flex-basis: 200px; }
+.tableau.historique td { height: 50px; padding-top: 6px; padding-bottom: 6px; }
+.tableau.historique th.droite, .tableau.historique td.droite { text-align: right; }
+.tableau.historique td.quand { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tableau.historique .code-hist { display: inline; margin-left: 10px; font-size: 12px; min-width: 0; }
+.tableau.historique td.stock-hist { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tableau.historique td.reference { font-size: 13px; color: var(--hbc-fonce); font-weight: 600; }
+.tableau.historique td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }

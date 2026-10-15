@@ -194,6 +194,33 @@ const FICHES = [
     ],
   },
   {
+    id: "rapports", role: AGENT, icone: "chart", titre: "Sortir un rapport (PDF ou Excel)", ecran: "Générer Rapports",
+    etapes: [
+      "Menu « Générer Rapports » : six rapports – État du stock, À commander, Consommation par chantier, Matériel prêté, Valeur du stock, Étalonnages à prévoir.",
+      "« Voir » ouvre le rapport à l'écran. En haut, choisissez au besoin le magasin, la catégorie ou la période.",
+      "En haut à droite, « PDF » le prépare pour l'imprimer ou l'envoyer, « Excel » pour retravailler les chiffres. Le fichier reprend les filtres choisis.",
+      "Les boutons « PDF » et « Excel » des cartes donnent directement le rapport complet (tous les magasins).",
+    ],
+    astuces: [
+      "« À commander » : les articles sous le seuil, regroupés par fournisseur, avec la quantité pour revenir au minimum et le montant estimé.",
+      "« Consommation » : choisissez « Par service demandeur » si les demandes n'indiquent pas de chantier.",
+      "Cliquez sur une ligne pour ouvrir la fiche de l'article.",
+    ],
+  },
+  {
+    id: "historique", role: AGENT, icone: "clock", titre: "Retrouver un mouvement (Historique)", ecran: "Historique",
+    etapes: [
+      "Menu « Historique » : tout ce qui s'est passé, le plus récent en haut – entrées, sorties, retours, corrections, et les étapes des demandes (validation, signature, bon imprimé).",
+      "Pour chaque entrée, sortie ou retour : la quantité (+ en vert, − en rouge) et le stock de l'article avant → après.",
+      "Filtrez par type, par personne ou par période (« Cette semaine » au départ ; « Période choisie… » pour des dates précises). La recherche trouve un article, un n° de bon (RM-…, BR-…) ou un nom.",
+      "« Excel » ou « PDF » (en haut à droite) donne toutes les lignes affichées par ces filtres.",
+    ],
+    astuces: [
+      "Personne ne peut modifier l'historique. Une quantité corrigée dans l'administration y apparaît en « Correction », avec le nom de la personne.",
+      "Cliquez sur une ligne pour ouvrir la fiche de l'article.",
+    ],
+  },
+  {
     id: "bons", role: RESPONSABLE, icone: "doc", titre: "Consulter les bons signés", ecran: "Liste Réquisitions",
     etapes: [
       "Menu « Liste Réquisitions » : tous les bons signés par la Logistique et par vous.",

@@ -156,11 +156,20 @@ def retirer(article, etat, qte):
         Article.objects.filter(pk=article.pk).update(qte_stock=F("qte_stock") - qte)
 
 
-def noter(article, type_, quantite, etat_avant="", etat_apres="", reference="", motif="", par=None, exemplaire=None):
-    """Historique : chaque changement d'état est conservé."""
+# Sens de chaque mouvement sur le stock disponible (15/10/2026, écran « Historique »).
+SENS = {"RECEPTION": 1, "RETOUR": 1, "REPARATION": 1, "CORRECTION": 1, "SORTIE": -1, "REBUT": 0}
+
+
+def noter(article, type_, quantite, etat_avant="", etat_apres="", reference="", motif="", par=None, exemplaire=None,
+          variation=None):
+    """Historique : chaque mouvement (et changement d'état) est conservé, avec sa variation du stock disponible.
+    `variation` : à donner pour une correction en moins (sinon déduite du type : +quantité, ou −quantité pour une sortie)."""
     if quantite <= 0:
         return None
+    if variation is None:
+        variation = SENS.get(str(type_), 1) * quantite
     return MouvementEtat.objects.create(article=article, exemplaire=exemplaire, type=type_, quantite=quantite,
+                                        variation=variation,
                                         etat_avant=etat_avant or "", etat_apres=etat_apres or "",
                                         reference=reference[:60], motif=motif[:250],
                                         par=par if par and par.is_authenticated else None)

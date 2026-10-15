@@ -276,6 +276,49 @@ export function deconnecterCompte(id) {
   return envoyer(`/api/comptes/${id}/deconnecter/`);
 }
 
+// ---------- Générer Rapports et Historique (Agent Logistique, 15/10/2026) ----------
+/** Réglages d'un écran → paramètres de l'adresse (les valeurs vides ne sont pas envoyées). */
+function parametres(reglages = {}) {
+  const p = new URLSearchParams();
+  Object.entries(reglages).forEach(([k, v]) => { if (v !== "" && v != null && v !== false) p.set(k, v); });
+  return p;
+}
+/** Télécharge un fichier (PDF, Excel) sous le nom donné par le serveur. */
+async function telechargerFichier(url, nomParDefaut) {
+  const reponse = await appel(url);
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => ({}));
+    throw new Error(corps.general?.[0] ?? `Erreur ${reponse.status}`);
+  }
+  const nom = (reponse.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/)?.[1] || nomParDefaut;
+  const lienBlob = URL.createObjectURL(await reponse.blob());
+  const lien = document.createElement("a");
+  lien.href = lienBlob;
+  lien.download = nom;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+  setTimeout(() => URL.revokeObjectURL(lienBlob), 60_000);
+}
+/** Les six rapports (cartes de l'écran) et les listes des filtres. */
+export function lireCatalogueRapports() {
+  return lire("/api/rapports/");
+}
+export function lireRapport(cle, reglages) {
+  return lire(`/api/rapports/${cle}/?${parametres(reglages)}`);
+}
+/** fichier : "pdf" ou "xlsx" */
+export function telechargerRapport(cle, reglages, fichier) {
+  return telechargerFichier(`/api/rapports/${cle}/?${parametres({ ...reglages, fichier })}`, `${cle}.${fichier}`);
+}
+export function lireHistorique(reglages) {
+  return lire(`/api/historique/?${parametres(reglages)}`);
+}
+export function exporterHistorique(reglages, fichier) {
+  const { page, ...filtres } = reglages; // eslint-disable-line no-unused-vars
+  return telechargerFichier(`/api/historique/export/?${parametres({ ...filtres, fichier })}`, `historique.${fichier}`);
+}
+
 // ---------- Comptes ----------
 /** Qui est connecté ? Renvoie { connecte: false } ou les informations du compte. */
 /** Nombres affichés sur le menu : demandes à valider (Agent Logistique), réquisitions à viser (Responsable). */

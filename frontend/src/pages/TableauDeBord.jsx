@@ -142,7 +142,14 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
           </section>
 
           <section className="card tdb-panneau">
-            <div className="tdb-panneau-tete"><h2>Activité du jour</h2></div>
+            <div className="tdb-panneau-tete">
+              <h2>Activité du jour</h2>
+              {ouvrir("Historique") && (
+                <button type="button" className="btn lien" onClick={ouvrir("Historique", { periode: "jour" })}>
+                  Historique<Icon name="fleche" size={16} stroke={2.2} />
+                </button>
+              )}
+            </div>
             <ul className="tdb-activite">
               {activite.map((e, i) => {
                 const t = TYPES_ACTIVITE[e.type] ?? TYPES_ACTIVITE.demande;

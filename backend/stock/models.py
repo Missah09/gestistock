@@ -596,6 +596,9 @@ class MouvementEtat(models.Model):
     exemplaire = models.ForeignKey(Exemplaire, on_delete=models.SET_NULL, null=True, blank=True, related_name="mouvements_etat")
     type = models.CharField(max_length=12, choices=Type.choices)
     quantite = models.PositiveIntegerField("quantité")
+    # Variation du stock disponible (15/10/2026, écran « Historique ») : +6 pour une réception, −3 pour une sortie,
+    # ±n pour une correction. Le stock « avant → après » de l'Historique se calcule à partir de ces variations.
+    variation = models.IntegerField("variation du stock", null=True, blank=True)
     etat_avant = models.CharField("état avant", max_length=12, choices=Etat.choices, blank=True)
     etat_apres = models.CharField("état après", max_length=12, choices=Etat.choices, blank=True)
     reference = models.CharField("référence", max_length=60, blank=True, help_text="RM-…, BR-…, réception…")

@@ -30,6 +30,29 @@ class ArticleAdmin(admin.ModelAdmin):
     readonly_fields = ("code",)
     inlines = [StockEtatInline, ExemplaireInline]
 
+    # Corrections faites ici (15/10/2026) : notées dans l'Historique, pour que le « stock avant → après » reste juste.
+    def save_model(self, request, obj, form, change):
+        from . import etats
+        avant = Article.objects.filter(pk=obj.pk).values_list("qte_stock", flat=True).first() if change else None
+        super().save_model(request, obj, form, change)
+        if avant is not None and avant != obj.qte_stock and not etats.suivi_par_serie(obj):
+            ecart = obj.qte_stock - avant
+            etats.noter(obj, "CORRECTION", abs(ecart), variation=ecart, par=request.user,
+                        motif=f"Quantité corrigée dans l'administration ({avant} → {obj.qte_stock})")
+
+    def save_formset(self, request, form, formset, change):
+        if formset.model is not Exemplaire:
+            return super().save_formset(request, form, formset, change)
+        avant = dict(Exemplaire.objects.filter(article=form.instance).values_list("id", "statut"))
+        supprimes = [o for o in formset.deleted_forms if o.instance.pk]
+        super().save_formset(request, form, formset, change)
+        for f in supprimes:
+            noter_exemplaire_admin(request, f.instance, avant.get(f.instance.pk), None)
+        for f in formset.forms:
+            e = f.instance
+            if e.pk and f not in formset.deleted_forms and f.has_changed():
+                noter_exemplaire_admin(request, e, avant.get(e.pk), e.statut)
+
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         form.base_fields["qte_stock"].label = "Quantité en stock"
@@ -41,11 +64,39 @@ class ArticleAdmin(admin.ModelAdmin):
         return form
 
 
+def noter_exemplaire_admin(request, e, statut_avant, statut_apres):
+    """Exemplaire ajouté, supprimé, ou dont le statut change dans l'administration : +1 / −1 dans l'Historique."""
+    from . import etats
+    en_stock = Exemplaire.Statut.EN_STOCK
+    variation = int(statut_apres == en_stock) - int(statut_avant == en_stock)
+    if not variation:
+        return
+    quoi = ("ajouté" if statut_avant is None else "supprimé" if statut_apres is None
+            else f"passé de « {Exemplaire.Statut(statut_avant).label} » à « {Exemplaire.Statut(statut_apres).label} »")
+    etats.noter(e.article, "CORRECTION", 1, variation=variation, par=request.user,
+                exemplaire=e if statut_apres is not None else None,
+                motif=f"N° de série {e.numero_serie} {quoi} dans l'administration")
+
+
 @admin.register(Exemplaire)
 class ExemplaireAdmin(admin.ModelAdmin):
     list_display = ("numero_serie", "article", "code_immo", "statut", "etat", "prete_a", "date_etalonnage")
     list_filter = ("statut", "etat")
     search_fields = ("numero_serie", "code_immo", "article__nom")
+
+    def save_model(self, request, obj, form, change):
+        avant = Exemplaire.objects.filter(pk=obj.pk).values_list("statut", flat=True).first() if change else None
+        super().save_model(request, obj, form, change)
+        noter_exemplaire_admin(request, obj, avant, obj.statut)
+
+    def delete_model(self, request, obj):
+        noter_exemplaire_admin(request, obj, obj.statut, None)
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        for e in queryset.select_related("article"):
+            noter_exemplaire_admin(request, e, e.statut, None)
+        super().delete_queryset(request, queryset)
 
 
 admin.site.register(Categorie)
@@ -227,7 +278,7 @@ from .models import BonRetour, LigneRetour, MouvementEtat  # noqa: E402
 @admin.register(MouvementEtat)
 class MouvementEtatAdmin(admin.ModelAdmin):
     """Historique des états : chaque réception, sortie, retour, réparation et mise au rebut (consultation)."""
-    list_display = ("le", "type", "article", "exemplaire", "quantite", "etat_avant", "etat_apres", "reference", "par")
+    list_display = ("le", "type", "article", "exemplaire", "quantite", "variation", "etat_avant", "etat_apres", "reference", "par")
     list_filter = ("type", "etat_apres")
     search_fields = ("article__code", "article__nom", "exemplaire__numero_serie", "reference", "motif")
     readonly_fields = [f.name for f in MouvementEtat._meta.fields]

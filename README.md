@@ -76,6 +76,22 @@ Pour arrêter : fermez les deux fenêtres noires.
 - Pas de graphique. Mis à jour toutes les 30 s. Pas de migration. Tests : `stock/tests_tableau.py`.
   Sauvegarde : `sauvegarde-avant-tableau-de-bord-12-10`.
 
+## Générer Rapports et Historique (depuis le 15/10/2026)
+- **Mise à jour nécessaire** : `python manage.py migrate` (migration 0020) et le module Python **openpyxl** (fichiers Excel).
+  `demarrer-gestistock.bat` fait les deux tout seul au démarrage (Internet nécessaire la première fois) ;
+  sinon : double-cliquer sur `outils\installer-modules.bat`. Sans openpyxl, le bouton « Excel » affiche un message.
+- Menu **« Générer Rapports »** (Agent Logistique) : six rapports, chacun avec **Voir** (à l'écran, avec filtres), **PDF** et **Excel** :
+  État du stock · À commander (par fournisseur, quantité pour revenir au minimum, montant estimé) ·
+  Consommation par chantier (ou par service demandeur, sur une période) · Matériel prêté (retards en premier) ·
+  Valeur du stock (par catégorie, même total que le Tableau de bord) · Étalonnages à prévoir.
+- Menu **« Historique »** (Agent Logistique) : tous les mouvements, le plus récent en haut : entrées, sorties, retours,
+  corrections (quantité + / − et **stock avant → après**), et les étapes des demandes (demande, validation, signature, bon imprimé).
+  Filtres : recherche, type, utilisateur, période ; **Excel** et **PDF** reprennent les filtres. Personne ne peut le modifier.
+- Une quantité corrigée dans l'administration (article ou n° de série) ou par l'import du fichier de stock est notée
+  dans l'Historique (« Correction ») pour que le stock avant → après reste juste.
+- Tableau de bord : lien « Historique » dans « Activité du jour ». Aide : deux nouvelles fiches.
+- Tests : `stock/tests_rapports.py` (117 tests OK). Sauvegarde : `sauvegarde-avant-rapports-historique-15-10`.
+
 ## Réquisitions et PDF du bon (depuis le 12/10/2026)
 - Menu **« Réquisitions »** (Agent Logistique et Responsable HBC) : les bons signés par la Logistique et le Responsable,
   en onglets « À imprimer », « Imprimées », « Toutes ».
@@ -134,6 +150,9 @@ Pour arrêter : fermez les deux fenêtres noires.
 - Ne partent jamais sur GitHub : `backend/.env`, `backend/donnees/`, les sauvegardes (voir `.gitignore`).
 - **Envoyer le code sur GitHub** : double-cliquer sur `outils\publier-sur-github.bat` (Git pour Windows nécessaire).
   Après chaque modification, relancer ce fichier : Render remet le site à jour tout seul.
+  Le fichier demande le **nom de l'envoi** (ex. « Ajout de Tableau de bord ») ; vide = « Mise a jour de GestiStock ».
+- **Corriger le nom du dernier envoi** (déjà sur GitHub) : double-cliquer sur `outils\renommer-dernier-envoi.bat`
+  (seul le nom change, pas le code).
 - **Copier les données du PC vers Neon** (une fois) : `outils\copier-donnees-vers-neon.bat` (remplace tout le contenu de Neon).
 - Sur le PC, rien ne change : `demarrer-gestistock.bat` utilise toujours la base PostgreSQL locale.
 - Offre gratuite Render : le site s'endort après 15 min sans visite ; la première ouverture suivante prend ~1 minute.

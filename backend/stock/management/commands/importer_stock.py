@@ -77,9 +77,16 @@ class Command(BaseCommand):
             magasins_du_fichier.add(magasin.id)
             article = Article.objects.filter(nom=nom, emplacement__magasin=magasin).first()
             if article:
+                avant = article.qte_stock
                 for k, v in valeurs.items():
                     setattr(article, k, v)
                 article.save()
+                if avant != article.qte_stock:  # noté dans l'Historique (15/10/2026)
+                    from stock import etats
+                    if not etats.suivi_par_serie(article):
+                        etats.noter(article, "CORRECTION", abs(article.qte_stock - avant),
+                                    variation=article.qte_stock - avant,
+                                    motif=f"Quantité mise à jour par l'import du fichier de stock ({avant} → {article.qte_stock})")
                 maj += 1
             else:
                 article = Article.objects.create(nom=nom, **valeurs)

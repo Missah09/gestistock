@@ -20,7 +20,7 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py charger_exemples
+python manage.py importer_stock donnees\stock_ankorondrano.csv
 python manage.py createsuperuser
 python manage.py runserver
 ```
@@ -74,7 +74,6 @@ Pour arrêter : fermez les deux fenêtres noires.
 - **À réapprovisionner** : les 6 articles les plus urgents (Épuisé, puis Critique, puis Stock bas) ; clic = fiche de l'article.
 - **Activité du jour** : entrées en stock, demandes, validations, signatures, sorties et retours d'aujourd'hui.
 - Pas de graphique. Mis à jour toutes les 30 s. Pas de migration. Tests : `stock/tests_tableau.py`.
-  Sauvegarde : `sauvegarde-avant-tableau-de-bord-12-10`.
 
 ## Générer Rapports et Historique (depuis le 15/10/2026)
 - **Mise à jour nécessaire** : `python manage.py migrate` (migration 0020) et le module Python **openpyxl** (fichiers Excel).
@@ -90,7 +89,7 @@ Pour arrêter : fermez les deux fenêtres noires.
 - Une quantité corrigée dans l'administration (article ou n° de série) ou par l'import du fichier de stock est notée
   dans l'Historique (« Correction ») pour que le stock avant → après reste juste.
 - Tableau de bord : lien « Historique » dans « Activité du jour ». Aide : deux nouvelles fiches.
-- Tests : `stock/tests_rapports.py` (117 tests OK). Sauvegarde : `sauvegarde-avant-rapports-historique-15-10`.
+- Tests : `stock/tests_rapports.py` (117 tests OK).
 
 ## Réquisitions et PDF du bon (depuis le 12/10/2026)
 - Menu **« Réquisitions »** (Agent Logistique et Responsable HBC) : les bons signés par la Logistique et le Responsable,
@@ -122,7 +121,7 @@ Pour arrêter : fermez les deux fenêtres noires.
 - Anciennes valeurs converties par la migration 0019 : Usagé → Moyen ; À réparer et Hors service → Mauvais, **remis dans le stock
   disponible** (une ligne « Correction » est ajoutée à l'historique). Ce qui avait été mis au rebut reste hors stock.
   Les emplacements vides « Atelier – À réparer » et « Rebut » sont supprimés. **À lancer : `python manage.py migrate`.**
-- L'écran **« Matériel à réparer » a été retiré** (sauvegarde : `sauvegarde-avant-4-etats-12-10`).
+- L'écran **« Matériel à réparer » a été retiré**.
 - Menu **« Retours de stock »** (Agent Logistique) : le matériel prêté attendu (retards en rouge, pastille du menu).
   « Préparer le bon de retour » (signature au stylo) → BON DE RETOUR BR-AAAA-0001 en PDF, rempli à la main au magasin →
   « Confirmer le retour » : le stock remonte. Retour partiel : un bon par passage, le suivant ne liste que le reste.
@@ -142,7 +141,7 @@ Pour arrêter : fermez les deux fenêtres noires.
   Type et suivi par n° de série fixés à la création. Doublon refusé : même nom (accents/majuscules ignorés) dans le même magasin.
 - **Mise à jour de la base nécessaire** (colonne `suivi_serie`) : `python manage.py migrate` (migration 0018 ; le matériel qui a déjà
   des exemplaires est marqué « suivi par n° de série » automatiquement).
-- Sauvegardes : `sauvegarde-avant-nouvel-article-12-10`, `sauvegarde-avant-entree-en-stock-12-10`. Tests : `stock/tests_nouvel_article.py`.
+- Tests : `stock/tests_nouvel_article.py`.
 
 ## Mise en ligne : GitHub + Render + Neon (depuis le 12/10/2026)
 - **Un seul service Render** : Django sert l'API, l'administration et l'interface React (construite par `build.sh`).
@@ -153,6 +152,8 @@ Pour arrêter : fermez les deux fenêtres noires.
   Le fichier demande le **nom de l'envoi** (ex. « Ajout de Tableau de bord ») ; vide = « Mise a jour de GestiStock ».
 - **Corriger le nom du dernier envoi** (déjà sur GitHub) : double-cliquer sur `outils\renommer-dernier-envoi.bat`
   (seul le nom change, pas le code).
-- **Copier les données du PC vers Neon** (une fois) : `outils\copier-donnees-vers-neon.bat` (remplace tout le contenu de Neon).
+- **Repartir propre en ligne** (effacer les données d'essai) : `outils\repartir-propre-en-ligne.bat` — sauvegarde de Neon dans
+  `backend\donnees`, liste de ce qui sera effacé, puis confirmation OUI. Garde comptes, départements, magasins, fournisseurs,
+  chantiers ; remet le stock de `stock_ankorondrano.csv` ; les n° DEM, RM et BR repartent à 0001.
 - Sur le PC, rien ne change : `demarrer-gestistock.bat` utilise toujours la base PostgreSQL locale.
 - Offre gratuite Render : le site s'endort après 15 min sans visite ; la première ouverture suivante prend ~1 minute.

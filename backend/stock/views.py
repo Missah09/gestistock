@@ -4,6 +4,7 @@ from django.db.models import Case, Count, F, IntegerField, Q, When
 from rest_framework import mixins, viewsets
 from rest_framework import status
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
@@ -89,6 +90,15 @@ class ArticleViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.
         s = ArticleCreationSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         article = s.save()
+        # Historique (15/10/2026) : qui a créé l'article, et avec quelles informations.
+        from . import journal
+        from .serializers import valeurs_fiche
+        infos = {"Type": article.get_type_display(), **valeurs_fiche(article)}
+        if article.suivi_serie:
+            infos["Suivi par n° de série"] = "oui"
+        journal.modification("article_cree", "Article créé", request.user,
+                             " · ".join(f"{k} : {v}" for k, v in infos.items() if v != journal.VIDE and k != "Nom"),
+                             article=article, reference="Nouvel article", request=request)
         fiche = ArticleFicheSerializer(articles_avec_quantites().prefetch_related("exemplaires").get(pk=article.pk)).data
         return Response({**fiche, "message": f"Article {article.code} – {article.nom} créé."},
                         status=status.HTTP_201_CREATED)
@@ -273,7 +283,8 @@ def annuler_demande(request, pk):
                         status=status.HTTP_400_BAD_REQUEST)
     d.statut = Demande.Statut.ANNULEE
     d.numero_requisition = ""  # n° de réquisition éventuellement attribué : libéré
-    d.save(update_fields=["statut", "numero_requisition"])
+    d.annulee_le = timezone.now()  # Historique (15/10/2026)
+    d.save(update_fields=["statut", "numero_requisition", "annulee_le"])
     return Response({"message": f"Demande {d.numero} annulée."})
 
 

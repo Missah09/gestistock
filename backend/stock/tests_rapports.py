@@ -222,5 +222,9 @@ class RapportsEtHistoriqueTests(TestCase):
         m = MouvementEtat.objects.filter(type="CORRECTION", article=a).latest("id")
         self.assertEqual((m.variation, m.par), (-12, self.admin))
         lignes = self.a.get(f"/api/historique/?q={self.conso.code}").data["lignes"]
-        self.assertEqual(lignes[0]["stock"], "52 → 40")
+        self.assertEqual(next(l for l in lignes if l["type"] == "correction")["stock"], "52 → 40")
+        # Les autres champs changés au même moment : une ligne « Modification » (15/10/2026), sans la quantité
+        modif = next(l for l in lignes if l["type"] == "modification")
+        self.assertIn("Marque : NetHome → —", modif["detail"])  # champs non envoyés par ce formulaire : vidés, et notés
+        self.assertNotIn("Quantité", modif["detail"])
         self.assertEqual(next(l for l in lignes if l["type"] == "entree")["stock"], "50 → 56")

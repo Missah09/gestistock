@@ -68,6 +68,27 @@ class ExemplaireModificationSerializer(serializers.Serializer):
     date_etalonnage = serializers.DateField(allow_null=True, required=False)
 
 
+def valeurs_fiche(article):
+    """Valeurs de la fiche, lisibles, pour l'Historique (15/10/2026) : {libellé: texte}. Les exemplaires (n° de série)
+    sont repérés par leur id : un n° corrigé apparaît « N° de série (FJK-0O1) : FJK-0O1 → FJK-001 »."""
+    from . import journal
+    from .exports import montant
+    a = Article.objects.select_related("categorie", "emplacement__magasin", "fournisseur").get(pk=article.pk)
+    v = {
+        "Nom": journal.texte(a.nom), "Catégorie": journal.texte(a.categorie), "Unité": a.get_unite_display(),
+        "Qté minimale": journal.texte(a.qte_minimale),
+        "Emplacement": f"{a.emplacement.nom} – {a.emplacement.magasin.nom}",
+        "Prix unitaire": montant(a.prix_unitaire) or journal.VIDE, "Fournisseur": journal.texte(a.fournisseur),
+        "Réf. fournisseur": journal.texte(a.ref_fournisseur), "Réf. fabricant": journal.texte(a.ref_fabricant),
+        "Marque": journal.texte(a.marque), "Modèle": journal.texte(a.modele),
+    }
+    for e in a.exemplaires.order_by("id"):
+        v[f"#{e.id} N° de série"] = e.numero_serie
+        v[f"#{e.id} Code immo"] = journal.texte(e.code_immo)
+        v[f"#{e.id} Étalonnage"] = journal.texte(e.date_etalonnage)
+    return v
+
+
 class ArticleModificationSerializer(serializers.ModelSerializer):
     """Ce qui peut être modifié depuis la fiche.
 
@@ -121,7 +142,10 @@ class ArticleModificationSerializer(serializers.ModelSerializer):
         return lignes
 
     def update(self, article, donnees):
+        from . import journal
         lignes = donnees.pop("exemplaires", None)
+        requete = self.context.get("request")
+        avant = valeurs_fiche(article)
         with transaction.atomic():
             for champ, valeur in donnees.items():
                 setattr(article, champ, valeur)
@@ -141,6 +165,13 @@ class ArticleModificationSerializer(serializers.ModelSerializer):
                     if "date_etalonnage" in ligne:
                         e.date_etalonnage = ligne["date_etalonnage"]
                     e.save()
+            # Historique (15/10/2026) : une ligne « Modification » par enregistrement, avec ce qui a changé
+            # (ancienne → nouvelle valeur), la personne et l'heure. Rien de changé : aucune ligne.
+            article.refresh_from_db()
+            detail = journal.differences(avant, valeurs_fiche(article))
+            if detail:
+                journal.modification("article_modifie", "Fiche article modifiée", getattr(requete, "user", None), detail,
+                                     article=article, reference="Fiche article", request=requete)
         return article
 
 
@@ -286,6 +317,12 @@ class EntreeSerializer(serializers.Serializer):
                     etats.noter(a, "RECEPTION", l["quantite"], etat_apres=etat, reference=reference, par=par)
                 if l.get("prix_unitaire") is not None:  # dernier prix d'achat connu
                     Article.objects.filter(pk=a.pk).update(prix_unitaire=l["prix_unitaire"])
+                    if l["prix_unitaire"] != a.prix_unitaire:  # Historique (15/10/2026) : ancien → nouveau prix
+                        from . import journal
+                        from .exports import montant
+                        journal.modification("prix_entree", "Prix mis à jour par l'entrée en stock", par,
+                                             f"Prix unitaire : {montant(a.prix_unitaire) or journal.VIDE} → {montant(l['prix_unitaire'])}"
+                                             " (dernier prix d'achat)", article=a, reference=reference)
         return entree
 
 

@@ -15,6 +15,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from . import journal
 from .models import ROLE_AGENT, ROLE_RESPONSABLE, Departement, Profil, fermer_session, roles_de, session_ouverte
 from .permissions import EstAdministrateur
 from .serializers import heure_locale
@@ -76,6 +77,14 @@ def _appliquer(u, v):
         (u.groups.add if oui else u.groups.remove)(g)
 
 
+def valeurs_compte(u):
+    """Ce qui se modifie dans l'écran « Comptes », lisible, pour l'historique des comptes (15/10/2026)."""
+    p, _ = Profil.objects.get_or_create(user=u)
+    return {"Identifiant": u.username, "Prénom": journal.texte(u.first_name), "Nom": journal.texte(u.last_name),
+            "Email": journal.texte(u.email), "Département": journal.texte(p.departement),
+            "Rôles": ", ".join(r for r in roles_de(u) if r != "Saisisseur") or "Saisisseur"}
+
+
 def _erreurs_mdp(mdp, u):
     if not mdp:
         return ["Indiquez un mot de passe provisoire."]
@@ -113,6 +122,9 @@ def comptes(request):
     with transaction.atomic():
         u = User.objects.create_user(ident, password=mdp)
         _appliquer(u, v)
+        journal.compte("compte_cree", "Compte créé", request.user, u,
+                       " · ".join(f"{k} : {x}" for k, x in valeurs_compte(u).items() if x != journal.VIDE)
+                       + " · Mot de passe provisoire donné", request=request)
     return Response({"message": f"Compte « {ident} » créé. Donnez-lui son identifiant et son mot de passe provisoire.",
                      "compte": compte_json(u)}, status=status.HTTP_201_CREATED)
 
@@ -135,7 +147,11 @@ def modifier(request, pk):
     v, e = _verifier(request.data, u)
     if e:
         return Response(e, status=status.HTTP_400_BAD_REQUEST)
+    avant = valeurs_compte(u)
     _appliquer(u, v)
+    detail = journal.differences(avant, valeurs_compte(u))
+    if detail:
+        journal.compte("compte_modifie", "Compte modifié", request.user, u, detail, request=request)
     return Response({"message": f"Compte « {u.username} » enregistré.", "compte": compte_json(u)})
 
 
@@ -149,10 +165,15 @@ def activer(request, pk):
     actif = bool(request.data.get("actif"))
     if not actif and u == request.user:
         return Response({"general": ["Vous ne pouvez pas désactiver votre propre compte."]}, status=status.HTTP_400_BAD_REQUEST)
+    change = u.is_active != actif
     u.is_active = actif
     u.save(update_fields=["is_active"])
     if not actif:
         fermer_session(u.profil.cle_session)
+    if change:
+        journal.compte("compte_reactive" if actif else "compte_desactive", "Compte réactivé" if actif else "Compte désactivé",
+                       request.user, u, "Il peut de nouveau se connecter" if actif
+                       else "Il ne peut plus se connecter (déconnecté s'il était connecté)", request=request)
     return Response({"message": f"Compte « {u.username} » {'réactivé' if actif else 'désactivé : il ne peut plus se connecter'}.",
                      "compte": compte_json(u)})
 
@@ -174,6 +195,10 @@ def mot_de_passe(request, pk):
         update_session_auth_hash(request, u)  # l'administrateur qui change son propre mot de passe reste connecté
     else:
         fermer_session(u.profil.cle_session)
+    # Jamais le mot de passe lui-même dans le journal.
+    journal.compte("mot_de_passe", "Mot de passe changé", request.user, u,
+                   "Nouveau mot de passe donné par l'administrateur" + ("" if u == request.user else " (déconnecté de son appareil)"),
+                   request=request)
     return Response({"message": f"Mot de passe de « {u.username} » changé.", "compte": compte_json(u)})
 
 
@@ -187,7 +212,10 @@ def deconnecter(request, pk):
     if u == request.user:
         return Response({"general": ["Pour vous déconnecter vous-même, utilisez « Se déconnecter »."]},
                         status=status.HTTP_400_BAD_REQUEST)
+    etait = session_ouverte(u.profil)
     fermer_session(u.profil.cle_session)
+    journal.compte("deconnexion_forcee", "Déconnecté par l'administrateur", request.user, u,
+                   "Session de son appareil fermée" if etait else "Il n'était pas connecté", request=request)
     return Response({"message": f"« {u.username} » a été déconnecté.", "compte": compte_json(u)})
 
 
@@ -213,5 +241,58 @@ def signature(request, pk):
         return Response({"general": ["Aucune signature enregistrée dans ce compte."]}, status=status.HTTP_400_BAD_REQUEST)
     p.signature, p.signature_le = "", None
     p.save(update_fields=["signature", "signature_le"])
+    journal.compte("signature_retiree", "Signature enregistrée retirée", request.user, u,
+                   "Retirée par l'administrateur ; les bons déjà signés ne changent pas", request=request)
     return Response({"message": f"Signature enregistrée de « {u.username} » retirée. Les bons déjà signés ne changent pas.",
                      "compte": compte_json(u)})
+
+
+# ---------------------------------------------------------------- Historique des comptes et journal de connexion (15/10/2026)
+TONS_JOURNAL = {"compte_cree": "vert", "compte_reactive": "vert", "compte_desactive": "rouge", "admin_suppr": "rouge",
+                "connexion": "vert", "connexion_ratee": "rouge", "connexion_bloquee": "rouge", "session_remplacee": "orange",
+                "deconnexion_forcee": "orange", "deconnexion": "gris"}
+PAR_PAGE_JOURNAL = 50
+
+
+@api_view(["GET"])
+@permission_classes([EstAdministrateur])
+def journal_comptes(request):
+    """Écran « Comptes » de l'administrateur, onglets « Historique des comptes » (?vue=comptes) et
+    « Journal de connexion » (?vue=connexions). Filtres : compte, periode (du, au), q, resultat=echecs, page."""
+    from .models import Evenement
+    from .rapports import PERIODES, periode_de
+    from .views import sans_accents
+    p = request.query_params
+    vue = Evenement.Categorie.CONNEXION if p.get("vue") == "connexions" else Evenement.Categorie.COMPTE
+    du, au, libelle = periode_de(p, defaut="mois")
+    qs = Evenement.objects.filter(categorie=vue).select_related("compte", "par")
+    if du:
+        qs = qs.filter(le__date__gte=du)
+    if au:
+        qs = qs.filter(le__date__lte=au)
+    if str(p.get("compte") or "").isdigit():
+        qs = qs.filter(compte_id=int(p["compte"]))
+    if vue == Evenement.Categorie.CONNEXION and p.get("resultat") == "echecs":
+        qs = qs.filter(action__in=["connexion_ratee", "connexion_bloquee"])
+    lignes = list(qs)
+    q = sans_accents(p.get("q") or "").split()
+    if q:
+        lignes = [e for e in lignes if all(m in sans_accents(" ".join(
+            [e.libelle, e.objet, e.identifiant, e.detail, e.par_nom, e.adresse_ip or "", e.appareil])) for m in q)]
+    try:
+        page = max(1, int(p.get("page") or 1))
+    except ValueError:
+        page = 1
+    pages = max(1, -(-len(lignes) // PAR_PAGE_JOURNAL))
+    page = min(page, pages)
+    morceau = lignes[(page - 1) * PAR_PAGE_JOURNAL: page * PAR_PAGE_JOURNAL]
+    return Response({
+        "lignes": [{"id": e.id, "le": heure_locale(e.le), "evenement": e.libelle, "ton": TONS_JOURNAL.get(e.action, "violet"),
+                    "compte": journal.nom_de(e.compte) if e.compte else (e.objet or e.identifiant),
+                    "identifiant": e.compte.username if e.compte else e.identifiant,
+                    "par": journal.nom_de(e.par) if e.par else e.par_nom, "detail": e.detail,
+                    "adresse_ip": e.adresse_ip or "", "appareil": e.appareil} for e in morceau],
+        "count": len(lignes), "page": page, "pages": pages, "par_page": PAR_PAGE_JOURNAL,
+        "periode": {"libelle": libelle}, "periodes": [{"valeur": v, "libelle": l} for v, l in PERIODES],
+        "comptes": [{"id": u.id, "nom": journal.nom_de(u)} for u in User.objects.order_by("first_name", "last_name", "username")],
+    })

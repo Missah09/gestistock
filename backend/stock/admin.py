@@ -336,3 +336,136 @@ class BonRetourAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+# ---------------------------------------------------------------- Journal (15/10/2026)
+# Tout ce qui est ajouté, modifié ou supprimé dans l'administration est noté (ancienne → nouvelle valeur) :
+# comptes → historique des comptes (administrateur) ; le reste → « Modification » dans l'écran Historique.
+from django.contrib.auth.models import User as _User  # noqa: E402
+
+from . import journal as _journal  # noqa: E402
+from .models import Evenement  # noqa: E402
+
+
+@admin.register(Evenement)
+class EvenementAdmin(admin.ModelAdmin):
+    """Journal des événements : consultation seulement (personne ne peut le modifier ni l'effacer)."""
+    list_display = ("le", "categorie", "libelle", "objet", "par_nom", "adresse_ip")
+    list_filter = ("categorie", "action")
+    search_fields = ("libelle", "objet", "detail", "identifiant", "par_nom", "reference")
+    readonly_fields = [f.name for f in Evenement._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+def _cible(obj):
+    """(catégorie, compte, article, objet) d'une ligne du journal pour cet objet."""
+    from .models import Profil
+    compte = obj if isinstance(obj, _User) else obj.user if isinstance(obj, Profil) else None
+    if compte is not None:
+        return Evenement.Categorie.COMPTE, compte, None, _journal.nom_de(compte)
+    article = obj if isinstance(obj, Article) else getattr(obj, "article", None) if hasattr(obj, "article_id") else None
+    return Evenement.Categorie.MODIFICATION, None, article, f"{str(obj._meta.verbose_name).capitalize()} « {obj} »"
+
+
+def _noter_admin(request, obj, quoi, detail):
+    categorie, compte, article, objet = _cible(obj)
+    _journal.noter(categorie, f"admin_{quoi}", {"ajout": "Ajouté dans l'administration",
+                                                "modif": "Modifié dans l'administration",
+                                                "suppr": "Supprimé dans l'administration"}[quoi],
+                   par=request.user, compte=compte, article=article, objet=objet, reference="Administration",
+                   detail=detail, request=request)
+
+
+class JournalAdminMixin:
+    """Ajouté devant chaque page de l'administration (voir la boucle ci-dessous)."""
+
+    def save_model(self, request, obj, form, change):
+        ancien = type(obj).objects.filter(pk=obj.pk).first() if change and obj.pk else None
+        request._journal_avant = _journal.instantane(ancien)
+        request._journal_lignes = []
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        avant = {f.instance.pk: _journal.instantane(type(f.instance).objects.filter(pk=f.instance.pk).first())
+                 for f in formset.forms if f.instance.pk}
+        supprimes = [f.instance for f in formset.deleted_forms if f.instance.pk]
+        noms_supprimes = {o.pk: str(o) for o in supprimes}
+        super().save_formset(request, form, formset, change)
+        lignes = getattr(request, "_journal_lignes", None)
+        if lignes is None:
+            return
+        for f in formset.forms:
+            o = f.instance
+            nom = str(o._meta.verbose_name).capitalize()
+            if o.pk in noms_supprimes:
+                lignes.append(f"{nom} « {noms_supprimes[o.pk]} » supprimé")
+            elif o.pk and o.pk not in avant and f.has_changed():
+                lignes.append(f"{nom} « {o} » ajouté")
+            elif o.pk in avant:
+                d = _journal.differences(avant[o.pk], _journal.instantane(type(o).objects.filter(pk=o.pk).first()))
+                if d:
+                    lignes.append(f"{nom} « {o} » : {d}")
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        obj = form.instance
+        apres = _journal.instantane(type(obj).objects.filter(pk=obj.pk).first())
+        lignes = getattr(request, "_journal_lignes", [])
+        if change:
+            d = _journal.differences(getattr(request, "_journal_avant", {}), apres)
+            detail = " · ".join(filter(None, [d, *lignes]))
+            if detail:
+                _noter_admin(request, obj, "modif", detail)
+        else:
+            detail = " · ".join([f"{k} : {v}" for k, v in apres.items() if v != _journal.VIDE] + lignes)
+            _noter_admin(request, obj, "ajout", detail)
+
+    def delete_model(self, request, obj):
+        detail = " · ".join(f"{k} : {v}" for k, v in _journal.instantane(obj).items() if v != _journal.VIDE)
+        categorie, compte, article, objet = _cible(obj)
+        super().delete_model(request, obj)
+        _journal.noter(categorie, "admin_suppr", "Supprimé dans l'administration", par=request.user,
+                       compte=None if compte is obj else compte, identifiant=getattr(compte, "username", ""),
+                       article=None if article is obj else article, objet=objet, reference="Administration",
+                       detail=detail, request=request)
+
+    def delete_queryset(self, request, queryset):
+        for obj in list(queryset):
+            self.delete_model(request, obj)
+
+
+class CompteJournalAdmin(JournalAdminMixin, CompteAdmin):
+    def user_change_password(self, request, id, form_url=""):
+        reponse = super().user_change_password(request, id, form_url)
+        if request.method == "POST" and reponse.status_code == 302:  # mot de passe enregistré (jamais noté lui-même)
+            u = _User.objects.filter(pk=id).first()
+            if u:
+                _journal.compte("mot_de_passe", "Mot de passe changé", request.user, u,
+                                "Changé dans l'administration", request=request)
+        return reponse
+
+    def retirer_signature(self, request, queryset):
+        avec = list(queryset.filter(profil__signature__gt=""))
+        super().retirer_signature(request, queryset)
+        for u in avec:
+            _journal.compte("signature_retiree", "Signature enregistrée retirée", request.user, u,
+                            "Retirée dans l'administration ; les bons déjà signés ne changent pas", request=request)
+    retirer_signature.short_description = "Retirer la signature scannée enregistrée"
+
+
+for _modele, _page in list(admin.site._registry.items()):
+    if _modele is Evenement:
+        continue
+    admin.site.unregister(_modele)
+    if _modele is _User:
+        admin.site.register(_modele, CompteJournalAdmin)
+    else:
+        admin.site.register(_modele, type(type(_page).__name__, (JournalAdminMixin, type(_page)), {}))

@@ -247,8 +247,8 @@ def annuler_bon(request, bon_id):
         if b.statut != BonRetour.Statut.A_CONFIRMER:
             return Response({"general": [f"Ce bon est déjà {b.get_statut_display().lower()} : il ne peut plus être annulé."]},
                             status=status.HTTP_400_BAD_REQUEST)
-        b.statut, b.annule_le = BonRetour.Statut.ANNULE, timezone.now()
-        b.save(update_fields=["statut", "annule_le"])
+        b.statut, b.annule_le, b.annule_par = BonRetour.Statut.ANNULE, timezone.now(), request.user
+        b.save(update_fields=["statut", "annule_le", "annule_par"])
     s = _sortie_de(b.sortie.requisition.demande_id)
     return Response({"message": f"Bon de retour {b.numero} annulé.", "demande": _avec_retour([s])[0]})
 

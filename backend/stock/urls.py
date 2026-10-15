@@ -21,6 +21,8 @@ urlpatterns = [path("session/", session), path("compteurs/", compteurs),
                path("historique/", views_rapports.historique), path("historique/export/", views_rapports.historique_export),
                # Écran « Comptes » (administrateur)
                path("comptes/", views_gestion_comptes.comptes), path("comptes/<int:pk>/", views_gestion_comptes.modifier),
+               # Historique des comptes et journal de connexion (administrateur, 15/10/2026)
+               path("comptes/journal/", views_gestion_comptes.journal_comptes),
                path("comptes/<int:pk>/activer/", views_gestion_comptes.activer),
                path("comptes/<int:pk>/mot-de-passe/", views_gestion_comptes.mot_de_passe),
                path("comptes/<int:pk>/deconnecter/", views_gestion_comptes.deconnecter),

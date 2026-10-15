@@ -79,6 +79,11 @@ def connexion(request):
 
     cle = f"connexion-ratee:{identifiant.lower()}"
     if cache.get(cle, 0) >= ESSAIS_MAX:
+        from django.contrib.auth.models import User
+        from .models import _journal_connexion
+        _journal_connexion("connexion_bloquee", "Connexion bloquée", request,
+                           compte=User.objects.filter(username__iexact=identifiant).first(), identifiant=identifiant,
+                           detail=f"Trop d'essais ratés ({ESSAIS_MAX}) : bloqué 5 minutes")
         return Response({"general": ["Trop d'essais ratés : patientez 5 minutes avant de réessayer."]},
                         status=status.HTTP_429_TOO_MANY_REQUESTS)
 
@@ -107,6 +112,10 @@ def ma_signature(request):
     from .signatures import en_data_url, profil_de
     p = profil_de(request.user)
     if request.method == "DELETE":
+        from . import journal
+        if p.signature:
+            journal.compte("signature_retiree", "Signature enregistrée retirée", request.user, request.user,
+                           "Retirée par la personne elle-même ; les bons déjà signés ne changent pas", request=request)
         p.signature, p.signature_le = "", None
         p.save(update_fields=["signature", "signature_le"])
         return Response({"enregistree": False, "image": None, "le": None,

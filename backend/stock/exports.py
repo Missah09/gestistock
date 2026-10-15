@@ -8,7 +8,7 @@ Un rapport (ou l'historique filtré) est décrit une seule fois, sous une forme 
      "total": {...} ou None, "resume": [["Articles", "23"], ...], "notes": ["…"]}
 
 Types de colonne : texte, code, quantite (unité dans ligne["_unite"]), nombre, montant (Ar), date (AAAA-MM-JJ),
-dateheure (ISO), pill (libellé ; couleur dans ligne["_ton_<cle>"] : rouge, orange, vert, bleu, gris, violet).
+dateheure (ISO), pill (libellé ; couleur dans ligne["_ton_<cle>"] : rouge, orange, vert, bleu, gris, violet, sable).
 `_ton_<cle>` colore aussi le texte des autres colonnes. L'écran affiche la même description (Rapports.jsx).
 """
 import datetime
@@ -25,9 +25,9 @@ MESSAGE_SANS_OPENPYXL = ("Le fichier Excel ne peut pas être fabriqué : le modu
                          "Double-cliquez sur outils\\installer-modules.bat (Internet nécessaire), puis redémarrez GestiStock.")
 
 TONS = {"rouge": "#b8322a", "orange": "#9a5c00", "vert": "#13785f", "bleu": "#1d5a8c", "gris": "#626262",
-        "violet": "#6b46c1"}
+        "violet": "#6b46c1", "sable": "#7a5b12"}
 FONDS = {"rouge": "#fce4e2", "orange": "#fdf0d8", "vert": "#e3f4ee", "bleu": "#e3f0fb", "gris": "#eef0f2",
-         "violet": "#efeafb"}
+         "violet": "#efeafb", "sable": "#f6efdc"}
 
 
 # ---------------------------------------------------------------- Mise en forme (la même qu'à l'écran)

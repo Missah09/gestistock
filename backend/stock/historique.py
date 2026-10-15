@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from . import etats
 from .exports import quantite as quantite_texte
-from .models import Demande, MouvementEtat, Requisition
+from .models import BonRetour, Demande, Evenement, MouvementEtat, Requisition
 from .rapports import periode_de
 from .serializers import heure_locale, nom_de
 from .views import articles_avec_quantites, sans_accents
@@ -31,6 +31,8 @@ TYPES = [
     ("entree", "Entrée", "vert"), ("sortie", "Sortie", "orange"), ("retour", "Retour", "bleu"),
     ("correction", "Correction", "gris"), ("demande", "Demande", "gris"), ("validation", "Validation", "violet"),
     ("visa", "Signature", "violet"), ("refus", "Refus", "rouge"), ("impression", "Bon imprimé", "gris"),
+    # 15/10/2026 : fiches modifiées (écran ou administration), articles créés, n° corrigés, prix, listes de l'administration
+    ("modification", "Modification", "sable"),
 ]
 LIBELLE = {k: l for k, l, _ in TYPES}
 TON = {k: t for k, _, t in TYPES}
@@ -76,6 +78,8 @@ def mouvements(du, au):
     for m in qs:
         avant, apres = stocks.get(m.id, (None, None))
         type_ = TYPE_MOUVEMENT.get(m.type, "correction")
+        if m.type == "CORRECTION" and m.motif.startswith("N° de série corrigé"):
+            type_ = "modification"
         etat = m.etat_avant if m.type == "SORTIE" else (m.etat_apres or m.etat_avant)
         precedent = lignes[-1] if lignes else None
         if (precedent and precedent["_article_id"] == m.article_id and precedent["_type_m"] == m.type
@@ -99,7 +103,8 @@ def mouvements(du, au):
         })
     for l in lignes:
         v, unite = l.pop("_variation"), l["_unite"]
-        l["quantite"] = ("+" if v > 0 else "−" if v < 0 else "") + quantite_texte(abs(v), unite)
+        # Correction sans effet sur le stock (n° de série corrigé, passage au suivi par n°) : pas de quantité, « — ».
+        l["quantite"] = (("+" if v > 0 else "−") + quantite_texte(abs(v), unite)) if v else ""
         l["_ton_quantite"] = "vert" if v > 0 else "rouge" if v < 0 else None
         l["_n"] = v
         avant, apres = l.pop("_avant"), l.pop("_apres")
@@ -157,6 +162,38 @@ def evenements_du_circuit(du, au):
     for r in reqs.filter(imprimee_le__isnull=False, **_dans("imprimee_le", du, au)):
         ajouter(r.imprimee_le, "impression", r.demande, r.imprimee_par, r.numero,
                 f"Demande {r.demande.numero} : bon imprimé pour le magasin")
+    # Demande annulée par le demandeur (15/10/2026)
+    for d in base.filter(annulee_le__isnull=False, **_dans("annulee_le", du, au)):
+        ajouter(d.annulee_le, "demande", d, d.demandeur, d.numero, "Demande annulée par le demandeur")
+    # Bons de retour imprimés, annulés (15/10/2026) : le retour confirmé, lui, est un mouvement du stock.
+    bons = BonRetour.objects.select_related("sortie__requisition__demande", "imprime_par", "annule_par").prefetch_related(
+        "lignes__article")
+    for b in bons.filter(**_dans("imprime_le", du, au)):
+        d = b.sortie.requisition.demande
+        lignes.append({"_le": b.imprime_le, "type": "retour", "article": _articles_texte(list(b.lignes.all())), "code": "",
+                       "_article_id": None, "_unite": None, "quantite": "", "stock": "", "_n": 0, "reference": b.numero,
+                       "detail": f"Bon de retour imprimé (demande {d.numero})", "_par_id": b.imprime_par_id,
+                       "par": nom_de(b.imprime_par)})
+    for b in bons.filter(annule_le__isnull=False, **_dans("annule_le", du, au)):
+        d = b.sortie.requisition.demande
+        lignes.append({"_le": b.annule_le, "type": "retour", "article": _articles_texte(list(b.lignes.all())), "code": "",
+                       "_article_id": None, "_unite": None, "quantite": "", "stock": "", "_n": 0, "reference": b.numero,
+                       "detail": f"Bon de retour annulé : le matériel n'est pas venu (demande {d.numero})",
+                       "_par_id": b.annule_par_id, "par": nom_de(b.annule_par) if b.annule_par else ""})
+    return lignes
+
+
+def modifications(du, au):
+    """Lignes « Modification » du journal (15/10/2026) : fiches, articles créés, prix, listes de l'administration.
+    Les comptes et les connexions n'y sont pas : réservés à l'administrateur (écran « Comptes »)."""
+    lignes = []
+    qs = Evenement.objects.filter(categorie=Evenement.Categorie.MODIFICATION, **_dans("le", du, au)).select_related("article", "par")
+    for e in qs:
+        lignes.append({"_le": e.le, "type": "modification", "article": e.article.nom if e.article else e.objet,
+                       "code": e.article.code if e.article else "", "_article_id": e.article_id, "_unite": None,
+                       "quantite": "", "stock": "", "_n": 0, "reference": e.reference,
+                       "detail": " · ".join(filter(None, [e.libelle, e.detail])), "_par_id": e.par_id,
+                       "par": nom_de(e.par) if e.par else e.par_nom})
     return lignes
 
 
@@ -165,10 +202,12 @@ def historique(params):
     du, au, libelle = periode_de(params, defaut="semaine")
     type_ = params.get("type") or ""
     lignes = []
-    if type_ in ("", "entree", "sortie", "retour", "correction"):
+    if type_ in ("", "entree", "sortie", "retour", "correction", "modification"):
         lignes += mouvements(du, au)
-    if type_ in ("", "demande", "validation", "visa", "refus", "impression"):
+    if type_ in ("", "demande", "validation", "visa", "refus", "impression", "retour"):
         lignes += evenements_du_circuit(du, au)
+    if type_ in ("", "modification"):
+        lignes += modifications(du, au)
     if type_:
         lignes = [l for l in lignes if l["type"] == type_]
     try:
@@ -196,6 +235,8 @@ def utilisateurs():
     ids |= set(Demande.objects.exclude(demandeur=None).values_list("demandeur_id", flat=True))
     ids |= set(Demande.objects.exclude(traitee_par=None).values_list("traitee_par_id", flat=True))
     ids |= set(Requisition.objects.exclude(visa_responsable=None).values_list("visa_responsable_id", flat=True))
+    ids |= set(Evenement.objects.filter(categorie=Evenement.Categorie.MODIFICATION).exclude(par=None)
+               .values_list("par_id", flat=True))
     comptes = User.objects.filter(Q(id__in=ids) | Q(is_active=True)).order_by("first_name", "last_name", "username")
     return [{"id": u.id, "nom": nom_de(u)} for u in comptes]
 
@@ -234,5 +275,6 @@ def rapport(params):
         "sections": [{"titre": None, "lignes": lignes, "vide": "Aucun mouvement pour ces filtres."}],
         "resume": [["Lignes", str(len(lignes))], ["Entrées", str(entrees)], ["Sorties", str(sorties)]],
         "notes": ["Stock avant → après : quantité disponible au magasin de l'article. Les étapes du circuit "
-                  "(demande, validation, signature, impression) ne changent pas le stock."],
+                  "(demande, validation, signature, impression) et les modifications (ancienne → nouvelle valeur) "
+                  "ne changent pas le stock."],
     }

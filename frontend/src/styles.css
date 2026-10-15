@@ -756,3 +756,7 @@ button.tdb-carte:focus-visible { outline: 3px solid var(--hbc-pale); outline-off
 .suivi-serie .attention-definitif { color: #8a5a00; background: #fff8ec; border: 1px solid #f0d9a8; border-radius: 8px; padding: 8px 12px; }
 .passage-serie { padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .passage-serie .aide { margin: 0; flex: 1 1 260px; }
+
+/* Écran « Comptes » : onglets Comptes · Historique des comptes · Journal de connexion (15/10/2026) */
+.onglets-comptes { display: inline-flex; margin-bottom: 14px; }
+.journal-comptes td { vertical-align: top; }

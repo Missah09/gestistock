@@ -127,5 +127,9 @@ def enregistrer_si_demande(user, sig):
     """Après une signature réussie : garde la signature scannée dans le compte si la case était cochée."""
     if sig.a_enregistrer:
         p = profil_de(user)
+        remplace = bool(p.signature)
         p.signature, p.signature_le = sig.b64, timezone.now()
         p.save(update_fields=["signature", "signature_le"])
+        from . import journal  # (15/10/2026) l'image n'est jamais copiée dans le journal
+        journal.compte("signature_enregistree", "Signature enregistrée dans le compte", user, user,
+                       "Signature scannée " + ("remplacée" if remplace else "enregistrée") + " par la personne elle-même")

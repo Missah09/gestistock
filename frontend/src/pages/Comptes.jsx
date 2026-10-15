@@ -3,6 +3,10 @@ import { activerCompte, changerMotDePasse, creerCompte, deconnecterCompte, liste
 import { dateHeure } from "../format.js";
 import Icon from "../icons.jsx";
 import ListeDeroulante from "../ListeDeroulante.jsx";
+import JournalComptes from "./JournalComptes.jsx";
+
+// Onglets (15/10/2026) : la liste des comptes, l'historique des comptes, le journal de connexion.
+const VUES = [["liste", "users", "Comptes"], ["comptes", "clock", "Historique des comptes"], ["connexions", "cadenas", "Journal de connexion"]];
 
 const simple = (t) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const premier = (e) => (Array.isArray(e) ? e[0] : e);
@@ -241,6 +245,7 @@ export default function Comptes({ compte: moi }) {
   const [q, setQ] = useState("");
   const [ouvert, setOuvert] = useState(undefined); // undefined : fermé ; null : nouveau ; objet : modification
   const [annonce, setAnnonce] = useState(null);
+  const [vue, setVue] = useState("liste");
 
   const charger = () => listerComptes().then((d) => { setDonnees(d); setErreur(null); })
     .catch(() => setErreur("Impossible de joindre le serveur. Vérifiez que la fenêtre du backend (runserver) est ouverte."));
@@ -258,6 +263,16 @@ export default function Comptes({ compte: moi }) {
     <>
       <header className="top"><h1>Comptes</h1></header>
       <div className="body">
+        <div className="onglets onglets-comptes" role="tablist">
+          {VUES.map(([cle, icone, titre]) => (
+            <button key={cle} type="button" role="tab" aria-selected={vue === cle} className={`onglet${vue === cle ? " on" : ""}`}
+              onClick={() => setVue(cle)}>
+              <Icon name={icone} size={16} stroke={2} />{titre}
+            </button>
+          ))}
+        </div>
+        {vue !== "liste" && <JournalComptes key={vue} vue={vue} />}
+        {vue === "liste" && <>
         {erreur && <div className="alerte">{erreur}</div>}
         <div className="barre">
           <label className="recherche">
@@ -301,6 +316,7 @@ export default function Comptes({ compte: moi }) {
           </table>
           <div className="pied"><span>{donnees ? `${liste.length} compte${liste.length > 1 ? "s" : ""}` : ""}</span></div>
         </div>
+        </>}
       </div>
 
       {ouvert !== undefined && (

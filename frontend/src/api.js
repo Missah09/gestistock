@@ -332,6 +332,10 @@ export function telechargerRapport(cle, reglages, fichier) {
 export function lireHistorique(reglages) {
   return lire(`/api/historique/?${parametres(reglages)}`);
 }
+/** Écran « Comptes » (administrateur) : historique des comptes (vue « comptes ») ou journal de connexion (« connexions »). */
+export function lireJournalComptes(reglages) {
+  return lire(`/api/comptes/journal/?${parametres(reglages)}`);
+}
 export function exporterHistorique(reglages, fichier) {
   const { page, ...filtres } = reglages; // eslint-disable-line no-unused-vars
   return telechargerFichier(`/api/historique/export/?${parametres({ ...filtres, fichier })}`, `historique.${fichier}`);

@@ -265,6 +265,8 @@ class Demande(models.Model):
     # Date et heure de la demande : prises automatiquement sur le serveur à l'envoi.
     cree_le = models.DateTimeField("envoyée le", auto_now_add=True)
     traitee_le = models.DateTimeField("validée ou refusée le", null=True, blank=True)
+    # Annulation par le demandeur (15/10/2026) : affichée dans l'Historique.
+    annulee_le = models.DateTimeField("annulée le", null=True, blank=True)
     traitee_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
                                     related_name="demandes_traitees", verbose_name="validée ou refusée par")
     # N° de réquisition attribué dès que l'Agent Logistique clique « Valider » (12/10/2026) : il s'affiche sur le bon
@@ -511,7 +513,19 @@ def session_ouverte(profil):
         session_key=profil.cle_session, expire_date__gt=timezone.now()).exists()
 
 
-from django.contrib.auth.signals import user_logged_in, user_logged_out  # noqa: E402
+from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed  # noqa: E402
+
+
+def _ou(request):
+    """« Application » ou « Administration » (connexion à l'administration Django)."""
+    chemin = getattr(request, "path", "") or ""
+    return "Administration" if chemin.startswith("/admin") else "Application"
+
+
+def _journal_connexion(action, libelle, request, compte=None, identifiant="", detail=""):
+    from . import journal
+    journal.noter(Evenement.Categorie.CONNEXION, action, libelle, par=compte, compte=compte, identifiant=identifiant,
+                  objet=journal.nom_de(compte) if compte else identifiant, detail=detail, request=request)
 
 
 @receiver(user_logged_in)
@@ -521,15 +535,34 @@ def une_seule_connexion(sender, request, user, **kwargs):
     if not request.session.session_key:
         request.session.save()
     cle = request.session.session_key
+    remplace = bool(profil.cle_session and profil.cle_session != cle and session_ouverte(profil))
     if profil.cle_session and profil.cle_session != cle:
         fermer_session(profil.cle_session, remplacee=True)
     Profil.objects.filter(pk=profil.pk).update(cle_session=cle)
+    # Journal de connexion (15/10/2026, administrateur seulement)
+    _journal_connexion("connexion", "Connexion", request, compte=user, detail=_ou(request))
+    if remplace:
+        _journal_connexion("session_remplacee", "Déconnecté de l'autre appareil", request, compte=user,
+                           detail="Connexion sur un nouvel appareil : l'appareil précédent a été déconnecté")
 
 
 @receiver(user_logged_out)
 def oublier_session(sender, request, user, **kwargs):
     if user is not None:
         Profil.objects.filter(user=user, cle_session=getattr(request.session, "session_key", None) or "").update(cle_session="")
+        _journal_connexion("deconnexion", "Déconnexion", request, compte=user, detail=_ou(request))
+
+
+@receiver(user_login_failed)
+def noter_echec(sender, credentials, request=None, **kwargs):
+    """Connexion refusée : identifiant inconnu, mot de passe incorrect ou compte désactivé (le mot de passe tapé
+    n'est jamais noté)."""
+    from django.contrib.auth.models import User
+    tape = str((credentials or {}).get("username") or "")[:150]
+    u = User.objects.filter(username__iexact=tape).first() if tape else None
+    raison = ("Identifiant inconnu" if u is None else "Compte désactivé" if not u.is_active else "Mot de passe incorrect")
+    _journal_connexion("connexion_ratee", "Connexion refusée", request, compte=u, identifiant=tape,
+                       detail=f"{raison} · {_ou(request)}")
 
 
 # ---------------------------------------------------------------- Sorties (12/10/2026)
@@ -650,6 +683,8 @@ class BonRetour(models.Model):
     origine_signature_agent = models.CharField("signature de l'Agent", max_length=10, choices=OrigineSignature.choices,
                                                blank=True, editable=False)
     annule_le = models.DateTimeField("annulé le", null=True, blank=True)
+    # Qui a annulé le bon (15/10/2026) : affiché dans l'Historique.
+    annule_par = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="bons_retour_annules")
     date_retour = models.DateField("matériel rendu le", null=True, blank=True)
     magasinier = models.CharField(max_length=120, blank=True)
     rendu_par = models.CharField("rendu par", max_length=120, blank=True)
@@ -702,3 +737,45 @@ class LigneRetour(models.Model):
 
     def __str__(self):
         return f"{self.article.nom} : {self.qte_rendue} / {self.qte_attendue}"
+
+
+# ---------------------------------------------------------------- Journal des événements (15/10/2026)
+class Evenement(models.Model):
+    """Ce qui est modifié dans GestiStock sans toucher au stock, avec l'ancienne et la nouvelle valeur.
+
+    - MODIFICATION : fiches d'articles (écran ou administration), création d'un article, n° de série corrigé,
+      prix mis à jour par une entrée en stock, listes de l'administration (catégories, magasins, fournisseurs…).
+      Affiché dans l'écran « Historique » (Agent Logistique).
+    - COMPTE : création, modification, activation, mot de passe, déconnexion forcée, signature (administrateur seulement).
+    - CONNEXION : connexions, échecs, déconnexions (journal de connexion, administrateur seulement).
+    Personne ne peut le modifier ni l'effacer (administration en lecture seule)."""
+
+    class Categorie(models.TextChoices):
+        MODIFICATION = "MODIFICATION", "Modification"
+        COMPTE = "COMPTE", "Compte"
+        CONNEXION = "CONNEXION", "Connexion"
+
+    categorie = models.CharField("catégorie", max_length=14, choices=Categorie.choices)
+    action = models.CharField(max_length=40, help_text="Code de l'événement (ex. connexion_ratee)")
+    libelle = models.CharField("événement", max_length=80)
+    le = models.DateTimeField(auto_now_add=True, db_index=True)
+    par = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="evenements_faits")
+    par_nom = models.CharField("par (nom)", max_length=150, blank=True)  # gardé si le compte est supprimé un jour
+    compte = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="evenements_subis",
+                               help_text="Compte concerné (comptes, connexions)")
+    identifiant = models.CharField(max_length=150, blank=True, help_text="Identifiant concerné ou tapé à la connexion")
+    article = models.ForeignKey(Article, on_delete=models.SET_NULL, null=True, blank=True, related_name="evenements")
+    objet = models.CharField(max_length=200, blank=True, help_text="Ce qui a été modifié (ex. « Catégorie Câbles »)")
+    reference = models.CharField("référence", max_length=60, blank=True)
+    detail = models.TextField("détail", blank=True, help_text="Ancienne → nouvelle valeur")
+    adresse_ip = models.GenericIPAddressField("adresse IP", null=True, blank=True)
+    appareil = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        ordering = ["-le", "-id"]
+        indexes = [models.Index(fields=["categorie", "-le"])]
+        verbose_name = "événement du journal"
+        verbose_name_plural = "journal des événements"
+
+    def __str__(self):
+        return f"{self.le:%d/%m/%Y %H:%M} – {self.libelle}"

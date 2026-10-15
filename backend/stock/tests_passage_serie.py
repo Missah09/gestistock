@@ -127,3 +127,26 @@ class PassageSuiviSerieTests(TestCase):
         self.assertIn("prochaine entrée en stock", rep.data["message"])
         self.assertTrue(Article.objects.get(id=vide.id).suivi_serie)
         self.assertTrue(MouvementEtat.objects.filter(article=vide, motif__startswith="Passage au suivi").exists())
+
+    def test_correction_d_un_numero_inscrite_dans_l_historique(self):
+        from stock.models import Evenement
+        self.a.post(self.url(self.casque), {"exemplaires": self.lignes(10)}, format="json")
+        fiche = self.a.get(f"/api/articles/{self.casque.id}/").data
+        ex = [{"id": e["id"], "numero_serie": e["numero_serie"], "code_immo": e["code_immo"]} for e in fiche["exemplaires"]]
+        ex[0]["numero_serie"] = "CQ-0O0-CORRIGE"                                    # faute de frappe corrigée
+        ex[1]["numero_serie"], ex[2]["numero_serie"] = ex[2]["numero_serie"], ex[1]["numero_serie"]  # deux n° inversés
+        ex[3]["code_immo"] = "IM-77"
+        rep = self.a.patch(f"/api/articles/{self.casque.id}/", {"exemplaires": ex}, format="json")
+        self.assertEqual(rep.status_code, 200, rep.data)
+        e = Evenement.objects.get(article=self.casque, action="article_modifie")      # une ligne par enregistrement
+        self.assertEqual((e.categorie, e.par_id, e.reference), ("MODIFICATION", self.agent.id, "Fiche article"))
+        for morceau in ("N° de série : CQ-000 → CQ-0O0-CORRIGE", "N° de série : CQ-001 → CQ-002",
+                        "N° de série : CQ-002 → CQ-001", "Code immo (CQ-003) : — → IM-77"):
+            self.assertIn(morceau, e.detail)
+        h = [l for l in self.a.get("/api/historique/").data["lignes"] if l["type"] == "modification"]
+        self.assertEqual(len(h), 1)
+        self.assertEqual((h[0]["quantite"], h[0]["stock"], h[0]["type_libelle"]), ("", "", "Modification"))
+        self.assertIn("Rasoa", h[0]["par"])
+        # Rien de changé : aucune ligne de plus
+        self.a.patch(f"/api/articles/{self.casque.id}/", {"exemplaires": ex}, format="json")
+        self.assertEqual(Evenement.objects.filter(article=self.casque, action="article_modifie").count(), 1)

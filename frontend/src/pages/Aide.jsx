@@ -237,6 +237,8 @@ const FICHES = [
     ],
     astuces: [
       "Personne ne peut modifier l'historique. Une quantité corrigée dans l'administration y apparaît en « Correction », avec le nom de la personne.",
+      "Type « Modification » : fiche d'article modifiée, article créé, n° de série corrigé, prix mis à jour par une entrée en stock, liste changée dans l'administration (catégories, magasins, fournisseurs…). La ligne montre l'ancienne → nouvelle valeur.",
+      "Les annulations de demandes et les bons de retour imprimés ou annulés y figurent aussi. Les comptes et les connexions n'y sont pas : ils sont réservés à l'administrateur.",
       "Cliquez sur une ligne pour ouvrir la fiche de l'article.",
     ],
   },
@@ -260,6 +262,8 @@ const FICHES = [
     astuces: [
       "Donnez à la personne son identifiant et son mot de passe provisoire.",
       "Départements et chantiers se gèrent dans l'administration (lien « Administration » du menu).",
+      "Onglet « Historique des comptes » : chaque compte créé, modifié (ancienne → nouvelle valeur), désactivé ou réactivé, mot de passe changé, déconnexion forcée, signature enregistrée ou retirée, avec qui l'a fait. Les mots de passe n'y figurent jamais.",
+      "Onglet « Journal de connexion » : chaque connexion, connexion refusée (identifiant inconnu, mot de passe incorrect, compte désactivé), blocage après 5 essais et déconnexion, avec l'adresse IP et l'appareil. « Échecs seulement » aide à repérer une tentative suspecte.",
     ],
   },
 ];

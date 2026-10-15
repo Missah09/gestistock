@@ -6,10 +6,12 @@ import FicheArticle from "./FicheArticle.jsx";
 
 /** Écran « Historique » (Agent Logistique, 15/10/2026), d'après la maquette (écran 11).
  *  Tous les mouvements, les plus récents d'abord : entrées, sorties, retours, corrections (avec le stock avant → après),
- *  et les étapes du circuit (demande, validation, signature, impression du bon). Personne ne peut les modifier.
+ *  les étapes du circuit (demande, validation, signature, impression du bon, annulations, bons de retour) et, depuis le
+ *  15/10/2026, les modifications (fiches, articles créés, prix, administration : ancienne → nouvelle valeur).
+ *  Les comptes et les connexions sont réservés à l'administrateur (écran « Comptes »). Personne ne peut les modifier.
  *  Filtres : recherche, type, utilisateur, période ; Excel et PDF reprennent les mêmes filtres. */
 
-const PILL = { rouge: "p-c", orange: "p-w", vert: "p-ok", bleu: "e-neuf", gris: "p-g", violet: "p-i" };
+const PILL = { rouge: "p-c", orange: "p-w", vert: "p-ok", bleu: "e-neuf", gris: "p-g", violet: "p-i", sable: "e-moyen" };
 
 /** « 15/10 08:42 » (l'année n'est ajoutée que si ce n'est pas l'année en cours). */
 function quand(iso) {

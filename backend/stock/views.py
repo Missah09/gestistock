@@ -3,14 +3,16 @@ import unicodedata
 from django.db.models import Case, Count, F, IntegerField, Q, When
 from rest_framework import mixins, viewsets
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from django.db import transaction
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
 from . import etats
 from .permissions import EstAgentLogistique, LectureOuAgentLogistique
 from .models import Article, Categorie, Etat, Chantier, Demande, Emplacement, Exemplaire, Fournisseur, Magasin
 from .serializers import (ArticleCreationSerializer, ArticleFicheSerializer, ArticleListeSerializer, ArticleModificationSerializer,
-                          EntreeSerializer, NouvelleDemandeSerializer, article_resume, demande_en_json)
+                          EntreeSerializer, NouvelleDemandeSerializer, PassageSuiviSerieSerializer, article_resume,
+                          demande_en_json)
 
 
 def articles_avec_quantites():
@@ -97,9 +99,24 @@ class ArticleViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.
         fiche = self.get_queryset().get(pk=kwargs["pk"])
         return Response(ArticleFicheSerializer(fiche).data)
 
+    @action(detail=True, methods=["post"], url_path="suivi-serie")
+    def suivi_serie(self, request, pk=None):
+        """« Passer au suivi par n° de série » (fiche article, 15/10/2026) : un n° pour chaque unité au magasin.
+        Agent Logistique et administrateur (comme « Modifier »). Renvoie la fiche à jour."""
+        with transaction.atomic():
+            article = Article.objects.select_for_update().get(pk=self.get_object().pk)
+            s = PassageSuiviSerieSerializer(data=request.data, context={"article": article})
+            s.is_valid(raise_exception=True)
+            s.save(par=request.user)
+        fiche = self.get_queryset().get(pk=pk)
+        n = fiche.exemplaires.count()
+        message = (f"{article.code} est désormais suivi par n° de série : {n} exemplaire{'s' if n > 1 else ''} enregistré{'s' if n > 1 else ''}."
+                   if n else f"{article.code} est désormais suivi par n° de série : les n° seront demandés à la prochaine entrée en stock.")
+        return Response({**ArticleFicheSerializer(fiche).data, "message": message})
+
     def get_queryset(self):
         qs = articles_avec_quantites()
-        if self.action in ("retrieve", "partial_update"):
+        if self.action in ("retrieve", "partial_update", "suivi_serie"):
             return qs.select_related("fournisseur").prefetch_related("exemplaires")
         p = self.request.query_params
 

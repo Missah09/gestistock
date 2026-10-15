@@ -64,6 +64,11 @@ export async function modifierArticle(id, donnees) {
   return corps;
 }
 
+/** « Passer au suivi par n° de série » (fiche article, 15/10/2026) : renvoie la fiche à jour et un message. */
+export function passerSuiviSerie(id, donnees) {
+  return envoyer(`/api/articles/${id}/suivi-serie/`, donnees);
+}
+
 /** « Nouvel article » (12/10/2026) : renvoie la fiche du nouvel article et un message. */
 export function creerArticle(donnees) {
   return envoyer("/api/articles/", donnees);

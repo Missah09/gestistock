@@ -120,8 +120,8 @@ const FICHES = [
     ],
     astuces: [
       "Livraison d'un seul article : ouvrez sa fiche et cliquez sur « Entrée en stock » ; l'article est déjà choisi.",
-      "Produit jamais reçu auparavant : tapez son nom, puis cliquez sur « ＋ Créer l'article » en bas de la liste. Indiquez la catégorie (le code est créé automatiquement), le type, l'unité, l'emplacement et le seuil d'alerte ; l'article est aussitôt placé sur la ligne de la livraison.",
-      "Appareil avec un n° de série (OTDR, soudeuse…) : à la création, choisissez « Non consommable · à rendre » et cochez « Suivi par n° de série ». Le type et ce choix ne peuvent plus être changés ensuite.",
+      "Produit jamais reçu auparavant : tapez son nom, puis cliquez sur « ＋ Créer l'article » tout en haut de la liste. Indiquez la catégorie (le code est créé automatiquement), le type, l'unité, l'emplacement et le seuil d'alerte ; l'article est aussitôt placé sur la ligne de la livraison.",
+      "Appareil avec un n° de série (OTDR, soudeuse…) : à la création, choisissez « Non consommable · à rendre » et cochez « Suivi par n° de série ». Le type ne peut plus être changé ensuite ; un article non consommable créé sans n° de série peut passer au suivi par n° de série depuis sa fiche.",
       "État du produit reçu : Neuf, Bon, Moyen ou Mauvais. Tous les états comptent dans la quantité disponible.",
       "Dans la liste, sous l'état du stock, la répartition par état (ex. « 12 Bon · 3 Moyen ») ; le filtre « État » trouve par exemple tous les articles qui ont du matériel en mauvais état.",
     ],
@@ -132,7 +132,8 @@ const FICHES = [
       "Menu « Liste d'Articles », « Détails » sur la ligne de l'article, puis « Modifier ».",
       "Changez le nom, l'emplacement, le minimum, le prix, le fournisseur…, puis « Enregistrer ».",
     ],
-    astuces: ["Le code, le type et la quantité ne se modifient pas ici : la quantité change par les réceptions et les sorties."],
+    astuces: ["Le code, le type et la quantité ne se modifient pas ici : la quantité change par les réceptions et les sorties.",
+      "Matériel non consommable sans n° de série : dans sa fiche, « Passer au suivi par n° de série », puis saisissez un n° pour chaque unité au magasin (l'état est déjà rempli) et « Confirmer le passage ». Le stock ne change pas ; ce choix est définitif. Impossible tant que des unités prêtées ne sont pas rendues."],
   },
   {
     id: "viser", role: RESPONSABLE, icone: "sign", titre: "Viser (signer) une réquisition", ecran: "Demandes à viser",

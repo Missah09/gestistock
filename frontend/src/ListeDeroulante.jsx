@@ -14,7 +14,8 @@ const texteDe = (o) => (o ? o.texte ?? (o.code ? `${o.code} · ${o.libelle}` : o
  *    - valeur "" : choix « vide » (ex. « — Aucun — »)
  *  recherche : on peut taper pour filtrer (activée d'office pour les longues listes).
  *  dejaPris  : valeurs déjà utilisées ailleurs (sur une autre ligne) : visibles mais non choisissables.
- *  creer     : { texte(saisie), onCreer(saisie) } : dernière ligne « ＋ Créer… » (ex. créer un article absent, 12/10/2026).
+ *  creer     : { texte(saisie), onCreer(saisie) } : ligne « ＋ Créer… » tout en haut de la liste, toujours visible
+ *              (ex. créer un article absent, 12/10/2026 ; placée en tête le 15/10/2026).
  *  La liste s'ouvre toujours vers le bas. */
 export default function ListeDeroulante({
   options, valeur, onChange, placeholder = "", desactive, invalide, petite, className = "", ariaLabel,
@@ -42,11 +43,12 @@ export default function ListeDeroulante({
   }, [options, texte, filtrer]);
 
   const estPris = (o) => o && o.valeur !== "" && dejaPris.map(String).includes(String(o.valeur)) && String(o.valeur) !== String(valeur);
-  // La ligne « ＋ Créer… » (si elle existe) vient après les résultats : index resultats.length.
+  // La ligne « ＋ Créer… » (si elle existe) s'affiche en tête de liste ; son index interne est resultats.length.
   const CREER = resultats.length;
-  const libres = [...resultats.map((o, i) => (estPris(o) ? -1 : i)).filter((i) => i >= 0), ...(creer ? [CREER] : [])];
+  const libres = [...(creer ? [CREER] : []), ...resultats.map((o, i) => (estPris(o) ? -1 : i)).filter((i) => i >= 0)];
   const saisie = filtrer ? texte.trim() : "";
-  const premierLibre = (depuis = 0) => libres.find((i) => i >= depuis) ?? libres[0] ?? 0;
+  // Après une frappe, on se place sur le premier résultat (Entrée choisit l'article trouvé) ; « Créer » seulement s'il n'y a rien.
+  const premierLibre = () => libres.find((i) => i !== CREER) ?? libres[0] ?? 0;
 
   // La liste s'affiche par-dessus la fenêtre, juste sous le champ (toujours vers le bas).
   useLayoutEffect(() => {
@@ -135,6 +137,12 @@ export default function ListeDeroulante({
       {ouvert && pos && createPortal(
         <ul ref={liste} className="choix-liste" role="listbox" style={{ left: pos.left, width: pos.width, top: pos.top, maxHeight: pos.max }}
           onMouseDown={(e) => e.preventDefault()}>
+          {creer && (
+            <li role="option" aria-selected={false} data-actif={actif === CREER ? "1" : "0"}
+              className={`creer${actif === CREER ? " actif" : ""}`} onMouseEnter={() => setActif(CREER)} onClick={lancerCreation}>
+              <span className="nom">＋ {creer.texte(saisie)}</span>
+            </li>
+          )}
           {resultats.length === 0 && <li className="aucun">{texteAucun} pour « {texte} ».</li>}
           {resultats.map((o, i) => {
             const pris = estPris(o);
@@ -155,12 +163,6 @@ export default function ListeDeroulante({
               </Fragment>
             );
           })}
-          {creer && (
-            <li role="option" aria-selected={false} data-actif={actif === CREER ? "1" : "0"}
-              className={`creer${actif === CREER ? " actif" : ""}`} onMouseEnter={() => setActif(CREER)} onClick={lancerCreation}>
-              <span className="nom">＋ {creer.texte(saisie)}</span>
-            </li>
-          )}
         </ul>, document.body)}
     </div>
   );

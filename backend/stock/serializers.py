@@ -289,6 +289,95 @@ class EntreeSerializer(serializers.Serializer):
         return entree
 
 
+class LigneSuiviSerieSerializer(serializers.Serializer):
+    numero_serie = serializers.CharField(max_length=60, trim_whitespace=True, allow_blank=True)
+    code_immo = serializers.CharField(max_length=40, allow_blank=True, required=False, trim_whitespace=True)
+    date_etalonnage = serializers.DateField(allow_null=True, required=False,
+                                            error_messages={"invalid": "Date invalide."})
+    etat = serializers.ChoiceField(choices=Etat.choices, error_messages={"invalid_choice": "État inconnu."})
+
+
+class PassageSuiviSerieSerializer(serializers.Serializer):
+    """« Passer au suivi par n° de série » (fiche article, 15/10/2026).
+
+    Un article non consommable suivi par quantité devient suivi par n° de série : un n° pour chaque unité au magasin
+    (autant de n° que de stock disponible). Le stock ne change pas. Refusé tant que des unités prêtées ne sont pas rendues.
+    Contexte : « article » (verrouillé par l'appelant)."""
+
+    exemplaires = LigneSuiviSerieSerializer(many=True)
+
+    def validate(self, data):
+        from . import etats
+        from .rapports import prete_dehors
+        article = self.context["article"]
+        if article.type != Article.Type.PRETE:
+            raise serializers.ValidationError({"general": ["Seul le matériel non consommable peut être suivi par n° de série."]})
+        if etats.suivi_par_serie(article):
+            raise serializers.ValidationError({"general": ["Cet article est déjà suivi par n° de série."]})
+        dehors = prete_dehors().get(article.id, 0)
+        if dehors:
+            u = "unité est encore dehors" if dehors == 1 else "unités sont encore dehors"
+            raise serializers.ValidationError({"general": [
+                f"{dehors} {u} (prêtée{'s' if dehors > 1 else ''}, pas encore rendue{'s' if dehors > 1 else ''}) : "
+                f"attendez {'son' if dehors == 1 else 'leur'} retour avant de passer au suivi par n° de série."]})
+        lignes = data["exemplaires"]
+        stock = article.qte_stock
+        if len(lignes) != stock:
+            raise serializers.ValidationError({"general": [
+                f"Indiquez {stock} n° de série (un par unité au magasin) : {len(lignes)} saisi{'s' if len(lignes) > 1 else ''}."
+                if stock else "Le stock est à 0 : aucun n° de série à saisir."]})
+        series = [l["numero_serie"] for l in lignes]
+        immos = [l.get("code_immo", "") for l in lignes]
+        existants_serie = set(Exemplaire.objects.filter(numero_serie__in=[x for x in series if x])
+                              .values_list("numero_serie", flat=True))
+        existants_immo = set(Exemplaire.objects.filter(code_immo__in=[x for x in immos if x])
+                             .values_list("code_immo", flat=True))
+        erreurs = []
+        for l in lignes:
+            err = {}
+            serie, immo = l["numero_serie"], l.get("code_immo", "")
+            if not serie:
+                err["numero_serie"] = ["Le n° de série est obligatoire."]
+            elif series.count(serie) > 1:
+                err["numero_serie"] = ["Ce n° de série est en double dans la liste."]
+            elif serie in existants_serie:
+                err["numero_serie"] = ["Ce n° de série existe déjà (sur un autre article)."]
+            if immo:
+                if immos.count(immo) > 1:
+                    err["code_immo"] = ["Ce code immo est en double dans la liste."]
+                elif immo in existants_immo:
+                    err["code_immo"] = ["Ce code immo existe déjà (sur un autre article)."]
+            erreurs.append(err)
+        if any(erreurs):
+            raise serializers.ValidationError({"exemplaires": erreurs})
+        return data
+
+    def save(self, par=None):
+        from . import etats
+        from .models import MouvementEtat, StockEtat
+        article = self.context["article"]
+        lignes = self.validated_data["exemplaires"]
+        motif = "Passage au suivi par n° de série"
+        with transaction.atomic():
+            nouveaux = Exemplaire.objects.bulk_create([
+                Exemplaire(article=article, numero_serie=l["numero_serie"], code_immo=l.get("code_immo", ""),
+                           date_etalonnage=l.get("date_etalonnage"), etat=l["etat"], statut=etats.statut_pour(l["etat"]))
+                for l in lignes])
+            # Le stock est désormais compté par les exemplaires « En stock » : la quantité saisie n'a plus cours.
+            Article.objects.filter(pk=article.pk).update(suivi_serie=True, qte_stock=0)
+            StockEtat.objects.filter(article=article).update(quantite=0)
+            # Historique : une ligne par exemplaire, sans effet sur le stock (variation 0), regroupées à l'écran.
+            if nouveaux:
+                for e in Exemplaire.objects.filter(article=article, numero_serie__in=[x.numero_serie for x in nouveaux]):
+                    etats.noter(article, "CORRECTION", 1, etat_apres=e.etat, reference="Suivi par n° de série",
+                                motif=motif, par=par, exemplaire=e, variation=0)
+            else:
+                MouvementEtat.objects.create(article=article, type="CORRECTION", quantite=0, variation=0,
+                                             reference="Suivi par n° de série", motif=f"{motif} (stock à 0)",
+                                             par=par if par and par.is_authenticated else None)
+        return article
+
+
 class LigneDemandeSaisieSerializer(serializers.Serializer):
     article = serializers.PrimaryKeyRelatedField(queryset=Article.objects.all(),
                                                  error_messages={"does_not_exist": "Article introuvable.",

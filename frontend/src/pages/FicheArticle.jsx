@@ -4,6 +4,7 @@ import { lireArticle, lireChoix, modifierArticle } from "../api.js";
 import { date, datePassee, ETATS, ETATS_UTILISABLES, montant, quantite, LIBELLE_PRETE } from "../format.js";
 import EtatsProduit, { PastilleEtat } from "../EtatsProduit.jsx";
 import Icon from "../icons.jsx";
+import PasserSuiviSerie from "./PasserSuiviSerie.jsx";
 
 /** Un champ : le libellé au-dessus, la valeur (ou la zone de saisie) en dessous. */
 function Champ({ libelle, children, aide, large, erreur }) {
@@ -59,6 +60,7 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
   const [erreurs, setErreurs] = useState({});    // erreurs renvoyées par le serveur, par champ
   const [enregistrement, setEnregistrement] = useState(false);
   const [message, setMessage] = useState(null);
+  const [passage, setPassage] = useState(false); // fenêtre « Passer au suivi par n° de série » (15/10/2026)
 
   const enModification = form !== null;
 
@@ -73,7 +75,7 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
 
   // Pendant une modification, Échap et le clic sur le fond ne ferment pas la fiche
   // (pour ne pas perdre la saisie par erreur).
-  const fermerSiPossible = useCallback(() => { if (!enModification) onFermer(); }, [enModification, onFermer]);
+  const fermerSiPossible = useCallback(() => { if (!enModification && !passage) onFermer(); }, [enModification, passage, onFermer]);
   useEffect(() => {
     const touche = (e) => e.key === "Escape" && fermerSiPossible();
     window.addEventListener("keydown", touche);
@@ -127,6 +129,8 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
   }
 
   const prete = a?.type === "PRETE";
+  // Matériel non consommable encore suivi par quantité : peut passer au suivi par n° de série (15/10/2026).
+  const peutPasserSerie = prete && !a.suivi_serie && a.exemplaires.length === 0;
   const err = (champ) => premier(erreurs[champ]);
   const errEx = (i, champ) => premier(erreurs.exemplaires?.[i]?.[champ]);
   const nbErreurs = Object.keys(erreurs).length;
@@ -258,6 +262,21 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
                 </div>
               </Bloc>
 
+              {/* Matériel suivi par quantité : « Passer au suivi par n° de série » (15/10/2026) */}
+              {peutPasserSerie && !enModification && (
+                <Bloc titre="N° de série">
+                  <div className="passage-serie">
+                    <p className="aide">Cet article est suivi par quantité : ses unités n'ont pas de n° de série.
+                      {modifiable ? " Pour suivre chaque appareil, passez au suivi par n° de série (un n° par unité au magasin)." : ""}</p>
+                    {modifiable && (
+                      <button className="btn" type="button" onClick={(e) => { e.preventDefault(); setMessage(null); setPassage(true); }}>
+                        <Icon name="edit" size={18} stroke={2} />Passer au suivi par n° de série
+                      </button>
+                    )}
+                  </div>
+                </Bloc>
+              )}
+
               {/* Article suivi par n° de série, encore jamais reçu (créé avec « Nouvel article », 12/10/2026) */}
               {prete && a.suivi_serie && a.exemplaires.length === 0 && (
                 <Bloc titre="Exemplaires (0)">
@@ -347,6 +366,10 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
           )}
         </div>
       </form>
+      {passage && a && (
+        <PasserSuiviSerie article={a} onFermer={() => setPassage(false)}
+          onPasse={(fiche) => { setA(fiche); setPassage(false); setMessage(fiche.message); onModifie?.(); }} />
+      )}
     </>
   );
 }

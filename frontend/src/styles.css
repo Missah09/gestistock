@@ -630,7 +630,9 @@ th .facultatif { color: var(--gris); }
 .barre-articles > .btn.pri { flex: none; white-space: nowrap; }
 
 /* Liste des articles : dernière ligne « ＋ Créer l'article… » (Entrée en stock, 12/10/2026) */
-.choix-liste li.creer { border-top: 1px solid var(--trait); margin-top: 4px; border-radius: 0 0 6px 6px; }
+/* « ＋ Créer… » en tête de liste, collée en haut quand on fait défiler (15/10/2026) */
+.choix-liste li.creer { position: sticky; top: -4px; z-index: 1; background: #fff; border-bottom: 1px solid var(--trait); margin-bottom: 4px; border-radius: 6px 6px 0 0; }
+.choix-liste li.creer.actif { background: var(--hbc-pale); }
 .choix-liste li.creer .nom { color: var(--hbc); font-weight: 700; }
 /* Fenêtre « Nouvel article » ouverte par-dessus « Entrée en stock » */
 .voile.par-dessus { z-index: 20; }
@@ -745,3 +747,12 @@ button.tdb-carte:focus-visible { outline: 3px solid var(--hbc-pale); outline-off
 .tableau.historique td.stock-hist { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tableau.historique td.reference { font-size: 13px; color: var(--hbc-fonce); font-weight: 600; }
 .tableau.historique td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Fenêtre « Passer au suivi par n° de série » (fiche article, 15/10/2026) */
+.fenetre.suivi-serie { width: min(900px, calc(100vw - 32px)); }
+.fenetre.suivi-serie .intro { margin: 0 0 14px; }
+.table-serie td { vertical-align: top; }
+.table-serie td .saisie { width: 100%; }
+.suivi-serie .attention-definitif { color: #8a5a00; background: #fff8ec; border: 1px solid #f0d9a8; border-radius: 8px; padding: 8px 12px; }
+.passage-serie { padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.passage-serie .aide { margin: 0; flex: 1 1 260px; }

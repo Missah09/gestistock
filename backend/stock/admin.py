@@ -76,6 +76,13 @@ class ArticleAdmin(admin.ModelAdmin):
                 a_supprimer = [*a_supprimer, [f"{nom.capitalize()} : {m} ({m.motif or m.get_type_display()})"
                                               for m in mouvements]]
                 compte = {**compte, str(MouvementEtat._meta.verbose_name_plural): len(mouvements)}
+        elif request.user.is_superuser:
+            # L'article a servi (27/10/2026) : la vraie raison du blocage est ce qui l'utilise (réceptions, demandes,
+            # sorties, retours). Sans cela, Django affichait « votre compte n'est pas autorisé à supprimer… mouvement »
+            # et masquait la liste des objets protégés. On retire aussi de cette liste l'historique de l'article lui-même.
+            nom = str(MouvementEtat._meta.verbose_name)
+            permissions = set()
+            proteges = [p for p in proteges if not str(p).lower().startswith(nom.lower())] or proteges
         return a_supprimer, compte, permissions, proteges
 
     def delete_model(self, request, obj):

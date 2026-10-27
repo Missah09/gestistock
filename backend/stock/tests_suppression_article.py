@@ -54,6 +54,8 @@ class SuppressionArticleTests(TestCase):
         self.assertEqual(rep.status_code, 201, rep.data)
         page = self.client.get(f"/admin/stock/article/{a.id}/delete/").content.decode()
         self.assertIn("Impossible de supprimer", page)
+        self.assertNotIn("pas autorisé", page)          # 27/10/2026 : la vraie raison (la réception) est montrée
+        self.assertIn(str(a.lignes_entree.first()), page)
         self.client.post(f"/admin/stock/article/{a.id}/delete/", {"post": "yes"})
         self.assertTrue(Article.objects.filter(id=a.id).exists())
         self.assertEqual(MouvementEtat.objects.filter(article=a).count(), 2)

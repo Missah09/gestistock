@@ -111,3 +111,15 @@ class TableauDeBordTests(TestCase):
         # La somme des catégories = la carte « Valeur du stock »
         d = self.a.get("/api/tableau-de-bord/").data
         self.assertEqual(sum(Decimal(c["valeur"]) for c in g["categories"]), Decimal(d["cartes"]["valeur_stock"]))
+
+    def test_categories_sans_valeur_affichees_a_zero(self):
+        """27/10/2026 : toutes les catégories figurent dans « Valeur du stock par catégorie », même à 0 Ar."""
+        from stock.models import Categorie
+        Categorie.objects.create(nom="Catégorie vide de test", prefixe="ZZV")
+        g = self.a.get("/api/tableau-de-bord/").data["graphiques"]
+        vide = [c for c in g["categories"] if c["nom"] == "Catégorie vide de test"]
+        if Categorie.objects.count() <= 8:
+            self.assertEqual(vide, [{"nom": "Catégorie vide de test", "valeur": "0"}])
+            self.assertEqual(len(g["categories"]), Categorie.objects.count())
+        valeurs = [Decimal(c["valeur"]) for c in g["categories"] if not c.get("autres")]
+        self.assertEqual(valeurs, sorted(valeurs, reverse=True))   # les plus grosses valeurs d'abord, les 0 Ar à la fin

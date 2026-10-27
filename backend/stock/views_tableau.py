@@ -15,7 +15,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from .models import (ROLE_AGENT, ROLE_RESPONSABLE, Article, BonRetour, Demande, Entree, LigneSortie, Requisition, Sortie,
+from .models import (ROLE_AGENT, ROLE_RESPONSABLE, Article, BonRetour, Categorie, Demande, Entree, LigneSortie, Requisition, Sortie,
                      etat_stock, roles_de)
 from .permissions import EstAgentOuResponsable
 from .serializers import heure_locale, nom_de
@@ -27,7 +27,7 @@ ORDRE_URGENCE = {"EPUISE": 0, "CRITIQUE": 1, "BAS": 2}
 JOURS_TOP_SORTIES = 30      # période du graphique « Top des sorties »
 NB_TOP_SORTIES = 5
 JOURS_MOUVEMENTS = 14       # période du graphique « Entrées et sorties »
-NB_CATEGORIES = 5           # au-delà : regroupées dans « Autres catégories »
+NB_CATEGORIES = 8           # au-delà : regroupées dans « Autres catégories » (toutes affichées, même à 0 Ar, 27/10/2026)
 
 
 def nombre(n):
@@ -157,13 +157,16 @@ def graphiques():
         mouvements.append({"jour": jour.isoformat(), "entrees": entrees.get(jour, 0), "sorties": sorties.get(jour, 0)})
 
     # 3. Valeur du stock par catégorie (même calcul que la carte « Valeur du stock »).
-    par_categorie = {}
+    # Toutes les catégories sont listées, même celles qui ne valent rien (0 Ar) (27/10/2026).
+    par_categorie = {nom: Decimal(0) for nom in Categorie.objects.values_list("nom", flat=True)}
     for nom, qte, prix in articles_avec_quantites().values_list("categorie__nom", "qte_disponible", "prix_unitaire"):
         par_categorie[nom] = par_categorie.get(nom, Decimal(0)) + Decimal(qte or 0) * (prix or 0)
-    rangees = sorted(((n, v) for n, v in par_categorie.items() if v > 0), key=lambda x: (-x[1], x[0]))
-    categories = [{"nom": n, "valeur": str(v.quantize(Decimal("1")))} for n, v in rangees[:NB_CATEGORIES]]
+    if not par_categorie.get(None):            # articles sans catégorie : listés seulement s'ils valent quelque chose
+        par_categorie.pop(None, None)
+    rangees = sorted(par_categorie.items(), key=lambda x: (-x[1], x[0] or ""))
+    categories = [{"nom": n or "Sans catégorie", "valeur": str(v.quantize(Decimal("1")))} for n, v in rangees[:NB_CATEGORIES]]
     reste = sum((v for _, v in rangees[NB_CATEGORIES:]), Decimal(0))
-    if reste > 0:
+    if len(rangees) > NB_CATEGORIES:
         categories.append({"nom": f"Autres catégories ({len(rangees) - NB_CATEGORIES})", "valeur": str(reste.quantize(Decimal("1"))),
                            "autres": True})
 

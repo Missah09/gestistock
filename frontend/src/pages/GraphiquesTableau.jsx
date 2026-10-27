@@ -32,7 +32,7 @@ function BarresHorizontales({ lignes, classe, onClic }) {
           onClick={onClic && l.id ? () => onClic(l.id) : undefined}>
           <span className="gr-libelle" title={l.libelle}>{l.libelle}</span>
           <span className="gr-piste">
-            <span className={`gr-barre ${l.autres ? "autres" : classe}`} style={{ width: `${Math.max(2, (l.valeur / max) * 100)}%` }} />
+            <span className={`gr-barre ${l.autres ? "autres" : classe}`} style={{ width: l.valeur > 0 ? `${Math.max(2, (l.valeur / max) * 100)}%` : 0 }} />
           </span>
           <span className="gr-valeur">{l.texte}</span>
         </li>

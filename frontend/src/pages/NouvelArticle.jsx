@@ -45,7 +45,7 @@ export default function NouvelArticle({ onFermer, onCree, nomInitial = "", magas
     e.preventDefault();
     setEnvoi(true); setErreurs({});
     const donnees = {
-      nom: f.nom, type: f.type || null, suivi_serie: f.type === "PRETE" && f.suivi_serie, unite: f.unite,
+      nom: f.nom, type: f.type || null, suivi_serie: f.suivi_serie && (f.type === "PRETE" || (f.type === "CONSOMMABLE" && f.unite === "piece")), unite: f.unite,
       categorie: f.categorie ? Number(f.categorie) : null,
       emplacement: f.emplacement ? Number(f.emplacement) : null,
       qte_minimale: f.qte_minimale === "" ? 0 : f.qte_minimale,
@@ -116,6 +116,16 @@ export default function NouvelArticle({ onFermer, onCree, nomInitial = "", magas
                   <input type="radio" name="type" checked={f.type === "CONSOMMABLE"} onChange={() => changer("type", "CONSOMMABLE")} />
                   <span><b>Consommable</b><small>Ne revient pas au magasin : câble, connecteurs, gaines…</small></span>
                 </label>
+                {/* Consommable suivi par n° de série (26/10/2026) : seulement compté à la pièce (box ONT…). */}
+                {f.type === "CONSOMMABLE" && (
+                  <label className={`btn case sous-choix${f.unite !== "piece" ? " desactive" : ""}`}>
+                    <input type="checkbox" checked={f.suivi_serie && f.unite === "piece"} disabled={f.unite !== "piece"}
+                      onChange={(e) => changer("suivi_serie", e.target.checked)} />
+                    <span><b>Suivi par n° de série</b><small>{f.unite === "piece"
+                      ? "Chaque unité a son n° sur l'étiquette (box ONT…) : les n° seront demandés à la réception et cochés à la sortie. Sans cette case, suivi par quantité."
+                      : "Le suivi par n° de série n'est possible que pour les articles comptés à la pièce."}</small></span>
+                  </label>
+                )}
                 <label className="btn case">
                   <input type="radio" name="type" checked={f.type === "PRETE"} onChange={() => changer("type", "PRETE")} />
                   <span><b>Non consommable · à rendre</b><small>Prêté puis rendu : appareils, outillage, EPI…</small></span>
@@ -126,6 +136,7 @@ export default function NouvelArticle({ onFermer, onCree, nomInitial = "", magas
                     <span><b>Suivi par n° de série</b><small>Chaque appareil a son n° (OTDR, soudeuse…) : les n° seront demandés à la réception. Sans cette case, suivi par quantité (pelles, casques…).</small></span>
                   </label>
                 )}
+                {err("suivi_serie") && <em className="msg-erreur">{err("suivi_serie")}</em>}
                 {err("type") && <em className="msg-erreur">{err("type")}</em>}
                 <p className="aide">Le type ne pourra plus être changé après la création.</p>
               </fieldset>

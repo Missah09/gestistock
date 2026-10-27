@@ -3,16 +3,19 @@
 Une seule lecture pour tout l'écran :
 - les 4 cartes chiffrées (articles sous le seuil, demandes à valider ou bons à viser, retours en retard, valeur du stock) ;
 - « À réapprovisionner » : les articles épuisés, critiques puis en stock bas (les plus urgents d'abord) ;
-- « Activité du jour » : ce qui s'est passé aujourd'hui (entrées, demandes, validations, signatures, sorties, retours).
+- « Activité du jour » : ce qui s'est passé aujourd'hui (entrées, demandes, validations, signatures, sorties, retours) ;
+- les graphiques (16/10/2026) : top des sorties (30 jours), entrées et sorties par jour (14 jours),
+  valeur du stock par catégorie.
 """
+import datetime
 from decimal import Decimal
 
-from django.db.models import F, Q
+from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from .models import (ROLE_AGENT, ROLE_RESPONSABLE, Article, BonRetour, Demande, Entree, Requisition, Sortie,
+from .models import (ROLE_AGENT, ROLE_RESPONSABLE, Article, BonRetour, Demande, Entree, LigneSortie, Requisition, Sortie,
                      etat_stock, roles_de)
 from .permissions import EstAgentOuResponsable
 from .serializers import heure_locale, nom_de
@@ -21,6 +24,10 @@ from .views import articles_avec_quantites
 NB_A_REAPPROVISIONNER = 6   # lignes affichées (le lien « Voir tout » ouvre la liste complète)
 NB_ACTIVITES = 12           # événements du jour affichés, les plus récents d'abord
 ORDRE_URGENCE = {"EPUISE": 0, "CRITIQUE": 1, "BAS": 2}
+JOURS_TOP_SORTIES = 30      # période du graphique « Top des sorties »
+NB_TOP_SORTIES = 5
+JOURS_MOUVEMENTS = 14       # période du graphique « Entrées et sorties »
+NB_CATEGORIES = 5           # au-delà : regroupées dans « Autres catégories »
 
 
 def nombre(n):
@@ -125,6 +132,45 @@ def activite_du_jour():
     return [{**x, "le": heure_locale(x["le"])} for x in ev[:NB_ACTIVITES]], len(ev)
 
 
+def graphiques():
+    """Données des trois graphiques du Tableau de bord (16/10/2026)."""
+    aujourd_hui = timezone.localdate()
+
+    # 1. Top des sorties : articles les plus remis (qté livrée), sorties confirmées des 30 derniers jours.
+    debut = aujourd_hui - datetime.timedelta(days=JOURS_TOP_SORTIES - 1)
+    top = (LigneSortie.objects.filter(sortie__date_remise__gte=debut, sortie__date_remise__lte=aujourd_hui, qte_livree__gt=0).order_by()
+           .values("article_id", "article__code", "article__nom", "article__unite")
+           .annotate(qte=Sum("qte_livree"), nb=Count("sortie", distinct=True))
+           .order_by("-qte", "article__nom")[:NB_TOP_SORTIES])
+    top_sorties = [{"id": t["article_id"], "code": t["article__code"], "nom": t["article__nom"], "unite": t["article__unite"],
+                    "qte": t["qte"], "nb_sorties": t["nb"]} for t in top]
+
+    # 2. Entrées (réceptions) et sorties (matériel remis) par jour, 14 derniers jours.
+    debut_m = aujourd_hui - datetime.timedelta(days=JOURS_MOUVEMENTS - 1)
+    entrees = dict(Entree.objects.filter(date_reception__gte=debut_m, date_reception__lte=aujourd_hui).order_by()
+                   .values_list("date_reception").annotate(n=Count("id")))
+    sorties = dict(Sortie.objects.filter(date_remise__gte=debut_m, date_remise__lte=aujourd_hui).order_by()
+                   .values_list("date_remise").annotate(n=Count("id")))
+    mouvements = []
+    for i in range(JOURS_MOUVEMENTS):
+        jour = debut_m + datetime.timedelta(days=i)
+        mouvements.append({"jour": jour.isoformat(), "entrees": entrees.get(jour, 0), "sorties": sorties.get(jour, 0)})
+
+    # 3. Valeur du stock par catégorie (même calcul que la carte « Valeur du stock »).
+    par_categorie = {}
+    for nom, qte, prix in articles_avec_quantites().values_list("categorie__nom", "qte_disponible", "prix_unitaire"):
+        par_categorie[nom] = par_categorie.get(nom, Decimal(0)) + Decimal(qte or 0) * (prix or 0)
+    rangees = sorted(((n, v) for n, v in par_categorie.items() if v > 0), key=lambda x: (-x[1], x[0]))
+    categories = [{"nom": n, "valeur": str(v.quantize(Decimal("1")))} for n, v in rangees[:NB_CATEGORIES]]
+    reste = sum((v for _, v in rangees[NB_CATEGORIES:]), Decimal(0))
+    if reste > 0:
+        categories.append({"nom": f"Autres catégories ({len(rangees) - NB_CATEGORIES})", "valeur": str(reste.quantize(Decimal("1"))),
+                           "autres": True})
+
+    return {"top_sorties": top_sorties, "jours_top_sorties": JOURS_TOP_SORTIES,
+            "mouvements": mouvements, "categories": categories}
+
+
 @api_view(["GET"])
 @permission_classes([EstAgentOuResponsable])
 def tableau_de_bord(request):
@@ -139,4 +185,4 @@ def tableau_de_bord(request):
     if ROLE_RESPONSABLE in roles:
         cartes["a_viser"] = Requisition.objects.filter(statut=Requisition.Statut.ATTENTE_VISA).count()
     return Response({"maintenant": heure_locale(timezone.now()), "cartes": cartes, "a_reapprovisionner": liste,
-                     "activite": activites, "nb_activites": nb_activites})
+                     "activite": activites, "nb_activites": nb_activites, "graphiques": graphiques()})

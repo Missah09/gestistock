@@ -87,3 +87,27 @@ class TableauDeBordTests(TestCase):
         heures = [x["le"] for x in d["activite"]]
         self.assertEqual(heures, sorted(heures, reverse=True))
         self.assertTrue(heures[0].startswith(timezone.localdate().isoformat()))
+
+    def test_graphiques(self):
+        """Graphiques (16/10/2026) : top des sorties, entrées et sorties par jour, valeur par catégorie."""
+        rep = self.s.post("/api/demandes/", {"magasin": self.ank.id,
+                                             "lignes": [{"article": self.ok.id, "quantite": 7}]}, format="json")
+        did = rep.data["id"]
+        lignes = self.a.get(f"/api/a-valider/{did}/").data["lignes"]
+        self.a.post(f"/api/a-valider/{did}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x",
+                    "lignes": [{"id": l["id"], "qte_accordee": l["quantite"]} for l in lignes]}, format="json")
+        self.r.post(f"/api/a-viser/{did}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
+        self.assertEqual(self.a.get(f"/api/requisitions/{did}/pdf/").status_code, 200)
+        rep = self.a.post(f"/api/sorties/{did}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
+                          "lignes": [{"id": lignes[0]["id"], "qte_livree": 5}]}, format="json")
+        self.assertEqual(rep.status_code, 200, rep.data)
+
+        g = self.a.get("/api/tableau-de-bord/").data["graphiques"]
+        self.assertEqual(g["top_sorties"][0]["id"], self.ok.id)
+        self.assertEqual(g["top_sorties"][0]["qte"], 5)
+        self.assertEqual(len(g["mouvements"]), 14)
+        self.assertEqual(g["mouvements"][-1]["jour"], timezone.localdate().isoformat())
+        self.assertEqual(g["mouvements"][-1]["sorties"], 1)
+        # La somme des catégories = la carte « Valeur du stock »
+        d = self.a.get("/api/tableau-de-bord/").data
+        self.assertEqual(sum(Decimal(c["valeur"]) for c in g["categories"]), Decimal(d["cartes"]["valeur_stock"]))

@@ -191,15 +191,9 @@ def fabriquer_pdf(requisition, imprime_par=None, imprime_le=None, sortie=None):
     ]))
     elements.append(table)
     elements.append(Spacer(1, 3))
-    if sortie is None:
-        elements.append(Paragraph("Qté livrée : à remplir à la main par le magasinier lors de la remise du matériel. "
-                                  "État : d'après la fiche article (à corriger à la main si besoin, ex. « 3 Neuf, 2 Bon »).", S_NOTE))
-    else:
-        note = (f"Qté livrée et État : recopiés du bon signé par le magasinier. Matériel remis le {sortie.date_remise:%d/%m/%Y}"
-                f"{' par ' + _x(sortie.magasinier) if sortie.magasinier else ''}.")
-        if sortie.observation:
-            note += f" Observation : {_x(sortie.observation)}"
-        elements.append(Paragraph(note, S_NOTE))
+    # Légendes sous le tableau retirées (16/10/2026) ; seule l'observation du magasinier reste (copie d'archive).
+    if sortie is not None and sortie.observation:
+        elements.append(Paragraph(f"Observation : {_x(sortie.observation)}", S_NOTE))
 
     # 3. Visas et signatures
     case = largeur / 4

@@ -22,6 +22,13 @@ class StockEtatInline(admin.TabularInline):
         return False
 
 
+def article_jamais_utilise(article):
+    """Jamais reçu, demandé, sorti ni rendu (ex. article de test). Son historique ne contient alors que des corrections
+    (quantité corrigée dans l'administration, passage au suivi par n° de série) : il peut être supprimé avec l'article."""
+    return not (article.lignes_entree.exists() or article.lignes_demande.exists() or article.lignes_sortie.exists()
+                or article.lignes_retour.exists())
+
+
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
     list_display = ("code", "nom", "categorie", "type", "qte_stock", "qte_minimale", "emplacement")
@@ -52,6 +59,33 @@ class ArticleAdmin(admin.ModelAdmin):
             e = f.instance
             if e.pk and f not in formset.deleted_forms and f.has_changed():
                 noter_exemplaire_admin(request, e, avant.get(e.pk), e.statut)
+
+    # Supprimer un article jamais utilisé (26/10/2026) : l'historique des mouvements ne se supprime jamais à la main,
+    # sauf ici, pour un administrateur, et seulement s'il ne s'agit que de corrections (voir article_jamais_utilise).
+    # Un article qui a servi reste bloqué : ses réceptions, demandes, sorties ou retours sont listés comme protégés.
+    def get_deleted_objects(self, objs, request):
+        a_supprimer, compte, permissions, proteges = super().get_deleted_objects(objs, request)
+        if request.user.is_superuser and all(article_jamais_utilise(a) for a in objs):
+            # Les seuls objets protégés restants sont ces corrections (réceptions, demandes, sorties, retours : aucun).
+            # Elles sont montrées dans « seront aussi supprimés », pour que l'administrateur les voie avant de confirmer.
+            nom = str(MouvementEtat._meta.verbose_name)
+            mouvements = list(MouvementEtat.objects.filter(article__in=list(objs)))
+            permissions = {p for p in permissions if str(p) != nom}
+            proteges = []
+            if mouvements:
+                a_supprimer = [*a_supprimer, [f"{nom.capitalize()} : {m} ({m.motif or m.get_type_display()})"
+                                              for m in mouvements]]
+                compte = {**compte, str(MouvementEtat._meta.verbose_name_plural): len(mouvements)}
+        return a_supprimer, compte, permissions, proteges
+
+    def delete_model(self, request, obj):
+        if request.user.is_superuser and article_jamais_utilise(obj):
+            MouvementEtat.objects.filter(article=obj).delete()
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        for obj in list(queryset):
+            self.delete_model(request, obj)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)

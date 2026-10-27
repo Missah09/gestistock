@@ -261,9 +261,13 @@ export default function ConfirmerSortie({ d, onFermer, onConfirmee }) {
             </table>
           </div>
           {aSaisir && lignes.some((l) => !parSerie(l)) && (
-            <button type="button" className="btn lien tout-livre" disabled={envoi || verifier} onClick={toutLivre}>
-              <Icon name="check" size={16} stroke={2.2} />Tout a été livré comme sur le bon (remplir les cases)
-            </button>
+            // Raccourci placé à droite, juste sous la colonne « Qté livrée » qu'il remplit (16/10/2026).
+            <div className="tout-livre-ligne">
+              <button type="button" className="btn tout-livre" disabled={envoi || verifier} onClick={toutLivre}
+                title="Recopie la quantité du bon dans chaque case « Qté livrée »">
+                <Icon name="check" size={16} stroke={2.2} />Tout a été livré comme sur le bon
+              </button>
+            </div>
           )}
 
           {aSaisir ? (

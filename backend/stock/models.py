@@ -78,12 +78,13 @@ class Article(models.Model):
     categorie = models.ForeignKey(Categorie, on_delete=models.PROTECT, related_name="articles")
     type = models.CharField(max_length=12, choices=Type.choices, default=Type.CONSOMMABLE)
     unite = models.CharField(max_length=10, choices=Unite.choices, default=Unite.PIECE)
-    # Matériel prêté dont chaque appareil a son n° de série (OTDR, soudeuse…) : choisi à la création de l'article
-    # (12/10/2026). Les n° sont alors demandés à chaque réception, même pour le tout premier exemplaire.
+    # Article dont chaque unité a son n° de série : appareils prêtés (OTDR, soudeuse…) et, depuis le 26/10/2026,
+    # consommables comptés à la pièce (box ONT…). Choisi une seule fois par article (Nouvel article, fiche, ou
+    # « Ce produit a des n° de série ? » à l'entrée en stock), définitif. Les n° sont alors demandés à chaque réception.
     suivi_serie = models.BooleanField(
         "suivi par n° de série", default=False,
-        help_text="Matériel prêté seulement : chaque exemplaire reçu porte un n° de série.")
-    # Matériel prêté avec exemplaires (n° de série) : la quantité est calculée à partir des exemplaires.
+        help_text="Chaque unité reçue porte un n° de série (consommable : comptés à la pièce seulement).")
+    # Article suivi par n° de série : la quantité est calculée à partir des exemplaires « En stock ».
     # Sinon (consommables, petit matériel sans n° de série) : cette quantité saisie fait foi.
     qte_stock = models.PositiveIntegerField("quantité en stock (consommables)", default=0)
     qte_minimale = models.PositiveIntegerField("quantité minimale", default=0)
@@ -149,6 +150,8 @@ class Exemplaire(models.Model):
     class Statut(models.TextChoices):
         EN_STOCK = "EN_STOCK", "En stock"
         PRETE = "PRETE", "Prêté"
+        # Consommable suivi par n° de série remis à la sortie (26/10/2026) : il ne revient pas.
+        CONSOMME = "CONSOMME", "Sorti (consommé)"
         REBUT = "REBUT", "Mis au rebut"  # ancien écran « Matériel à réparer » : gardé pour l'historique
 
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="exemplaires")

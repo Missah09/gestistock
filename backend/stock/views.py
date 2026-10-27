@@ -20,7 +20,8 @@ def articles_avec_quantites():
     """Articles + quantité disponible calculée.
 
     - Consommable : la quantité saisie (qte_stock).
-    - Matériel prêté suivi par n° de série : le nombre d'exemplaires « En stock ».
+    - Article suivi par n° de série (matériel prêté, ou consommable à la pièce depuis le 26/10/2026) :
+      le nombre d'exemplaires « En stock ».
     - Matériel prêté sans n° de série (pelles, casques…) : la quantité saisie, comme un consommable.
     """
     return (
@@ -31,7 +32,7 @@ def articles_avec_quantites():
         )
         .annotate(qte_disponible=Case(
             # Matériel suivi par n° de série : on compte les exemplaires « En stock ».
-            When(type=Article.Type.PRETE, nb_exemplaires__gt=0, then=F("nb_en_stock")),
+            When(nb_exemplaires__gt=0, then=F("nb_en_stock")),
             default=F("qte_stock"),
             output_field=IntegerField(),
         ))
@@ -185,7 +186,9 @@ def choix(request):
         # Pour la fenêtre « Entrée en stock »
         "articles": [{"id": a.id, "code": a.code, "nom": a.nom, "type": a.type, "unite": a.unite, "magasin": a.emplacement.magasin_id,
                       "prix_unitaire": float(a.prix_unitaire),
-                      "suivi_serie": a.nb_ex > 0 or (a.type == Article.Type.PRETE and a.suivi_serie)}
+                      "suivi_serie": a.nb_ex > 0 or a.suivi_serie,
+                      # « Ce produit a des n° de série ? » (26/10/2026) : proposé si l'article peut l'être.
+                      "serie_possible": etats.serie_impossible(a.type, a.unite) is None}
                      for a in Article.objects.select_related("emplacement").annotate(nb_ex=Count("exemplaires"))
                      .order_by("nom")],
     })

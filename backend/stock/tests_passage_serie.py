@@ -91,8 +91,13 @@ class PassageSuiviSerieTests(TestCase):
     def test_qui_et_quoi(self):
         lignes = {"exemplaires": self.lignes(10)}
         self.assertEqual(self.s.post(self.url(self.casque), lignes, format="json").status_code, 403)   # demandeur
-        rep = self.a.post(self.url(self.conso), {"exemplaires": []}, format="json")                     # consommable
-        self.assertIn("non consommable", rep.data["general"][0])
+        # Consommable à la pièce : accepté depuis le 26/10/2026 (ici : il faut un n° par unité au magasin)
+        rep = self.a.post(self.url(self.conso), {"exemplaires": []}, format="json")
+        self.assertIn("Indiquez 50 n° de série", rep.data["general"][0])
+        metre = Article.objects.create(nom="Câble au mètre", categorie=self.conso.categorie, type="CONSOMMABLE",
+                                       unite="m", emplacement=self.conso.emplacement)
+        rep = self.a.post(self.url(metre), {"exemplaires": []}, format="json")                          # au mètre
+        self.assertIn("comptés à la pièce", rep.data["general"][0])
         rep = self.a.post(self.url(self.serie), {"exemplaires": []}, format="json")                     # déjà suivi
         self.assertIn("déjà suivi", rep.data["general"][0])
         admin = APIClient(); admin.force_login(User.objects.create_superuser("chef", password="x"))

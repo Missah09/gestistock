@@ -200,7 +200,7 @@ def confirmer(request, pk):
             if x is None:
                 erreurs_lignes[l.id] = ["Indiquez la quantité livrée (0 si le magasin n'a rien remis)."]
                 continue
-            if a.type == Article.Type.PRETE and a.id in avec_serie:
+            if a.id in avec_serie:  # suivi par n° de série (matériel prêté ou consommable, 26/10/2026)
                 ids = x.get("exemplaires") or []
                 ids = [_entier(i) for i in ids] if isinstance(ids, list) else [None]
                 if None in ids or len(set(ids)) != len(ids):
@@ -256,8 +256,11 @@ def confirmer(request, pk):
                                             etats=repartition)
             if exemplaires:
                 ls.exemplaires.set(exemplaires)
+                # Consommable : « Sorti (consommé) », aucun retour attendu (26/10/2026). Le destinataire et le
+                # chantier sont gardés : on sait où chaque n° est parti.
+                statut = Exemplaire.Statut.PRETE if a.type == Article.Type.PRETE else Exemplaire.Statut.CONSOMME
                 Exemplaire.objects.filter(id__in=[e.id for e in exemplaires]).update(
-                    statut=Exemplaire.Statut.PRETE, prete_a=destinataire[:120], chantier=(d.destination or "")[:120])
+                    statut=statut, prete_a=destinataire[:120], chantier=(d.destination or "")[:120])
                 for e in exemplaires:
                     etats.noter(a, "SORTIE", 1, etat_avant=e.etat, reference=r.numero, par=request.user, exemplaire=e)
             else:

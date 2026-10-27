@@ -112,6 +112,16 @@ def _etats_texte(par_etat, unite):
     return " · ".join(f"{quantite(par_etat[e], unite)} {etats.LIBELLES[e]}" for e in etats.ORDRE if par_etat.get(e))
 
 
+def note(terme, texte):
+    """Une ligne du bloc « Notes » en bas du rapport : un terme et sa définition (16/10/2026)."""
+    return {"terme": terme, "texte": texte[:1].upper() + texte[1:]}
+
+
+def alerte(texte):
+    """Un point d'attention en bas du rapport (ex. articles sans prix) : affiché à part, en orange."""
+    return {"alerte": True, "texte": texte}
+
+
 def _pluriel(n, mot, pluriel=None):
     return f"{n} {mot if n == 1 else (pluriel or mot + 's')}"
 
@@ -170,8 +180,9 @@ def etat_du_stock(params):
                      for nom, lignes in sections.items()],
         "resume": [["Articles", str(len(articles))], ["Sous le seuil", str(sous_seuil)],
                    ["dont épuisés", str(compte["EPUISE"])]],
-        "notes": ["Qté disponible : ce qui est au magasin (le matériel prêté dehors n'y est pas compté). "
-                  "État du stock : Épuisé (0), Critique (la moitié du minimum ou moins), Stock bas (sous le minimum)."],
+        "notes": [note("Qté disponible", "quantité présente au magasin ; le matériel prêté à l'extérieur n'est pas compté."),
+                  note("État du stock", "Épuisé : quantité nulle · Critique : moitié du minimum ou moins · "
+                                        "Stock bas : sous la quantité minimale.")],
         "vide": "Aucun article.",
     }
 
@@ -215,13 +226,14 @@ def a_commander(params):
         st = sum((l["valeur"] or 0 for l in lignes), Decimal(0))
         sections.append({"titre": f"{f} – {_pluriel(len(lignes), 'article')}", "lignes": lignes,
                          "total": {"article": "Sous-total", "valeur": st} if len(ordre) > 1 else None})
-    notes = ["Qté à commander : ce qu'il faut pour revenir au minimum (à arrondir selon le conditionnement du "
-             "fournisseur). Prix : dernier prix d'achat connu."]
+    notes = [note("Qté à commander", "quantité nécessaire pour revenir au minimum, à arrondir selon le "
+                                     "conditionnement du fournisseur."),
+             note("Prix unitaire", "dernier prix d'achat connu.")]
     if sans_minimum:
-        notes.append(f"{_pluriel(sans_minimum, 'article épuisé')} sans quantité minimale : fixez-la dans la fiche "
-                     "article pour obtenir une quantité à commander.")
+        notes.append(alerte(f"{_pluriel(sans_minimum, 'article épuisé')} sans quantité minimale : la renseigner dans "
+                            "la fiche article pour calculer la quantité à commander."))
     if sans_prix:
-        notes.append(f"{_pluriel(sans_prix, 'article')} sans prix : montant non compté.")
+        notes.append(alerte(f"{_pluriel(sans_prix, 'article')} sans prix unitaire : non compté(s) dans le montant."))
     return {
         "titre": "À commander",
         "sous_titre": _filtres_texte(m, extra=_au_jour()),
@@ -308,8 +320,10 @@ def consommation(params):
         "total": {"article": "Total de la période", "valeur": total},
         "resume": [[f"{quoi.capitalize()}s" if not par_service else "Services", str(len(sections))],
                    ["Lignes", str(nb)], ["Valeur consommée", _fmt_montant(total)]],
-        "notes": ["Consommables remis au magasin (sorties confirmées, date de remise dans la période). "
-                  "Le matériel à rendre est dans le rapport « Matériel prêté ». Valeur : au prix unitaire actuel."],
+        "notes": [note("Périmètre", "consommables remis par le magasin (sorties confirmées dont la date de remise "
+                                    "est comprise dans la période)."),
+                  note("Matériel à rendre", "voir le rapport « Matériel prêté »."),
+                  note("Valeur", "calculée au prix unitaire actuel.")],
         "vide": "Aucune sortie de consommables sur cette période.",
     }
 
@@ -378,8 +392,9 @@ def materiel_prete(params):
         ],
         "sections": [{"titre": None, "lignes": lignes}],
         "resume": [["Lignes", str(len(lignes))], ["En retard", str(en_retard)]],
-        "notes": ["Matériel non consommable sorti du magasin et pas encore rendu (retours confirmés déduits). "
-                  "Les retards (date de retour prévue dépassée) sont en premier, en rouge."],
+        "notes": [note("Périmètre", "matériel non consommable sorti du magasin et non encore rendu "
+                                    "(retours confirmés déduits)."),
+                  note("Retards", "date de retour prévue dépassée ; lignes affichées en premier, en rouge.")],
         "vide": "Aucun matériel prêté dehors : tout est rentré.",
     }
 
@@ -404,10 +419,11 @@ def valeur_du_stock(params):
         sections.append({"titre": f"{cat} – {_fmt_montant(st)}", "lignes": lignes,
                          "total": {"article": f"Sous-total {cat}", "valeur": st}, "_valeur": st})
     sections.sort(key=lambda s: -s.pop("_valeur"))
-    notes = ["Valeur = quantité disponible au magasin × prix unitaire (dernier prix d'achat). Le matériel prêté "
-             "dehors n'est pas compté : même total que la carte « Valeur du stock » du Tableau de bord."]
+    notes = [note("Valeur", "quantité disponible au magasin × prix unitaire (dernier prix d'achat)."),
+             note("Périmètre", "le matériel prêté à l'extérieur n'est pas compté (même total que la carte "
+                               "« Valeur du stock » du tableau de bord).")]
     if sans_prix:
-        notes.append(f"{_pluriel(sans_prix, 'article')} en stock sans prix unitaire : compté pour 0 Ar.")
+        notes.append(alerte(f"{_pluriel(sans_prix, 'article')} en stock sans prix unitaire : compté(s) pour 0 Ar."))
     return {
         "titre": "Valeur du stock",
         "sous_titre": _filtres_texte(m, c, _au_jour()),
@@ -474,8 +490,8 @@ def etalonnages(params):
         ],
         "sections": [{"titre": None, "lignes": lignes}],
         "resume": [["Appareils", str(len(lignes))], ["Dates dépassées", str(depasses)]],
-        "notes": ["Appareils suivis par n° de série dont la date du prochain étalonnage est renseignée "
-                  "(fiche article › Modifier › Exemplaires, ou administration › Exemplaires)."],
+        "notes": [note("Périmètre", "appareils suivis par n° de série dont la date du prochain étalonnage est renseignée."),
+                  note("Mise à jour", "fiche article › Modifier › Exemplaires, ou Administration › Exemplaires.")],
         "vide": "Aucun étalonnage à prévoir sur cette période.",
     }
 

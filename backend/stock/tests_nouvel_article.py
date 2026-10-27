@@ -75,8 +75,18 @@ class NouvelArticleTests(TestCase):
         self.assertEqual(rep.status_code, 400)
         self.assertIn("emplacement", rep.data)
 
-    def test_consommable_jamais_suivi_par_serie(self):
-        rep = self.client_de(self.agent).post("/api/articles/", self.donnees(suivi_serie=True), format="json")
+    def test_consommable_suivi_par_serie_seulement_a_la_piece(self):
+        # Depuis le 26/10/2026 : un consommable compté à la pièce (box ONT…) peut être suivi par n° de série.
+        a = self.client_de(self.agent)
+        rep = a.post("/api/articles/", self.donnees(suivi_serie=True), format="json")
+        self.assertEqual(rep.status_code, 201, rep.data)
+        self.assertTrue(Article.objects.get(id=rep.data["id"]).suivi_serie)
+        # … mais pas un consommable mesuré (mètres) : « un n° = une unité » n'a pas de sens.
+        rep = a.post("/api/articles/", self.donnees(nom="Câble test", unite="m", suivi_serie=True), format="json")
+        self.assertEqual(rep.status_code, 400)
+        self.assertIn("pièce", rep.data["suivi_serie"][0])
+        rep = a.post("/api/articles/", self.donnees(nom="Câble test", unite="m"), format="json")
+        self.assertEqual(rep.status_code, 201, rep.data)
         self.assertFalse(Article.objects.get(id=rep.data["id"]).suivi_serie)
 
     def test_materiel_suivi_par_serie_des_la_premiere_reception(self):

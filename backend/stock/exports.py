@@ -104,6 +104,13 @@ def nom_fichier(titre, extension):
     return f"{base.strip('-')}-{timezone.localdate().isoformat()}.{extension}"
 
 
+def notes_de(rapport):
+    """Notes en bas du rapport (16/10/2026) : [{"terme", "texte"}] (définitions) et [{"alerte": True, "texte"}]
+    (points d'attention). Une note en simple texte (ancien format) est acceptée."""
+    notes = [n if isinstance(n, dict) else {"texte": str(n)} for n in rapport.get("notes", []) if n]
+    return [n for n in notes if not n.get("alerte")], [n for n in notes if n.get("alerte")]
+
+
 def _edite(par):
     t = timezone.localtime()
     qui = (par.get_full_name() or par.username) if par else ""
@@ -117,7 +124,8 @@ def fabriquer_pdf(rapport, par=None):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.pdfgen.canvas import Canvas
+    from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     bleu, bleu_clair, gris, trait = (colors.HexColor("#2f4763"), colors.HexColor("#e8eef5"), colors.HexColor("#626262"),
                                      colors.HexColor("#b9c2cd"))
@@ -131,10 +139,16 @@ def fabriquer_pdf(rapport, par=None):
     s_ent_d = ParagraphStyle("ed", parent=s_ent, alignment=TA_RIGHT)
     s_note = ParagraphStyle("n", fontName="Helvetica-Oblique", fontSize=8, leading=10, textColor=gris)
     s_resume = ParagraphStyle("r", fontName=police, fontSize=9.5, leading=12)
+    s_notes_titre = ParagraphStyle("nt", fontName=gras, fontSize=8, leading=10, textColor=bleu)
+    s_note_terme = ParagraphStyle("nte", fontName=gras, fontSize=8, leading=10.5, textColor=colors.HexColor("#383838"))
+    s_note_texte = ParagraphStyle("ntx", fontName=police, fontSize=8, leading=10.5, textColor=colors.HexColor("#4a4a4a"))
+    s_alerte = ParagraphStyle("na", fontName=gras, fontSize=8, leading=10.5, textColor=colors.HexColor(TONS["orange"]))
 
     def x(t):
         # Le signe moins typographique (−) n'existe pas dans la police Helvetica du PDF : trait d'union à la place.
-        return str(t or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("−", "-")
+        # La flèche (→) non plus : remplacée par « > ».
+        return (str(t or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("−", "-")
+                .replace("→", "&gt;"))
 
     a_droite = {"quantite", "nombre", "montant"}
     page = landscape(A4)
@@ -211,21 +225,73 @@ def fabriquer_pdf(rapport, par=None):
         el.append(t)
     if vide and not rapport["sections"]:
         el.append(Paragraph(x(rapport.get("vide") or "Rien à afficher."), s_note))
-    for n in rapport.get("notes", []):
-        el.append(Spacer(1, 3))
-        el.append(Paragraph(x(n), s_note))
+    # Notes (16/10/2026) : un encadré « Notes » en bas du rapport, définitions alignées en deux colonnes,
+    # points d'attention à part, en orange. Gardé d'un seul tenant (jamais coupé entre deux pages).
+    definitions, alertes = notes_de(rapport)
+    if definitions or alertes:
+        lignes_n = [[Paragraph("NOTES", s_notes_titre), ""]]
+        for n in definitions:
+            if n.get("terme"):
+                lignes_n.append([Paragraph(x(n["terme"]), s_note_terme), Paragraph(x(n["texte"]), s_note_texte)])
+            else:
+                lignes_n.append([Paragraph(x(n["texte"]), s_note_texte), ""])
+        for n in alertes:
+            lignes_n.append([Paragraph("À noter", s_alerte), Paragraph(x(n["texte"]), s_note_texte)])
+        terme_l = 42 * mm
+        bloc = Table(lignes_n, colWidths=[terme_l, largeur - terme_l])
+        style_n = [("BOX", (0, 0), (-1, -1), 0.6, trait), ("BACKGROUND", (0, 0), (-1, 0), bleu_clair),
+                   ("SPAN", (0, 0), (-1, 0)), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                   ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                   ("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+                   ("TOPPADDING", (0, 0), (-1, 0), 3.5), ("BOTTOMPADDING", (0, 0), (-1, 0), 3.5),
+                   ("TOPPADDING", (0, 1), (-1, 1), 5), ("BOTTOMPADDING", (0, -1), (-1, -1), 5)]
+        for i, n in enumerate(definitions, start=1):
+            if not n.get("terme"):
+                style_n.append(("SPAN", (0, i), (-1, i)))
+        if alertes:
+            premiere = len(definitions) + 1
+            style_n += [("LINEABOVE", (0, premiere), (-1, premiere), 0.4, trait),
+                        ("BACKGROUND", (0, premiere), (-1, -1), colors.HexColor(FONDS["orange"]))]
+        bloc.setStyle(TableStyle(style_n))
+        el.append(KeepTogether([Spacer(1, 10), bloc]))
 
-    pied = f"GestiStock – {rapport['titre']}"
+    # Pied de page (16/10/2026) : trait fin, société et rapport à gauche, édition au centre, « Page x sur y » à droite.
+    pied_gauche = f"HBC – GestiStock · {rapport['titre']}"
+    t = timezone.localtime()
+    pied_centre = f"Document à usage interne · édité le {t:%d/%m/%Y} à {t.hour} h {t.minute:02d}"
 
-    def numeroter(canvas, document):
-        canvas.saveState()
-        canvas.setFont(police, 7.5)
-        canvas.setFillColor(gris)
-        canvas.drawString(marges, 8 * mm, pied)
-        canvas.drawRightString(page[0] - marges, 8 * mm, f"Page {document.page}")
-        canvas.restoreState()
+    class CanevasNumerote(Canvas):
+        """Garde chaque page en mémoire pour écrire le nombre total de pages au moment de l'enregistrement."""
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._pages = []
 
-    doc.build(el, onFirstPage=numeroter, onLaterPages=numeroter)
+        def showPage(self):
+            self._pages.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            total = len(self._pages)
+            for etat in self._pages:
+                self.__dict__.update(etat)
+                self._pied(total)
+                super().showPage()
+            super().save()
+
+        def _pied(self, total):
+            self.saveState()
+            self.setStrokeColor(trait)
+            self.setLineWidth(0.5)
+            self.line(marges, 10.5 * mm, page[0] - marges, 10.5 * mm)
+            self.setFont(police, 7.5)
+            self.setFillColor(gris)
+            self.drawString(marges, 6.8 * mm, pied_gauche)
+            self.drawCentredString(page[0] / 2, 6.8 * mm, pied_centre)
+            self.setFont(gras, 7.5)
+            self.drawRightString(page[0] - marges, 6.8 * mm, f"Page {self._pageNumber} sur {total}")
+            self.restoreState()
+
+    doc.build(el, canvasmaker=CanevasNumerote)
     return tampon.getvalue()
 
 
@@ -320,12 +386,51 @@ def fabriquer_xlsx(rapport, par=None):
     if rapport.get("total") and len(rapport["sections"]) > 1:
         ecrire(rapport["total"], r, gras_=True, fond="E8EEF5")
         r += 2
-    for note in rapport.get("notes", []):
-        ws.cell(row=r, column=1, value=note).font = Font(italic=True, size=9, color="626262")
+    # Notes (16/10/2026) : un encadré « Notes » sous le tableau ; le terme en 1re colonne, la définition
+    # sur les colonnes suivantes (cellules fusionnées, texte renvoyé à la ligne) ; points d'attention en orange.
+    definitions, alertes = notes_de(rapport)
+    if definitions or alertes:
         r += 1
+        fond_titre = PatternFill("solid", fgColor="E8EEF5")
+        titre_n = ws.cell(row=r, column=1, value="NOTES")
+        titre_n.font = Font(bold=True, size=9, color=bleu)
+        for j in range(1, n + 1):
+            ws.cell(row=r, column=j).fill = fond_titre
+            ws.cell(row=r, column=j).border = Border(top=fin, bottom=fin, left=fin if j == 1 else None,
+                                                     right=fin if j == n else None)
+        r += 1
+        largeur_texte = sum(max(10, min(60, c.get("largeur", 20) * 0.9)) for c in cols[1:]) or 60
+        for note in definitions + alertes:
+            est_alerte = bool(note.get("alerte"))
+            terme = "À noter" if est_alerte else (note.get("terme") or "")
+            c1 = ws.cell(row=r, column=1, value=terme or None)
+            c1.font = Font(bold=True, size=9, color=TONS["orange"].lstrip("#") if est_alerte else "383838")
+            c1.alignment = Alignment(vertical="top", wrap_text=True)
+            debut = 2 if (terme and n > 1) else 1
+            c2 = ws.cell(row=r, column=debut, value=note["texte"])
+            c2.font = Font(size=9, color="4A4A4A")
+            c2.alignment = Alignment(vertical="top", wrap_text=True)
+            if n > debut:
+                ws.merge_cells(start_row=r, start_column=debut, end_row=r, end_column=n)
+            lignes_estimees = max(1, -(-len(note["texte"]) // max(20, int(largeur_texte * 1.1))))
+            ws.row_dimensions[r].height = 13 * lignes_estimees + 3
+            for j in range(1, n + 1):
+                cel = ws.cell(row=r, column=j)
+                if est_alerte:
+                    cel.fill = PatternFill("solid", fgColor=FONDS["orange"].lstrip("#"))
+                cel.border = Border(left=fin if j == 1 else None, right=fin if j == n else None,
+                                    bottom=fin if note is (definitions + alertes)[-1] else None)
+            r += 1
 
     for j, c in enumerate(cols, start=1):
         ws.column_dimensions[get_column_letter(j)].width = max(10, min(60, c.get("largeur", 20) * 0.9))
+    # Pied de page à l'impression (16/10/2026), comme sur le PDF.
+    ws.oddFooter.left.text = f"HBC – GestiStock · {rapport['titre']}"
+    ws.oddFooter.center.text = "Document à usage interne"
+    ws.oddFooter.right.text = "Page &P sur &N"
+    for partie in (ws.oddFooter.left, ws.oddFooter.center, ws.oddFooter.right):
+        partie.size = 8
+        partie.color = "626262"
     ws.page_setup.orientation = "landscape"
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 0

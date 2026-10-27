@@ -72,9 +72,8 @@ export default function BonRequisition({ d, quantites, numero, visas = {}, aSign
           ))}
         </tbody>
       </table>
-      <p className="bon-note">{r?.sortie
-        ? `Qté livrée et État : recopiés du bon signé par le magasinier. Matériel remis le ${date(r.sortie.date_remise)}${r.sortie.magasinier ? ` par ${r.sortie.magasinier}` : ""}.`
-        : "Qté livrée : à remplir à la main par le magasinier lors de la remise du matériel. État : d'après la fiche article (à corriger à la main si besoin)."}</p>
+      {/* Légendes sous le tableau retirées (16/10/2026) ; seule l'observation du magasinier reste, s'il y en a une. */}
+      {r?.sortie?.observation && <p className="bon-note">Observation : {r.sortie.observation}</p>}
 
       <div className="bon-section">3. Visas et signatures</div>
       <div className="bon-visas">

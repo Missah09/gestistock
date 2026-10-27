@@ -104,6 +104,27 @@ function BoutonsFichier({ cle, reglages, onErreur, grands }) {
   );
 }
 
+/** Encadré « Notes » sous le tableau (16/10/2026) : définitions (terme : texte) puis points d'attention. */
+export function NotesRapport({ notes }) {
+  const liste = (notes ?? []).map((n) => (typeof n === "string" ? { texte: n } : n));
+  if (!liste.length) return null;
+  const definitions = liste.filter((n) => !n.alerte);
+  const alertes = liste.filter((n) => n.alerte);
+  return (
+    <aside className="rapport-notes" aria-label="Notes">
+      <div className="rapport-notes-titre">Notes</div>
+      <dl>
+        {definitions.map((n, i) => (
+          <div key={i} className="rapport-notes-ligne">{n.terme && <dt>{n.terme}</dt>}<dd className={n.terme ? undefined : "seule"}>{n.texte}</dd></div>
+        ))}
+        {alertes.map((n, i) => (
+          <div key={`a${i}`} className="rapport-notes-ligne alerte"><dt>À noter</dt><dd>{n.texte}</dd></div>
+        ))}
+      </dl>
+    </aside>
+  );
+}
+
 /** Fenêtre d'un rapport : les filtres, le résumé, le tableau, les notes. */
 function FenetreRapport({ info, catalogue, onFermer }) {
   const [reglages, setReglages] = useState({});
@@ -202,7 +223,7 @@ function FenetreRapport({ info, catalogue, onFermer }) {
           {rapport && (
             <div className={chargement ? "en-chargement" : ""}>
               <TableauRapport rapport={rapport} onArticle={setFiche} />
-              {rapport.notes?.map((n) => <p key={n} className="rapport-note">{n}</p>)}
+              <NotesRapport notes={rapport.notes} />
             </div>
           )}
         </div>

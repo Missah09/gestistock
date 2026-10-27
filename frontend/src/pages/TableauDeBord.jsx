@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { lireTableauDeBord } from "../api.js";
 import { ETATS, montant, montantCourt, quantite } from "../format.js";
 import Icon from "../icons.jsx";
 import EntreeStock from "./EntreeStock.jsx";
 import FicheArticle from "./FicheArticle.jsx";
+import GraphiquesTableau from "./GraphiquesTableau.jsx";
 
 /** Écran « Tableau de bord » (12/10/2026) : l'essentiel du jour, pour l'Agent Logistique et le Responsable HBC.
- *  Ouvert après la connexion. Chiffres et listes (pas de graphique), d'après la maquette.
+ *  Ouvert après la connexion. Chiffres, graphiques (16/10/2026) et listes.
  *  Mis à jour toutes les 30 s, au retour sur l'onglet et après chaque action (comme les pastilles du menu). */
 
 // Couleur de la pastille de chaque événement de l'« Activité du jour ».
@@ -19,6 +20,34 @@ const TYPES_ACTIVITE = {
   sortie: { classe: "a-sortie", libelle: "Sortie de stock" },
   retour: { classe: "a-retour", libelle: "Retour de stock" },
 };
+
+/* Tableau de bord sur une seule page, sans défilement (27/10/2026) : sur un écran d'ordinateur, chaque liste
+ * n'affiche que les lignes qui tiennent dans la hauteur de son panneau ; les autres sont annoncées en bas
+ * (« Et N autres… ») avec le lien vers l'écran complet. Même condition que dans styles.css. */
+const UNE_PAGE = "(min-width: 1000px) and (min-height: 600px)";
+
+function useLignesQuiTiennent(nbLignes) {
+  const ref = useRef(null);
+  const [max, setMax] = useState(Infinity);
+  useLayoutEffect(() => {
+    const zone = ref.current;
+    if (!zone) return undefined;
+    const calculer = () => {
+      if (!window.matchMedia(UNE_PAGE).matches) { setMax(Infinity); return; }
+      const ligne = zone.querySelector("[data-ligne]");
+      if (!ligne) return;
+      const h = ligne.getBoundingClientRect().height;
+      const entete = zone.querySelector("thead")?.getBoundingClientRect().height ?? 0;
+      if (h > 0) setMax(Math.max(1, Math.floor((zone.clientHeight - entete + 1) / h)));
+    };
+    calculer();
+    const obs = new ResizeObserver(calculer);
+    obs.observe(zone);
+    window.addEventListener("resize", calculer);
+    return () => { obs.disconnect(); window.removeEventListener("resize", calculer); };
+  }, [nbLignes]);
+  return [ref, max];
+}
 
 function heure(iso) {
   const d = new Date(iso);
@@ -74,7 +103,11 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
   const c = donnees?.cartes ?? {};
   const liste = donnees?.a_reapprovisionner ?? [];
   const activite = donnees?.activite ?? [];
-  const autresSousSeuil = (c.sous_seuil ?? 0) - liste.length;
+  const [refListe, maxListe] = useLignesQuiTiennent(liste.length);
+  const [refActivite, maxActivite] = useLignesQuiTiennent(activite.length);
+  const listeVisible = liste.slice(0, maxListe);
+  const activiteVisible = activite.slice(0, maxActivite);
+  const autresSousSeuil = (c.sous_seuil ?? 0) - listeVisible.length;
   const voirSousSeuil = ouvrir("Liste d'Articles", { sousSeuil: true });
   // Carte « en attente » : demandes à valider (Agent Logistique) ou bons à viser (Responsable HBC).
   const attente = "a_valider" in c
@@ -103,6 +136,8 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
             aide={donnees ? `${montant(c.valeur_stock)} : quantité disponible × prix unitaire (le matériel prêté n'est pas compté)` : undefined} />
         </div>
 
+        <GraphiquesTableau donnees={donnees} onArticle={setOuvert} />
+
         <div className="tdb-grille">
           <section className="card tdb-panneau">
             <div className="tdb-panneau-tete">
@@ -111,17 +146,18 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
                 <button type="button" className="btn lien" onClick={voirSousSeuil}>Voir tout<Icon name="fleche" size={16} stroke={2.2} /></button>
               )}
             </div>
+            <div className="tdb-defile" ref={refListe}>
             <table className="tableau">
               <thead>
                 <tr><th>Article</th><th className="centre">Stock</th><th className="centre">Minimum</th><th>État</th></tr>
               </thead>
               <tbody>
-                {liste.map((a) => {
+                {listeVisible.map((a) => {
                   const etat = ETATS[a.etat];
                   return (
-                    <tr key={a.id} className={`cliquable ${a.id === ouvert ? "choisie" : ""}`} onClick={() => setOuvert(a.id)}
+                    <tr key={a.id} data-ligne className={`cliquable ${a.id === ouvert ? "choisie" : ""}`} onClick={() => setOuvert(a.id)}
                       title="Voir la fiche de l'article">
-                      <td className="nom" title={a.code}>{a.nom}</td>
+                      <td className="nom" title={`${a.code} · ${a.nom}`}>{a.nom}</td>
                       <td className="num centre">{quantite(a.qte_disponible, a.unite)}</td>
                       <td className="discret centre">{quantite(a.qte_minimale, a.unite)}</td>
                       <td><span className={`pill ${etat.classe}`}>{etat.libelle}</span></td>
@@ -133,6 +169,7 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
                 )}
               </tbody>
             </table>
+            </div>
             {autresSousSeuil > 0 && (
               <div className="tdb-pied">
                 Et {autresSousSeuil} autre{autresSousSeuil > 1 ? "s" : ""} article{autresSousSeuil > 1 ? "s" : ""} sous le seuil.
@@ -150,21 +187,24 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
                 </button>
               )}
             </div>
-            <ul className="tdb-activite">
-              {activite.map((e, i) => {
+            <ul className="tdb-activite" ref={refActivite}>
+              {activiteVisible.map((e, i) => {
                 const t = TYPES_ACTIVITE[e.type] ?? TYPES_ACTIVITE.demande;
                 return (
-                  <li key={i}>
+                  <li key={i} data-ligne>
                     <span className={`tdb-point ${t.classe}`} title={t.libelle} />
-                    <span className="tdb-evenement">{e.texte}</span>
+                    <span className="tdb-evenement" title={e.texte}>{e.texte}</span>
                     <time dateTime={e.le}>{heure(e.le)}</time>
                   </li>
                 );
               })}
               {donnees && activite.length === 0 && <li className="vide">Rien d'enregistré aujourd'hui pour l'instant.</li>}
             </ul>
-            {donnees && donnees.nb_activites > activite.length && (
-              <div className="tdb-pied">Et {donnees.nb_activites - activite.length} événement(s) plus ancien(s) aujourd'hui.</div>
+            {donnees && donnees.nb_activites > activiteVisible.length && (
+              <div className="tdb-pied">
+                Et {donnees.nb_activites - activiteVisible.length} événement(s) plus ancien(s) aujourd'hui.
+                {ouvrir("Historique") && <button type="button" className="btn lien" onClick={ouvrir("Historique", { periode: "jour" })}>Voir l'historique</button>}
+              </div>
             )}
           </section>
         </div>

@@ -274,7 +274,7 @@ def rapport(params):
         "colonnes": COLONNES,
         "sections": [{"titre": None, "lignes": lignes, "vide": "Aucun mouvement pour ces filtres."}],
         "resume": [["Lignes", str(len(lignes))], ["Entrées", str(entrees)], ["Sorties", str(sorties)]],
-        "notes": ["Stock avant → après : quantité disponible au magasin de l'article. Les étapes du circuit "
-                  "(demande, validation, signature, impression) et les modifications (ancienne → nouvelle valeur) "
-                  "ne changent pas le stock."],
+        "notes": [{"terme": "Stock avant → après", "texte": "Quantité disponible au magasin pour l'article concerné."},
+                  {"terme": "Sans effet sur le stock", "texte": "Étapes du circuit (demande, validation, signature, "
+                   "impression) et modifications (ancienne → nouvelle valeur)."}],
     }

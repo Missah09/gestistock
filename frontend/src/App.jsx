@@ -1,4 +1,3 @@
-import symboleHbc from "./assets/logo-hbc-symbole.png"; // symbole HBC (les 4 barres) – à remplacer par la version haute qualité
 import Icon from "./icons.jsx";
 import { useEffect, useState } from "react";
 import { lireCompteurs, lireSession, seDeconnecter } from "./api.js";
@@ -15,34 +14,42 @@ import Requisitions from "./pages/Requisitions.jsx";
 import Retours from "./pages/Retours.jsx";
 import Sorties from "./pages/Sorties.jsx";
 import TableauDeBord from "./pages/TableauDeBord.jsx";
+import MenuLateral, { lirePreference, ecrirePreference } from "./MenuLateral.jsx";
 
 // Écrans déjà développés ; les autres entrées du menu affichent « en préparation ».
 const ECRANS = { Aide, "Tableau de bord": TableauDeBord, "Liste d'Articles": Articles, "Mes demandes": Demandes, "Demandes à valider": AValider, "Demandes à viser": AViser, "Liste Réquisitions": Requisitions, "Sorties de stock": Sorties, "Retours de stock": Retours, "Générer Rapports": Rapports, Historique, Comptes };
 
-/** Menu selon le rôle (ordre fixé le 11/10/2026).
- *  Articles (consultation) pour tous ; Tableau de bord pour l'Agent Logistique et le Responsable HBC. */
+/** Menu selon le rôle, rangé dans l'ordre du circuit (16/10/2026) :
+ *  Tableau de bord → Articles → Demandes → Réquisitions et mouvements → Rapports et suivi → Administration.
+ *  Un groupe d'une seule entrée s'affiche comme une entrée simple (ex. « Mes demandes » pour un Saisisseur).
+ *  Chaque élément : ["entrée", icône, titre] ou ["groupe", icône, titre du groupe, [[icône, titre]…]]. */
 function menuPour(compte) {
   const agent = compte.agent_logistique;
-  const menu = [];
-  if (agent || compte.responsable) menu.push(["home", "Tableau de bord"]);
-  menu.push(["box", "Liste d'Articles"], ["clip", "Mes demandes"]);
-  if (agent) menu.push(["check", "Demandes à valider"]);
-  if (compte.responsable) menu.push(["sign", "Demandes à viser"]);
-  // Réquisitions (bons signés, PDF) : Agent Logistique et Responsable HBC (12/10/2026)
-  if (agent || compte.responsable) menu.push(["doc", "Liste Réquisitions"]);
-  if (agent) menu.push(["out", "Sorties de stock"], ["back", "Retours de stock"], ["chart", "Générer Rapports"], ["clock", "Historique"]);
-  if (compte.administrateur) menu.push(["users", "Comptes"]);
-  return menu;
+  const resp = compte.responsable;
+  const groupe = (icone, titre, entrees) => {
+    const e = entrees.filter(Boolean);
+    if (!e.length) return null;
+    return e.length === 1 ? ["entree", ...e[0]] : ["groupe", icone, titre, e];
+  };
+  return [
+    (agent || resp) && ["entree", "home", "Tableau de bord"],
+    ["entree", "box", "Liste d'Articles"],
+    groupe("clip", "Demandes", [["clip", "Mes demandes"], agent && ["check", "Demandes à valider"], resp && ["sign", "Demandes à viser"]]),
+    groupe("out", "Mouvements de stock", [
+      (agent || resp) && ["doc", "Liste Réquisitions"], agent && ["out", "Sorties de stock"], agent && ["back", "Retours de stock"]]),
+    groupe("chart", "Rapports et suivi", [agent && ["chart", "Générer Rapports"], agent && ["clock", "Historique"]]),
+    groupe("users", "Administration", [compte.administrateur && ["users", "Comptes"]]),
+  ].filter(Boolean);
 }
+
+/** Toutes les entrées du menu, à plat : [[icône, titre]…]. */
+const entreesDu = (menu) => menu.flatMap((m) => (m[0] === "groupe" ? m[3] : [[m[1], m[2]]]));
 
 /** Écran ouvert après la connexion (12/10/2026) : le Tableau de bord pour l'Agent Logistique et le Responsable HBC,
  *  « Mes demandes » pour les Saisisseurs. */
 function accueil(compte) {
   return compte && (compte.agent_logistique || compte.responsable) ? "Tableau de bord" : "Mes demandes";
 }
-
-// Compteur affiché à droite de l'entrée du menu (ce qui attend l'utilisateur).
-const COMPTEUR_DU_MENU = { "Demandes à valider": "a_valider", "Demandes à viser": "a_viser", "Liste Réquisitions": "a_imprimer", "Sorties de stock": "a_confirmer", "Retours de stock": "retours_en_retard" };
 
 /** Lien de l'email au Responsable : http://…/#a-viser/<id de la demande> → écran « Demandes à viser », réquisition ouverte. */
 function lienDeLEmail() {
@@ -58,6 +65,9 @@ export default function App() {
   const [parametres, setParametres] = useState(null);
   const [compteurs, setCompteurs] = useState({});
   const [raisonDeconnexion, setRaisonDeconnexion] = useState(null); // ex. « compte ouvert sur un autre appareil »
+  // Menu de gauche caché (16/10/2026) : un clic le cache, un clic le réaffiche ; gardé d'une visite à l'autre.
+  const [menuCache, setMenuCache] = useState(() => lirePreference("menu-cache", false));
+  const basculerMenu = () => setMenuCache((v) => { ecrirePreference("menu-cache", !v); return !v; });
 
   // Un compte = un seul appareil connecté : toutes les 30 s on vérifie que la session est toujours ouverte.
   useEffect(() => {
@@ -112,7 +122,8 @@ export default function App() {
     onConnecte={(c) => { setRaisonDeconnexion(null); setEcran(ouvrirId && c.responsable ? "Demandes à viser" : accueil(c)); setCompte(c); }} />;
 
   const menu = menuPour(compte);
-  const actif = ecran === "Aide" || menu.some(([, l]) => l === ecran) ? ecran : accueil(compte);
+  const entrees = entreesDu(menu);
+  const actif = ecran === "Aide" || entrees.some(([, l]) => l === ecran) ? ecran : accueil(compte);
   const Ecran = ECRANS[actif];
 
   /** Ouvre un écran du menu, avec d'éventuels réglages (filtre…). */
@@ -125,42 +136,18 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <aside className="side">
-        <div className="brand">
-          <span className="logo-rond"><img src={symboleHbc} alt="Logo HBC" /></span>
-          <span className="brand-texte">
-            <span className="nom-appli">GestiStock</span>
-            <span className="societe">H.B.C</span>
-          </span>
-        </div>
-        <nav className="nav">
-          {menu.map(([icon, label]) => (
-            <a key={label} className={label === actif ? "on" : ""} href="#" aria-current={label === actif ? "page" : undefined}
-              onClick={(e) => { e.preventDefault(); allerA(label); }}><Icon name={icon} />{label}
-              {compteurs[COMPTEUR_DU_MENU[label]] > 0 && (
-                <span className={`pastille${label === "Retours de stock" ? " retard" : ""}`}
-                  title={label === "Retours de stock" ? "Matériel en retard (date de retour dépassée)" : "En attente de votre part"}>{compteurs[COMPTEUR_DU_MENU[label]]}</span>
-              )}</a>
-          ))}
-        </nav>
-        <nav className="nav bottom">
-          <a className={actif === "Aide" ? "on" : ""} href="#" aria-current={actif === "Aide" ? "page" : undefined}
-            onClick={(e) => { e.preventDefault(); allerA("Aide"); }}><Icon name="help" />Aide</a>
-          {compte.administrateur && <a href="/admin/" target="_blank" rel="noreferrer"><Icon name="sliders" />Administration</a>}
-        </nav>
-        <div className="carte-compte">
-          <div className="compte-nom" title={compte.nom}>{compte.nom}</div>
-          {!compte.administrateur && (
-            <div className="compte-info">{compte.roles.filter((r) => r !== "Saisisseur").join(" · ") || "Saisisseur"}</div>
-          )}
-          {compte.departement && <div className="compte-info compte-dep">{/^d[ée]partement/i.test(compte.departement) ? compte.departement : `Département ${compte.departement}`}</div>}
-          <button className="btn compte-sortie" onClick={deconnecter}><Icon name="logout" />Se déconnecter</button>
-        </div>
-      </aside>
+    <div className={`app${menuCache ? " menu-cache" : ""}`}>
+      {menuCache ? (
+        <button type="button" className="menu-afficher" onClick={basculerMenu} title="Afficher le menu" aria-label="Afficher le menu">
+          <Icon name="menu" size={22} stroke={2} />
+        </button>
+      ) : (
+        <MenuLateral menu={menu} actif={actif} compte={compte} compteurs={compteurs} allerA={allerA}
+          onDeconnecter={deconnecter} onCacher={basculerMenu} />
+      )}
       <main className="main">
         {Ecran ? <Ecran key={actif} compte={compte} ouvrirId={actif === "Demandes à viser" ? ouvrirId : null}
-          parametres={parametres} allerA={allerA} ecransDuMenu={menu.map(([, l]) => l)} /> : (
+          parametres={parametres} allerA={allerA} ecransDuMenu={entrees.map(([, l]) => l)} /> : (
           <>
             <header className="top"><h1>{actif}</h1></header>
             <div className="body"><div className="card prepa">Cet écran est en préparation.</div></div>

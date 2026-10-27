@@ -111,6 +111,14 @@ class ArticleModificationSerializer(serializers.ModelSerializer):
         fields = ["nom", "categorie", "unite", "qte_minimale", "emplacement", "prix_unitaire",
                   "fournisseur", "ref_fournisseur", "ref_fabricant", "marque", "modele", "exemplaires"]
 
+    def validate_unite(self, unite):
+        from . import etats
+        a = self.instance
+        if a is not None and unite != a.unite and etats.suivi_par_serie(a) and etats.serie_impossible(a.type, unite):
+            raise serializers.ValidationError(
+                "Cet article est suivi par n° de série : il doit rester compté à la pièce.")
+        return unite
+
     def validate_exemplaires(self, lignes):
         article = self.instance
         ids_article = set(article.exemplaires.values_list("id", flat=True))
@@ -217,8 +225,12 @@ class ArticleCreationSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         from .views import sans_accents
-        if data["type"] != Article.Type.PRETE:
-            data["suivi_serie"] = False  # un consommable n'a pas de n° de série
+        from . import etats
+        # Consommable suivi par n° de série (26/10/2026) : seulement s'il est compté à la pièce.
+        if data.get("suivi_serie") and data.get("type"):
+            refus = etats.serie_impossible(data["type"], data.get("unite", Article.Unite.PIECE))
+            if refus:
+                raise serializers.ValidationError({"suivi_serie": [refus]})
         # Même nom dans le même magasin : sans doute un doublon (accents et majuscules ignorés).
         cle = " ".join(sans_accents(data["nom"]).split())
         magasin = data["emplacement"].magasin
@@ -227,6 +239,14 @@ class ArticleCreationSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"nom": [f"Cet article existe déjà à {magasin.nom} : {code} – {nom}."]})
         return data
+
+
+class ExemplaireRecuSerializer(serializers.Serializer):
+    """Une case de la fenêtre « Entrée en stock » (26/10/2026) : le n° de série d'une unité reçue et son état."""
+    numero_serie = serializers.CharField(max_length=60, trim_whitespace=True, allow_blank=True,
+                                         error_messages={"max_length": "60 caractères au maximum."})
+    etat = serializers.ChoiceField(choices=Etat.choices, required=False, default=Etat.NEUF,
+                                   error_messages={"invalid_choice": "État inconnu."})
 
 
 class LigneEntreeSerializer(serializers.Serializer):
@@ -247,6 +267,9 @@ class LigneEntreeSerializer(serializers.Serializer):
     # État du produit reçu (12/10/2026) : « Neuf » par défaut.
     etat = serializers.ChoiceField(choices=Etat.choices, required=False, default=Etat.NEUF,
                                    error_messages={"invalid_choice": "État inconnu."})
+    # Article suivi par n° de série (26/10/2026) : une case par unité, chacune avec son état.
+    # (`numeros_serie` reste accepté : tous les exemplaires prennent alors l'état de la ligne.)
+    exemplaires = ExemplaireRecuSerializer(many=True, required=False)
 
 
 class EntreeSerializer(serializers.Serializer):
@@ -273,21 +296,43 @@ class EntreeSerializer(serializers.Serializer):
             elif a.id in vus:
                 err["article"] = ["Cet article est déjà sur une autre ligne."]
             vus.add(a.id)
-            series = [s for s in ligne.get("numeros_serie", []) if s]
-            ligne["numeros_serie"] = series
-            if a.exemplaires.exists() or (a.type == Article.Type.PRETE and a.suivi_serie):  # suivi par n° de série
-                if len(series) != ligne["quantite"]:
-                    err["numeros_serie"] = [f"Indiquez {ligne['quantite']} n° de série (un par exemplaire reçu)."]
-                else:
-                    doublons = [s for s in series if s in series_vues or series.count(s) > 1]
-                    existants = list(Exemplaire.objects.filter(numero_serie__in=series).values_list("numero_serie", flat=True))
-                    if doublons:
-                        err["numeros_serie"] = [f"N° de série en double : {', '.join(sorted(set(doublons)))}."]
-                    elif existants:
-                        err["numeros_serie"] = [f"Déjà enregistré : {', '.join(existants)}."]
-                series_vues.update(series)
-            elif series:
-                ligne["numeros_serie"] = []  # article suivi par quantité : les n° éventuels sont ignorés
+            if "exemplaires" in ligne:
+                cases = [(x["numero_serie"], x.get("etat") or Etat.NEUF) for x in ligne["exemplaires"]]
+            else:
+                cases = [(s, ligne.get("etat") or Etat.NEUF) for s in ligne.get("numeros_serie", []) if s]
+            if a.exemplaires.exists() or a.suivi_serie:  # suivi par n° de série
+                series = [s for s, _ in cases]
+                existants = set(Exemplaire.objects.filter(numero_serie__in=[s for s in series if s])
+                                .values_list("numero_serie", flat=True))
+                # Une erreur par case (affichée sous la case), et un résumé pour la ligne.
+                par_case, manquants, doublons, deja = [], 0, set(), set()
+                for s in series:
+                    if not s:
+                        manquants += 1
+                        par_case.append({"numero_serie": ["N° de série à saisir."]})
+                    elif series.count(s) > 1 or s in series_vues:
+                        doublons.add(s)
+                        par_case.append({"numero_serie": ["En double."]})
+                    elif s in existants:
+                        deja.add(s)
+                        par_case.append({"numero_serie": ["Déjà enregistré."]})
+                    else:
+                        par_case.append({})
+                manquants += max(0, ligne["quantite"] - len(series))
+                if len(series) > ligne["quantite"]:
+                    err["numeros_serie"] = [f"{len(series)} n° de série pour une quantité de {ligne['quantite']}."]
+                elif manquants:
+                    err["numeros_serie"] = [f"Il manque {manquants} n° de série (un par unité reçue)."]
+                elif doublons:
+                    err["numeros_serie"] = [f"N° de série en double : {', '.join(sorted(doublons))}."]
+                elif deja:
+                    err["numeros_serie"] = [f"Déjà enregistré : {', '.join(sorted(deja))}."]
+                if any(par_case):
+                    err["exemplaires"] = par_case
+                series_vues.update(s for s in series if s)
+                ligne["cases"] = cases
+            else:
+                ligne["cases"] = []  # article suivi par quantité : les n° éventuels sont ignorés
             erreurs.append(err)
         if any(erreurs):
             raise serializers.ValidationError({"lignes": erreurs})
@@ -302,16 +347,18 @@ class EntreeSerializer(serializers.Serializer):
             reference = f"Réception du {entree.date_reception:%d/%m/%Y}"
             for l in lignes:
                 a = Article.objects.select_for_update().get(pk=l["article"].pk)
+                cases = l["cases"]
                 etat = l.get("etat") or Etat.NEUF
+                if cases:  # état de la ligne : le plus fréquent parmi les exemplaires (le détail est sur chacun)
+                    etat = max(etats.ORDRE, key=lambda e: sum(1 for _, x in cases if x == e))
                 LigneEntree.objects.create(entree=entree, article=a, quantite=l["quantite"],
                                            prix_unitaire=l.get("prix_unitaire"),
-                                           numeros_serie="\n".join(l["numeros_serie"]), etat=etat)
-                if l["numeros_serie"]:
+                                           numeros_serie="\n".join(s for s, _ in cases), etat=etat)
+                if cases:
                     nouveaux = Exemplaire.objects.bulk_create([
-                        Exemplaire(article=a, numero_serie=s, etat=etat, statut=etats.statut_pour(etat))
-                        for s in l["numeros_serie"]])
+                        Exemplaire(article=a, numero_serie=s, etat=x, statut=etats.statut_pour(x)) for s, x in cases])
                     for e in nouveaux:
-                        etats.noter(a, "RECEPTION", 1, etat_apres=etat, reference=reference, par=par, exemplaire=e)
+                        etats.noter(a, "RECEPTION", 1, etat_apres=e.etat, reference=reference, par=par, exemplaire=e)
                 else:
                     etats.ajouter(a, etat, l["quantite"])
                     etats.noter(a, "RECEPTION", l["quantite"], etat_apres=etat, reference=reference, par=par)
@@ -347,8 +394,9 @@ class PassageSuiviSerieSerializer(serializers.Serializer):
         from . import etats
         from .rapports import prete_dehors
         article = self.context["article"]
-        if article.type != Article.Type.PRETE:
-            raise serializers.ValidationError({"general": ["Seul le matériel non consommable peut être suivi par n° de série."]})
+        refus = etats.serie_impossible(article.type, article.unite)
+        if refus:
+            raise serializers.ValidationError({"general": [refus]})
         if etats.suivi_par_serie(article):
             raise serializers.ValidationError({"general": ["Cet article est déjà suivi par n° de série."]})
         dehors = prete_dehors().get(article.id, 0)
@@ -554,7 +602,7 @@ def article_resume(a, rep=None):
         "modele": a.modele, "marque": a.marque, "qte_disponible": a.qte_disponible,
         "qte_minimale": a.qte_minimale, "etat": etat_stock(a.qte_disponible, a.qte_minimale),
         # Matériel suivi par n° de série : à la sortie, on coche les exemplaires remis (12/10/2026).
-        "suivi_par_serie": a.type == "PRETE" and (getattr(a, "nb_exemplaires", 0) > 0 or a.suivi_serie),
+        "suivi_par_serie": getattr(a, "nb_exemplaires", 0) > 0 or a.suivi_serie,
     }
     if rep is not None:
         resume["etats"] = module_etats.en_json(rep)["etats"]

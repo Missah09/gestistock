@@ -1,7 +1,8 @@
 """État du produit : Neuf · Bon · Moyen · Mauvais (simplifié le 12/10/2026 ; tous les états sont disponibles).
 
 Deux façons de suivre un article :
-- **par n° de série** (matériel prêté avec exemplaires) : chaque exemplaire porte son état ;
+- **par n° de série** (matériel prêté, ou consommable compté à la pièce depuis le 26/10/2026) : chaque exemplaire
+  porte son état ;
 - **par quantité** (consommables, matériel prêté sans n° de série) : le stock est réparti par état (StockEtat).
   `Article.qte_stock` est la quantité disponible (somme des états), celle que tout le reste de l'application utilise.
 
@@ -36,9 +37,15 @@ def etat_par_defaut(article):
     return Etat.NEUF if article.type == Article.Type.CONSOMMABLE else Etat.BON
 
 
+def serie_impossible(type_article, unite):
+    """Message si cet article ne peut pas être suivi par n° de série (26/10/2026), sinon None.
+    Un consommable mesuré (mètres…) n'a pas « un n° = une unité » : seuls les consommables comptés à la pièce."""
+    if type_article == Article.Type.CONSOMMABLE and unite != Article.Unite.PIECE:
+        return "Le suivi par n° de série n'est possible que pour les articles comptés à la pièce."
+    return None
+
+
 def suivi_par_serie(article, a_des_exemplaires=None):
-    if article.type != Article.Type.PRETE:
-        return False
     if article.suivi_serie:  # choisi à la création (12/10/2026), même sans exemplaire encore reçu
         return True
     if a_des_exemplaires is None:
@@ -85,7 +92,7 @@ def repartitions(articles):
         ex.setdefault(article_id, []).append((etat, statut))
     resultat = {}
     for a in articles:
-        if a.type == Article.Type.PRETE and a.id in ex:
+        if a.id in ex:
             # Un exemplaire « En stock » compte dans son état.
             etats = {e: 0 for e in ORDRE}
             for e, st in ex[a.id]:

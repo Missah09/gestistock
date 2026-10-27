@@ -760,3 +760,174 @@ button.tdb-carte:focus-visible { outline: 3px solid var(--hbc-pale); outline-off
 /* Écran « Comptes » : onglets Comptes · Historique des comptes · Journal de connexion (15/10/2026) */
 .onglets-comptes { display: inline-flex; margin-bottom: 14px; }
 .journal-comptes td { vertical-align: top; }
+
+/* ---------- Menu de gauche (16/10/2026) : groupes dépliables, tient dans l'écran, se cache d'un clic ---------- */
+.side { overflow-x: hidden; overflow-y: auto; scrollbar-width: none; padding: 12px 10px 10px; }
+.side::-webkit-scrollbar { display: none; }
+.brand { padding: 0 2px 12px 6px; gap: 10px; }
+.logo-rond { width: 42px; height: 42px; }
+.brand-texte { flex: 1; min-width: 0; }
+.menu-cacher { flex: none; width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #dbe5ef; display: grid; place-items: center; cursor: pointer; }
+.menu-cacher:hover { background: rgba(255,255,255,.12); color: #fff; }
+.menu-cacher:focus-visible, .menu-afficher:focus-visible, .nav-groupe-titre:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+.nav a, .nav-groupe-titre { padding: 8px 10px; gap: 12px; margin-bottom: 1px; border-radius: 8px; font-size: 14px; }
+.nav-groupe-titre { width: 100%; display: flex; align-items: center; border: 0; background: transparent; color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.nav-groupe-titre:hover { background: rgba(255,255,255,.1); }
+.nav-groupe-nom { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-groupe.contient-actif:not(.ouvert) .nav-groupe-titre { background: var(--hbc-fonce); font-weight: 700; box-shadow: inset 4px 0 0 var(--hbc-clair); }
+.nav-chevron { flex: none; display: grid; place-items: center; opacity: .75; transform: rotate(-90deg); transition: transform .15s; }
+.nav-groupe.ouvert .nav-chevron { transform: none; }
+.nav-groupe-titre .pastille { margin-left: auto; min-width: 19px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--rouge); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; box-shadow: 0 0 0 2px var(--hbc); }
+.nav-groupe-entrees { margin: 0 0 4px 21px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.22); }
+.nav a.sous { padding: 7px 10px; gap: 10px; font-size: 13.5px; }
+.nav.bottom { padding-top: 6px; margin-top: auto; }
+.nav.bottom a { padding: 7px 10px; }
+
+.carte-compte { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 10px 4px 0 8px; }
+.compte-texte { flex: 1; min-width: 0; }
+.btn.compte-sortie { flex: none; width: auto; height: 34px; margin: 0; padding: 0 10px; gap: 6px; font-size: 12.5px; }
+
+/* Menu caché : tout l'écran pour le contenu ; ☰ en haut à gauche pour le réafficher. */
+.app.menu-cache { grid-template-columns: minmax(0, 1fr); }
+.app.menu-cache .top { padding-left: 68px; }
+.menu-afficher { position: fixed; top: 10px; left: 14px; z-index: 6; width: 38px; height: 36px; border: 0; border-radius: 9px; background: var(--hbc); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(47,71,99,.3); }
+.menu-afficher:hover { background: var(--hbc-fonce); }
+
+/* ---------- Tableau de bord : graphiques (16/10/2026) ---------- */
+/* Couleurs vérifiées (daltonisme, contraste) : entrées bleu, sorties ambre ; mêmes sens que l'« Activité du jour ». */
+:root { --gr-entree: #2f6fa3; --gr-sortie: #c27a0e; --gr-valeur: #2f6fa3; --gr-autres: #a7b0bb; }
+.tdb-graphiques { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.gr-carte { display: flex; flex-direction: column; padding: 6px 0 14px; min-height: 262px; }
+.gr-tete { padding: 12px 20px 6px; }
+.gr-tete h2 { margin: 0; font-size: 17px; }
+.gr-sous-titre { display: block; color: var(--gris); font-size: 12.5px; margin-top: 2px; }
+.gr-vide { margin: auto 20px; text-align: center; color: var(--gris); font-size: 13.5px; }
+
+.gr-barres { list-style: none; margin: 6px 0 0; padding: 0 20px; display: flex; flex-direction: column; gap: 4px; }
+.gr-barres li { display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 34px; border-radius: 6px; padding: 0 4px; }
+.gr-barres li.cliquable { cursor: pointer; }
+.gr-barres li:hover { background: #f3f6f9; }
+.gr-libelle { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-piste { height: 14px; display: flex; align-items: center; }
+.gr-barre { height: 12px; border-radius: 0 4px 4px 0; display: block; min-width: 3px; }
+.gr-barre.sortie { background: var(--gr-sortie); }
+.gr-barre.valeur { background: var(--gr-valeur); }
+.gr-barre.autres { background: var(--gr-autres); }
+.gr-valeur { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; min-width: 52px; }
+
+.gr-legende { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 2px 20px 6px; font-size: 12.5px; color: var(--gris); }
+.gr-legende b { color: var(--encre); }
+.gr-pastille { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.gr-pastille.entree { background: var(--gr-entree); }
+.gr-pastille.sortie { background: var(--gr-sortie); }
+.gr-detail { margin-left: auto; color: var(--gris); }
+.gr-colonnes { flex: 1; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; padding: 4px 20px 0 14px; min-height: 150px; }
+.gr-axe { position: relative; width: 22px; margin-bottom: 18px; font-size: 11px; color: var(--gris); font-variant-numeric: tabular-nums; }
+.gr-axe span { position: absolute; right: 0; transform: translateY(50%); line-height: 1; }
+.gr-zone { display: flex; flex-direction: column; min-width: 0; }
+.gr-trace { position: relative; flex: 1; display: flex; align-items: stretch; }
+.gr-grille { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid #edf0f4; pointer-events: none; }
+.gr-grille.zero { border-top-color: #c9d1db; }
+.gr-jour { position: relative; z-index: 1; flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-radius: 4px 4px 0 0; }
+.gr-jour.survol { background: rgba(47,111,163,.08); }
+.gr-col { width: min(9px, 38%); border-radius: 3px 3px 0 0; }
+.gr-col.entree { background: var(--gr-entree); }
+.gr-col.sortie { background: var(--gr-sortie); }
+.gr-xs { display: flex; height: 18px; align-items: flex-end; }
+.gr-xs span { flex: 1; text-align: center; font-size: 10.5px; color: var(--gris); white-space: nowrap; font-variant-numeric: tabular-nums; overflow: visible; }
+
+@media (max-width: 1250px) { .tdb-graphiques { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tdb-graphiques > :last-child { grid-column: 1 / -1; } }
+@media (max-width: 1000px) { .tdb-graphiques { grid-template-columns: minmax(0, 1fr); } }
+
+/* Confirmer la sortie : « Tout a été livré comme sur le bon » à droite, sous la colonne « Qté livrée » (16/10/2026). */
+.tout-livre-ligne { display: flex; justify-content: flex-end; margin-top: 8px; }
+.btn.tout-livre { height: 36px; padding: 0 14px; gap: 7px; font-weight: 700; color: var(--hbc); background: var(--hbc-pale); border-color: #c4d4e3; }
+.btn.tout-livre:hover:not(:disabled) { background: #dbe7f1; border-color: var(--hbc); }
+
+/* Rapports : encadré « Notes » sous le tableau (16/10/2026), comme sur le PDF et l'Excel. */
+.rapport-notes { margin-top: 14px; background: #fff; border: 1px solid #d3dbe4; border-radius: 10px; overflow: hidden; }
+.rapport-notes-titre { background: #eef2f6; color: var(--hbc-fonce); font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 7px 14px; border-bottom: 1px solid var(--trait); }
+.rapport-notes dl { margin: 0; padding: 6px 0; }
+.rapport-notes-ligne { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; padding: 4px 14px; font-size: 13px; line-height: 1.45; }
+.rapport-notes dt { font-weight: 700; color: var(--encre); }
+.rapport-notes dd { margin: 0; color: #4a4a4a; }
+.rapport-notes dd.seule { grid-column: 1 / -1; }
+.rapport-notes-ligne.alerte { background: var(--orange-clair); }
+.rapport-notes-ligne.alerte dt { color: var(--orange); }
+.rapport-notes-ligne.alerte:first-of-type { margin-top: 0; }
+
+/* ---------- Entrée en stock : une case par n° de série (26/10/2026) ---------- */
+.lignes .tableau tr.avec-series td { border-bottom: 0; }
+.lignes .tableau tr.ligne-series td { padding: 0 10px 12px; }
+.series { background: #f6f8fb; border: 1px solid #e3e8ef; border-radius: 9px; padding: 10px 12px 12px; }
+.series.series-erreur { border-color: var(--rouge); }
+.series-tete { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.series-tete b { font-size: 13px; color: var(--hbc-fonce); }
+.series-compte { font-size: 12.5px; font-weight: 700; color: var(--orange); background: var(--orange-clair); border-radius: 999px; padding: 1px 9px; }
+.series-compte.complet { color: var(--vert-fonce); background: var(--vert-clair); }
+.series-vide { margin: 2px 0 0; }
+.series-cases { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 8px 14px; }
+.case-serie { display: flex; align-items: flex-start; gap: 6px; }
+.case-num { flex: none; width: 26px; text-align: right; padding-top: 9px; font-size: 12.5px; font-weight: 700; color: var(--gris); }
+.case-champ { flex: 1; min-width: 0; }
+.case-champ .saisie { font-family: Consolas, "Cascadia Mono", monospace; letter-spacing: .02em; }
+.case-champ .msg-erreur { margin-top: 2px; }
+.case-etat { flex: none; width: 112px; }
+.series-alerte { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12.5px; font-weight: 700; color: var(--orange); }
+.series > .msg-erreur { margin-top: 10px; }
+.series-confirmer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--rouge-clair); color: var(--rouge); font-size: 13px; }
+.series-confirmer span { flex: 1 1 260px; }
+.btn.btn-court { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn.danger.btn-court { background: #fff; }
+.btn.lien.lien-serie { height: auto; padding: 4px 2px 0; font-size: 12.5px; }
+.nouvel-article .btn.case.desactive { opacity: .65; cursor: not-allowed; }
+@media (max-width: 760px) { .series-cases { grid-template-columns: 1fr; } }
+
+/* ---------- Menu de gauche (26/10/2026, 22 h) : police plus petite ; nom, département et « Se déconnecter » l'un sous l'autre ---------- */
+.nav a, .nav-groupe-titre { font-size: 13px; }
+.nav a.sous { font-size: 12.5px; }
+.carte-compte { flex-direction: column; align-items: stretch; gap: 0; }
+.compte-nom { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.btn.compte-sortie { width: 100%; justify-content: center; margin-top: 8px; }
+
+/* ---------- Tableau de bord sur une seule page, sans défilement (27/10/2026) ----------
+   Sur un écran d'ordinateur, tout l'écran tient dans la fenêtre : cartes compactes en haut,
+   les 3 graphiques au milieu, « À réapprovisionner » et « Activité du jour » en bas.
+   Les rangées se partagent la hauteur ; chaque liste montre les lignes qui tiennent (TableauDeBord.jsx).
+   Sur un petit écran (moins de 1000 px de large ou 600 px de haut), l'ancienne mise en page défilante reste. */
+@media (min-width: 1000px) and (min-height: 600px) {
+  .main:has(> .body.tdb) { height: 100vh; overflow: hidden; }
+  .body.tdb { flex: 1; min-height: 0; gap: 12px; padding: 12px 22px 14px; }
+
+  .tdb-cartes { flex: none; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .tdb-carte { padding: 10px 16px; gap: 12px; }
+  .tdb-icone { width: 42px; height: 42px; border-radius: 10px; }
+  .tdb-icone svg { width: 22px; height: 22px; }
+  .tdb-titre { font-size: 13px; }
+  .tdb-valeur { font-size: 24px; }
+
+  .tdb-graphiques { flex: 1 1 0; min-height: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .tdb-graphiques > :last-child { grid-column: auto; }
+  .gr-carte { min-height: 0; padding: 2px 0 8px; }
+  .gr-tete { padding: 8px 16px 2px; }
+  .gr-tete h2, .tdb-panneau-tete h2 { font-size: 15px; }
+  .gr-sous-titre { font-size: 12px; }
+  .gr-barres { flex: 1 1 0; min-height: 0; overflow: hidden; margin-top: 4px; padding: 0 16px; gap: 0; justify-content: space-evenly; }
+  .gr-barres li { min-height: 24px; }
+  .gr-legende { padding: 0 16px 2px; }
+  .gr-colonnes { min-height: 0; padding: 10px 16px 0 10px; }
+
+  .tdb-grille { flex: 1.15 1 0; min-height: 0; align-items: stretch; gap: 12px; }
+  .tdb-panneau { display: flex; flex-direction: column; min-height: 0; padding: 0 0 4px; }
+  .tdb-panneau-tete { flex: none; min-height: 0; padding: 6px 16px; }
+  .tdb-defile { flex: 1 1 0; min-height: 0; overflow: hidden; }
+  .tdb-panneau .tableau th { padding: 6px 14px; }
+  .tdb-panneau .tableau td { height: 34px; }
+  .tdb-panneau .tableau td.nom { max-width: 0; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tdb-activite { flex: 1 1 0; min-height: 0; overflow: hidden; padding: 0 16px; }
+  .tdb-activite li { padding: 7px 0; }
+  .tdb-activite li.vide { height: auto; padding: 20px 0; }
+  .tdb-evenement { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tdb-pied { flex: none; padding: 4px 16px 0; }
+}

@@ -114,7 +114,7 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
       prix_unitaire: form.prix_unitaire === "" ? null : form.prix_unitaire,
       exemplaires: form.exemplaires.map((x) => ({ ...x, date_etalonnage: x.date_etalonnage || null })),
     };
-    if (a.type !== "PRETE") delete donnees.exemplaires;
+    if (!a.exemplaires.length) delete donnees.exemplaires;
     try {
       const fiche = await modifierArticle(id, donnees);
       setA(fiche);
@@ -129,8 +129,10 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
   }
 
   const prete = a?.type === "PRETE";
-  // Matériel non consommable encore suivi par quantité : peut passer au suivi par n° de série (15/10/2026).
-  const peutPasserSerie = prete && !a.suivi_serie && a.exemplaires.length === 0;
+  // Article encore suivi par quantité : peut passer au suivi par n° de série (15/10/2026) ;
+  // depuis le 26/10/2026 aussi un consommable compté à la pièce (box ONT…).
+  const peutPasserSerie = a && (prete || a.unite === "piece") && !a.suivi_serie && a.exemplaires.length === 0;
+  const uniteBloquee = a && !prete && (a.suivi_serie || a.exemplaires.length > 0); // reste compté à la pièce
   const err = (champ) => premier(erreurs[champ]);
   const errEx = (i, champ) => premier(erreurs.exemplaires?.[i]?.[champ]);
   const nbErreurs = Object.keys(erreurs).length;
@@ -204,8 +206,9 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
                     ) : a.emplacement}
                   </Champ>
                   {enModification ? (
-                    <Champ libelle="Unité" erreur={err("unite")}>
+                    <Champ libelle="Unité" erreur={err("unite")} aide={uniteBloquee ? "Suivi par n° de série : compté à la pièce" : null}>
                       <ListeDeroulante ariaLabel="Unité" valeur={form.unite} onChange={choisirListe("unite")} invalide={Boolean(err("unite"))}
+                        desactive={uniteBloquee}
                         options={choix.unites.map((u) => ({ valeur: u.valeur, libelle: u.libelle }))} />
                     </Champ>
                   ) : (
@@ -267,7 +270,7 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
                 <Bloc titre="N° de série">
                   <div className="passage-serie">
                     <p className="aide">Cet article est suivi par quantité : ses unités n'ont pas de n° de série.
-                      {modifiable ? " Pour suivre chaque appareil, passez au suivi par n° de série (un n° par unité au magasin)." : ""}</p>
+                      {modifiable ? ` Pour suivre chaque ${prete ? "appareil" : "unité"}, passez au suivi par n° de série (un n° par unité au magasin).` : ""}</p>
                     {modifiable && (
                       <button className="btn" type="button" onClick={(e) => { e.preventDefault(); setMessage(null); setPassage(true); }}>
                         <Icon name="edit" size={18} stroke={2} />Passer au suivi par n° de série
@@ -278,19 +281,19 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
               )}
 
               {/* Article suivi par n° de série, encore jamais reçu (créé avec « Nouvel article », 12/10/2026) */}
-              {prete && a.suivi_serie && a.exemplaires.length === 0 && (
+              {a.suivi_serie && a.exemplaires.length === 0 && (
                 <Bloc titre="Exemplaires (0)">
                   <p className="aide" style={{ margin: 0, padding: "12px 16px" }}>Suivi par n° de série : les n° seront saisis à l'entrée en stock.</p>
                 </Bloc>
               )}
 
               {/* Section affichée seulement pour le matériel suivi par n° de série */}
-              {prete && a.exemplaires.length > 0 && (
+              {a.exemplaires.length > 0 && (
                 <Bloc titre={`Exemplaires (${a.exemplaires.length})`}>
                   <div className="ex">
                     <table className="tableau">
                       <thead>
-                        <tr><th>N° de série</th><th>Code immo</th><th>Étalonnage</th><th>État</th><th>Où il se trouve</th></tr>
+                        <tr><th>N° de série</th>{prete && <><th>Code immo</th><th>Étalonnage</th></>}<th>État</th><th>Où il se trouve</th></tr>
                       </thead>
                       <tbody>
                         {a.exemplaires.map((e, i) => (
@@ -301,31 +304,31 @@ export default function FicheArticle({ id, onFermer, onModifie, onEntreeStock, m
                                   <input className={`saisie petite${errEx(i, "numero_serie") ? " invalide" : ""}`} value={form.exemplaires[i].numero_serie} onChange={changerExemplaire(i, "numero_serie")} />
                                   {errEx(i, "numero_serie") && <em className="msg-erreur">{errEx(i, "numero_serie")}</em>}
                                 </td>
-                                <td>
+                                {prete && <><td>
                                   <input className={`saisie petite${errEx(i, "code_immo") ? " invalide" : ""}`} placeholder="À compléter" value={form.exemplaires[i].code_immo} onChange={changerExemplaire(i, "code_immo")} />
                                   {errEx(i, "code_immo") && <em className="msg-erreur">{errEx(i, "code_immo")}</em>}
                                 </td>
                                 <td>
                                   <input className="saisie petite" type="date" value={form.exemplaires[i].date_etalonnage} onChange={changerExemplaire(i, "date_etalonnage")} />
-                                </td>
+                                </td></>}
                               </>
                             ) : (
                               <>
                                 <td className="code">{e.numero_serie}</td>
-                                <td>{e.code_immo ? <span className="code">{e.code_immo}</span> : <span className="a-completer">À compléter (Finance)</span>}</td>
-                                <td className={datePassee(e.date_etalonnage) ? "depasse" : ""}>{date(e.date_etalonnage)}</td>
+                                {prete && <><td>{e.code_immo ? <span className="code">{e.code_immo}</span> : <span className="a-completer">À compléter (Finance)</span>}</td>
+                                <td className={datePassee(e.date_etalonnage) ? "depasse" : ""}>{date(e.date_etalonnage)}</td></>}
                               </>
                             )}
                             <td><PastilleEtat etat={e.etat} /></td>
                             <td>
-                              <span className={`pill ${e.statut === "EN_STOCK" ? "p-ok" : e.statut === "PRETE" ? "p-i" : e.statut === "REBUT" ? "p-g" : "p-w"}`}>{e.statut_libelle}</span>{" "}
-                              {e.statut === "PRETE" ? [e.prete_a, e.chantier].filter(Boolean).join(" · ")
+                              <span className={`pill ${e.statut === "EN_STOCK" ? "p-ok" : e.statut === "PRETE" ? "p-i" : e.statut === "REBUT" || e.statut === "CONSOMME" ? "p-g" : "p-w"}`}>{e.statut_libelle}</span>{" "}
+                              {e.statut === "PRETE" || e.statut === "CONSOMME" ? [e.prete_a, e.chantier].filter(Boolean).join(" · ")
                                 : e.statut === "REBUT" ? "" : a.emplacement}
                             </td>
                           </tr>
                         ))}
                         {a.exemplaires.length === 0 && (
-                          <tr><td colSpan={5} className="vide">Aucun exemplaire enregistré.</td></tr>
+                          <tr><td colSpan={prete ? 5 : 3} className="vide">Aucun exemplaire enregistré.</td></tr>
                         )}
                       </tbody>
                     </table>

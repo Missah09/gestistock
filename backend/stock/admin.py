@@ -22,11 +22,11 @@ class StockEtatInline(admin.TabularInline):
         return False
 
 
-def article_jamais_utilise(article):
-    """Jamais reçu, demandé, sorti ni rendu (ex. article de test). Son historique ne contient alors que des corrections
-    (quantité corrigée dans l'administration, passage au suivi par n° de série) : il peut être supprimé avec l'article."""
-    return not (article.lignes_entree.exists() or article.lignes_demande.exists() or article.lignes_sortie.exists()
-                or article.lignes_retour.exists())
+def article_supprimable(article):
+    """Article de test ou créé par erreur (27/10/2026) : il peut avoir été reçu (Entrée en stock), mais jamais demandé,
+    sorti ni rendu. L'administrateur peut alors le supprimer avec ses lignes de réception et son historique ;
+    une réception qui ne contenait que lui est supprimée aussi. Les autres articles de la réception ne changent pas."""
+    return not (article.lignes_demande.exists() or article.lignes_sortie.exists() or article.lignes_retour.exists())
 
 
 @admin.register(Article)
@@ -60,25 +60,34 @@ class ArticleAdmin(admin.ModelAdmin):
             if e.pk and f not in formset.deleted_forms and f.has_changed():
                 noter_exemplaire_admin(request, e, avant.get(e.pk), e.statut)
 
-    # Supprimer un article jamais utilisé (26/10/2026) : l'historique des mouvements ne se supprime jamais à la main,
-    # sauf ici, pour un administrateur, et seulement s'il ne s'agit que de corrections (voir article_jamais_utilise).
-    # Un article qui a servi reste bloqué : ses réceptions, demandes, sorties ou retours sont listés comme protégés.
+    # Supprimer un article jamais utilisé (26/10/2026), ou seulement reçu (27/10/2026) : l'historique des mouvements et
+    # les réceptions ne se suppriment jamais à la main, sauf ici, pour un administrateur (voir article_supprimable).
+    # Un article demandé, sorti ou rendu reste bloqué : ces lignes sont listées comme protégées.
     def get_deleted_objects(self, objs, request):
         a_supprimer, compte, permissions, proteges = super().get_deleted_objects(objs, request)
-        if request.user.is_superuser and all(article_jamais_utilise(a) for a in objs):
-            # Les seuls objets protégés restants sont ces corrections (réceptions, demandes, sorties, retours : aucun).
-            # Elles sont montrées dans « seront aussi supprimés », pour que l'administrateur les voie avant de confirmer.
+        if request.user.is_superuser and all(article_supprimable(a) for a in objs):
+            # Ce qui part avec l'article est montré dans « seront aussi supprimés », pour être vu avant de confirmer.
+            articles = list(objs)
+            permissions, proteges = set(), []
+            lignes = list(LigneEntree.objects.filter(article__in=articles).select_related("entree__magasin", "article"))
+            if lignes:
+                nom = str(LigneEntree._meta.verbose_name)
+                a_supprimer = [*a_supprimer, [f"{nom.capitalize()} : {l} — {l.entree}" for l in lignes]]
+                compte = {**compte, str(LigneEntree._meta.verbose_name_plural): len(lignes)}
+                videes = [e for e in Entree.objects.filter(lignes__in=lignes).distinct()
+                          if not e.lignes.exclude(article__in=articles).exists()]
+                if videes:
+                    a_supprimer = [*a_supprimer, [f"Réception entière (ne contenait que cet article) : {e}" for e in videes]]
+                    compte = {**compte, str(Entree._meta.verbose_name_plural): len(videes)}
             nom = str(MouvementEtat._meta.verbose_name)
-            mouvements = list(MouvementEtat.objects.filter(article__in=list(objs)))
-            permissions = {p for p in permissions if str(p) != nom}
-            proteges = []
+            mouvements = list(MouvementEtat.objects.filter(article__in=articles))
             if mouvements:
                 a_supprimer = [*a_supprimer, [f"{nom.capitalize()} : {m} ({m.motif or m.get_type_display()})"
                                               for m in mouvements]]
                 compte = {**compte, str(MouvementEtat._meta.verbose_name_plural): len(mouvements)}
         elif request.user.is_superuser:
-            # L'article a servi (27/10/2026) : la vraie raison du blocage est ce qui l'utilise (réceptions, demandes,
-            # sorties, retours). Sans cela, Django affichait « votre compte n'est pas autorisé à supprimer… mouvement »
+            # L'article a servi (27/10/2026) : la vraie raison du blocage est ce qui l'utilise (demandes, sorties,
+            # retours). Sans cela, Django affichait « votre compte n'est pas autorisé à supprimer… mouvement »
             # et masquait la liste des objets protégés. On retire aussi de cette liste l'historique de l'article lui-même.
             nom = str(MouvementEtat._meta.verbose_name)
             permissions = set()
@@ -86,9 +95,23 @@ class ArticleAdmin(admin.ModelAdmin):
         return a_supprimer, compte, permissions, proteges
 
     def delete_model(self, request, obj):
-        if request.user.is_superuser and article_jamais_utilise(obj):
-            MouvementEtat.objects.filter(article=obj).delete()
-        super().delete_model(request, obj)
+        from django.db import transaction
+
+        from . import journal
+        with transaction.atomic():
+            if request.user.is_superuser and article_supprimable(obj):
+                lignes = list(obj.lignes_entree.select_related("entree__magasin"))
+                entrees = {l.entree for l in lignes}
+                MouvementEtat.objects.filter(article=obj).delete()
+                for l in lignes:
+                    journal.modification("admin_suppr", "Réception supprimée avec l'article", request.user,
+                                         f"{l} — {l.entree} (article de test ou créé par erreur)",
+                                         objet=f"{obj.code} – {obj.nom}", reference="Administration", request=request)
+                    l.delete()
+                for e in entrees:
+                    if not e.lignes.exists():
+                        e.delete()
+            super().delete_model(request, obj)
 
     def delete_queryset(self, request, queryset):
         for obj in list(queryset):

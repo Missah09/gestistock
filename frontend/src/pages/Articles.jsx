@@ -9,7 +9,7 @@ import FicheArticle from "./FicheArticle.jsx";
 const PAR_PAGE = 10;
 
 export default function Articles({ compte, parametres }) {
-  // Consultation pour tous ; réception et modification réservées à l'Agent Logistique.
+  // Consultation pour tous ; réception et modification réservées au Responsable Technique.
   const gestion = !!compte?.agent_logistique;
   const [page, setPage] = useState(1);
   const [donnees, setDonnees] = useState(null); // { count, results }

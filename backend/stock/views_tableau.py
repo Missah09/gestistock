@@ -1,4 +1,4 @@
-"""Écran « Tableau de bord » (Agent Logistique et Responsable HBC, 12/10/2026).
+"""Écran « Tableau de bord » (Responsable Technique et Responsable Logistique, 12/10/2026).
 
 Une seule lecture pour tout l'écran :
 - les 4 cartes chiffrées (articles sous le seuil, demandes à valider ou bons à viser, retours en retard, valeur du stock) ;
@@ -100,7 +100,7 @@ def activite_du_jour():
         de = f" de {nom_de(d.demandeur)}" if d.demandeur else ""
         ajouter(d.cree_le, "demande", f"Nouvelle demande{' urgente' if d.urgent else ''} {d.numero}{de}")
 
-    # Validations et refus de l'Agent Logistique
+    # Validations et refus du Responsable Technique
     for d in Demande.objects.filter(traitee_le__date=aujourd_hui).select_related("traitee_par"):
         par = f" par {initiale(d.traitee_par)}" if d.traitee_par else ""
         if d.statut == Demande.Statut.VALIDEE or hasattr(d, "requisition"):
@@ -108,7 +108,7 @@ def activite_du_jour():
         elif d.statut == Demande.Statut.REFUSEE:
             ajouter(d.traitee_le, "refus", f"Demande {d.numero} refusée{par}")
 
-    # Signature (ou refus) du Responsable HBC
+    # Signature (ou refus) du Responsable Logistique
     for r in Requisition.objects.filter(visa_responsable_le__date=aujourd_hui).select_related("visa_responsable"):
         par = f" par {initiale(r.visa_responsable)}" if r.visa_responsable else ""
         if r.statut == Requisition.Statut.REFUSEE:

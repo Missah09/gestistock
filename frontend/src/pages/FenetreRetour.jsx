@@ -12,7 +12,7 @@ const deux = (n) => String(n).padStart(2, "0");
 const aujourdhui = () => { const d = new Date(); return `${d.getFullYear()}-${deux(d.getMonth() + 1)}-${deux(d.getDate())}`; };
 const OPTIONS_ETATS = ORDRE_ETATS.map((e) => ({ valeur: e, libelle: ETATS_PRODUIT[e].libelle }));
 
-/** Fenêtre « Retour » d'une réquisition (Agent Logistique, 12/10/2026).
+/** Fenêtre « Retour » d'une réquisition (Responsable Technique, 12/10/2026).
  *  - Pas de bon en cours : on prépare le bon de retour (signature au stylo), puis on le télécharge pour le magasin.
  *  - Bon en cours : on recopie le bon rempli au magasin (Qté rendue, État au retour) → le stock remonte.
  *  - Historique des bons de retour et copies d'archive. */
@@ -214,7 +214,7 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
           )}
           {!bon && mode === "signer" && (
             <div className="consigne">
-              Le bon de retour reprend <b>tout ce qui reste à rendre</b>. Signez dans le cadre en bas (case « Agent Logistique »),
+              Le bon de retour reprend <b>tout ce qui reste à rendre</b>. Signez dans le cadre en bas (case « Responsable Technique »),
               puis cliquez sur <b>« Signer et préparer le bon »</b> : il se télécharge, prêt à imprimer.
             </div>
           )}
@@ -385,7 +385,7 @@ export default function FenetreRetour({ d, onFermer, onChange }) {
 
           {!bon && mode === "signer" && (
             <section className="signer">
-              <h3>Votre signature <span className="facultatif">(case « Agent Logistique » du bon de retour)</span></h3>
+              <h3>Votre signature <span className="facultatif">(case « Responsable Technique » du bon de retour)</span></h3>
               <p className="signataire">Le bon est daté d'aujourd'hui, {new Date().toLocaleDateString("fr-FR")}.</p>
               <ZoneSignature onChange={setSignature} desactive={envoi} erreur={erreurs.signature} />
             </section>

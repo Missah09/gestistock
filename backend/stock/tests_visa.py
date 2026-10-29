@@ -1,4 +1,4 @@
-"""Tests du visa du Responsable HBC et de l'email (11/10/2026).  Lancer : python manage.py test stock"""
+"""Tests du visa du Responsable Logistique et de l'email (11/10/2026).  Lancer : python manage.py test stock"""
 from django.contrib.auth.models import Group, User
 from django.core import mail
 from django.core.management import call_command
@@ -19,9 +19,9 @@ class VisaTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.saisisseur = User.objects.create_user("rabe", password="x", first_name="Jean", last_name="Rabe")
         cls.agent = User.objects.create_user("agent", password="x", first_name="Hery", last_name="Agent")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x", first_name="Lova", last_name="Resp", email="resp@hbc.test")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.article = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).first()
 
     def setUp(self):
@@ -87,7 +87,7 @@ class VisaTests(TestCase):
 
     def test_liste_et_visa(self):
         d1, _ = self.demande_validee(); d2, _ = self.demande_validee(urgent=True)
-        # une demande encore en attente de la Logistique n'apparaît pas
+        # une demande encore en attente du Responsable Technique n'apparaît pas
         self.s.post("/api/demandes/", {"magasin": self.ank.id, "lignes": [{"article": self.article.id, "quantite": 1}]}, format="json")
         r = self.r.get("/api/a-viser/").data
         self.assertEqual([x["numero"] for x in r["results"]], [d2.numero, d1.numero])  # urgente d'abord
@@ -111,7 +111,7 @@ class VisaTests(TestCase):
         self.assertEqual(r.status_code, 200, r.data)
         rq = Requisition.objects.get(demande=d)
         self.assertEqual((rq.statut, rq.motif_refus), ("REFUSEE", "Budget du mois dépassé"))
-        # Rangée dans « Refusées » pour l'Agent Logistique et pour le demandeur
+        # Rangée dans « Refusées » pour le Responsable Technique et pour le demandeur
         self.assertEqual(self.a.get("/api/a-valider/?onglet=refusees").data["count"], 1)
         self.assertEqual(self.a.get("/api/a-valider/?onglet=validees").data["count"], 0)
         self.assertEqual(self.s.get("/api/demandes/?onglet=refusees").data["count"], 1)
@@ -145,9 +145,9 @@ class SignatureTests(TestCase):
         cls.saisisseur = User.objects.create_user("rabe", password="x")
         cls.autre = User.objects.create_user("autre", password="x")
         cls.agent = User.objects.create_user("agent", password="x")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.article = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).first()
 
     def client_de(self, u):
@@ -164,7 +164,7 @@ class SignatureTests(TestCase):
         self.assertEqual(rep.status_code, 200, rep.data)
         self.assertTrue(rep.data["demande"]["requisition"]["signature_agent"])
         self.assertFalse(rep.data["demande"]["requisition"]["signature_responsable"])
-        # Le Responsable doit signer aussi
+        # Le Responsable Logistique doit signer aussi
         rep = r.post(f"/api/a-viser/{d['id']}/viser/", {}, format="json")
         self.assertEqual(rep.status_code, 400); self.assertIn("Signez", rep.data["signature"][0])
         rep = r.post(f"/api/a-viser/{d['id']}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")

@@ -7,8 +7,8 @@ import Icon from "../icons.jsx";
 const POUR_TOUS = "tous", AGENT = "agent", RESPONSABLE = "responsable", ADMIN = "admin";
 const ROLES = {
   [POUR_TOUS]: "Tout le monde",
-  [AGENT]: "Agent Logistique",
-  [RESPONSABLE]: "Responsable HBC",
+  [AGENT]: "Responsable Technique",
+  [RESPONSABLE]: "Responsable Logistique",
   [ADMIN]: "Administrateur",
 };
 
@@ -42,8 +42,8 @@ const FICHES = [
   {
     id: "tableau", role: [AGENT, RESPONSABLE], icone: "home", titre: "Lire le Tableau de bord", ecran: "Tableau de bord",
     etapes: [
-      "Le Tableau de bord s'ouvre tout seul après la connexion (Agent Logistique et Responsable HBC).",
-      "En haut, quatre chiffres : articles sous le seuil, demandes à valider (ou bons à viser pour le Responsable), retours en retard et valeur du stock au magasin.",
+      "Le Tableau de bord s'ouvre tout seul après la connexion (Responsable Technique et Responsable Logistique).",
+      "En haut, quatre chiffres : articles sous le seuil, demandes à valider (ou bons à viser pour le Responsable Logistique), retours en retard et valeur du stock au magasin.",
       "Cliquez sur un chiffre pour ouvrir l'écran correspondant (par exemple la Liste d'Articles filtrée « Sous le seuil »).",
       "« À réapprovisionner » : les articles épuisés, critiques puis en stock bas. Cliquez sur une ligne pour ouvrir la fiche de l'article.",
       "« Activité du jour » : les entrées, demandes, validations, signatures, sorties et retours d'aujourd'hui, les plus récents en haut.",
@@ -75,7 +75,7 @@ const FICHES = [
     etapes: [
       "Menu « Mes demandes ». Les onglets trient vos demandes : En attente, Validées, Refusées, Toutes.",
       "Cliquez sur une demande pour ouvrir sa fiche à droite.",
-      "Le suivi montre les 5 étapes : Envoyée → Validée par la Logistique → Visée par le Responsable → Bon prêt → Remise.",
+      "Le suivi montre les 5 étapes : Envoyée → Validée par le Responsable Technique → Visée par le Responsable Logistique → Bon prêt → Remise.",
       "Tant qu'elle est « En attente », vous pouvez cliquer sur « Annuler ma demande ».",
       "Une fois visée, « Voir le bon de réquisition » montre le bon avec les signatures.",
     ],
@@ -104,8 +104,8 @@ const FICHES = [
       "Signez en bas : votre signature enregistrée, une signature scannée ou dessinée à la souris. Retapez votre mot de passe, puis « Signer et valider ».",
     ],
     astuces: [
-      "La validation crée la réquisition matière (n° RM-…) et vaut votre visa ; elle part ensuite au Responsable HBC.",
-      "Vos propres demandes passent par le même circuit : vous pouvez les valider, mais elles vont toujours au Responsable HBC.",
+      "La validation crée la réquisition matière (n° RM-…) et vaut votre visa ; elle part ensuite au Responsable Logistique.",
+      "Vos propres demandes passent par le même circuit : vous pouvez les valider, mais elles vont toujours au Responsable Logistique.",
       "Signature ratée : « Effacer », puis recommencez. Pour signer avec votre vraie signature, voir « Signer avec ma signature scannée ».",
       "Le stock ne baisse pas encore à cette étape.",
     ],
@@ -147,7 +147,7 @@ const FICHES = [
       "Retapez votre mot de passe et cliquez sur « Signer ». Votre nom, la date et l'heure sont ajoutés automatiquement.",
       "Pour refuser : « Refuser… », écrivez le motif, puis « Refuser la réquisition ».",
     ],
-    astuces: ["Le motif du refus est montré à la Logistique et au demandeur."],
+    astuces: ["Le motif du refus est montré au Responsable Technique et au demandeur."],
   },
   {
     id: "signature-scannee", role: [AGENT, RESPONSABLE], icone: "sign", titre: "Signer avec ma signature scannée", ecran: "Fenêtre de signature",
@@ -171,7 +171,7 @@ const FICHES = [
   {
     id: "imprimer", role: AGENT, icone: "doc", titre: "Imprimer le bon de réquisition", ecran: "Liste Réquisitions",
     etapes: [
-      "Menu « Liste Réquisitions », onglet « À imprimer » : les bons signés par vous et par le Responsable HBC. La pastille rouge les compte.",
+      "Menu « Liste Réquisitions », onglet « À imprimer » : les bons signés par vous et par le Responsable Logistique. La pastille rouge les compte.",
       "Cliquez sur « Voir le bon » pour le relire.",
       "En bas de l'aperçu : « Imprimer » ouvre la fenêtre d'impression (format A4) ; « Télécharger le PDF » l'enregistre (fichier RM-2026-0001.pdf, par exemple).",
       "Portez le bon imprimé au magasin.",
@@ -248,8 +248,8 @@ const FICHES = [
   {
     id: "bons", role: RESPONSABLE, icone: "doc", titre: "Consulter les bons signés", ecran: "Liste Réquisitions",
     etapes: [
-      "Menu « Liste Réquisitions » : tous les bons signés par la Logistique et par vous.",
-      "La colonne « Impression » indique si l'Agent Logistique a déjà imprimé le bon, quand, et combien de fois il a été téléchargé.",
+      "Menu « Liste Réquisitions » : tous les bons signés par le Responsable Technique et par vous.",
+      "La colonne « Impression » indique si le Responsable Technique a déjà imprimé le bon, quand, et combien de fois il a été téléchargé.",
       "« Voir le bon » pour le consulter ; en bas de l'aperçu, « Imprimer » ou « Télécharger le PDF ».",
     ],
     astuces: ["Votre impression ou téléchargement est une simple consultation : il ne fait pas passer le bon en « Imprimée »."],
@@ -259,7 +259,7 @@ const FICHES = [
     etapes: [
       "Menu « Comptes », bouton « Nouveau compte ».",
       "Identifiant (sans accent ni espace), département, prénom et nom (imprimés sur le bon), mot de passe provisoire.",
-      "Cochez « Agent Logistique » et/ou « Responsable HBC » si besoin. Sans case cochée, la personne peut faire des demandes.",
+      "Cochez « Responsable Technique » et/ou « Responsable Logistique » si besoin. Sans case cochée, la personne peut faire des demandes.",
       "« Modifier » sur un compte : changer le mot de passe, déconnecter l'appareil, désactiver ou réactiver le compte, retirer la signature scannée enregistrée.",
     ],
     astuces: [
@@ -279,7 +279,7 @@ function rolesDe(compte) {
   return r;
 }
 
-/** Une fiche peut concerner plusieurs rôles (ex. le Tableau de bord : Agent Logistique et Responsable HBC). */
+/** Une fiche peut concerner plusieurs rôles (ex. le Tableau de bord : Responsable Technique et Responsable Logistique). */
 function pourMoi(fiche, mesRoles) {
   return [].concat(fiche.role).some((r) => mesRoles.includes(r));
 }

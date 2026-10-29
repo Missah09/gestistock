@@ -5,22 +5,22 @@ from .models import ROLE_AGENT, ROLE_RESPONSABLE, a_le_role
 
 
 class EstAgentLogistique(BasePermission):
-    message = "Réservé à l'Agent Logistique."
+    message = "Réservé au Responsable Technique."
 
     def has_permission(self, request, view):
         return a_le_role(request.user, ROLE_AGENT)
 
 
 class EstResponsable(BasePermission):
-    message = "Réservé au Responsable HBC."
+    message = "Réservé au Responsable Logistique."
 
     def has_permission(self, request, view):
         return a_le_role(request.user, ROLE_RESPONSABLE)
 
 
 class EstAgentOuResponsable(BasePermission):
-    """Écran « Réquisitions » : l'Agent Logistique et le Responsable HBC (12/10/2026)."""
-    message = "Réservé à l'Agent Logistique et au Responsable HBC."
+    """Écran « Réquisitions » : le Responsable Technique et le Responsable Logistique (12/10/2026)."""
+    message = "Réservé au Responsable Technique et au Responsable Logistique."
 
     def has_permission(self, request, view):
         return a_le_role(request.user, ROLE_AGENT) or a_le_role(request.user, ROLE_RESPONSABLE)
@@ -34,8 +34,8 @@ class EstAdministrateur(BasePermission):
 
 
 class LectureOuAgentLogistique(BasePermission):
-    """Lecture pour tout compte connecté ; modification pour l'Agent Logistique."""
-    message = "Seul l'Agent Logistique peut modifier les articles."
+    """Lecture pour tout compte connecté ; modification pour le Responsable Technique."""
+    message = "Seul le Responsable Technique peut modifier les articles."
 
     def has_permission(self, request, view):
         if not (request.user and request.user.is_authenticated):

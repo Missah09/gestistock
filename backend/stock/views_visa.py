@@ -1,8 +1,8 @@
-"""Écran « À viser » du Responsable HBC (11/10/2026).
+"""Écran « À viser » du Responsable Logistique (11/10/2026).
 
-Le Responsable reçoit un email avec un lien, se connecte, puis vise la réquisition matière
+Le Responsable Logistique reçoit un email avec un lien, se connecte, puis vise la réquisition matière
 (son visa électronique sera imprimé sur le bon) ou la refuse avec un motif.
-Après le visa, l'Agent Logistique pourra télécharger le bon en PDF (étape suivante).
+Après le visa, le Responsable Technique pourra télécharger le bon en PDF (étape suivante).
 """
 from django.db import transaction
 from django.db.models import Case, IntegerField, Q, Value, When
@@ -28,7 +28,7 @@ def _introuvable():
 
 
 def _a_viser():
-    """Demandes validées par la Logistique (elles ont une réquisition)."""
+    """Demandes validées par le Responsable Technique (elles ont une réquisition)."""
     return demandes_completes().filter(requisition__isnull=False)
 
 
@@ -98,17 +98,17 @@ def viser(request, pk):
                               "origine_signature_responsable"])
         enregistrer_si_demande(request.user, sig)
     d = _a_viser().get(pk=pk)
-    return Response({"message": f"Réquisition {r.numero} signée et visée. L'Agent Logistique peut maintenant imprimer le bon.",
+    return Response({"message": f"Réquisition {r.numero} signée et visée. Le Responsable Technique peut maintenant imprimer le bon.",
                      "demande": en_json([d])[0]})
 
 
 @api_view(["POST"])
 @permission_classes([EstResponsable])
 def refuser(request, pk):
-    """Refuse la réquisition. Corps : {"motif": "…"} (obligatoire, montré à l'Agent Logistique et au demandeur)."""
+    """Refuse la réquisition. Corps : {"motif": "…"} (obligatoire, montré au Responsable Technique et au demandeur)."""
     motif = str(request.data.get("motif") or "").strip()
     if not motif:
-        return Response({"motif": ["Indiquez le motif du refus : il sera montré à la Logistique et au demandeur."]},
+        return Response({"motif": ["Indiquez le motif du refus : il sera montré au Responsable Technique et au demandeur."]},
                         status=status.HTTP_400_BAD_REQUEST)
     if len(motif) > MOTIF_MAX:
         return Response({"motif": [f"{MOTIF_MAX} caractères au maximum."]}, status=status.HTTP_400_BAD_REQUEST)
@@ -122,14 +122,14 @@ def refuser(request, pk):
         r.visa_responsable_le = timezone.now()
         r.save(update_fields=["statut", "motif_refus", "visa_responsable", "visa_responsable_le"])
     d = _a_viser().get(pk=pk)
-    return Response({"message": f"Réquisition {r.numero} refusée. Le motif est visible par la Logistique et le demandeur.",
+    return Response({"message": f"Réquisition {r.numero} refusée. Le motif est visible par le Responsable Technique et le demandeur.",
                      "demande": en_json([d])[0]})
 
 
 @api_view(["GET"])
 def signature(request, pk, qui):
     """Image d'une signature (qui = agent | responsable) pour l'aperçu du bon. pk = id de la demande.
-    Visible par l'Agent Logistique, le Responsable HBC et le demandeur."""
+    Visible par le Responsable Technique, le Responsable Logistique et le demandeur."""
     from django.http import HttpResponse
     from .models import ROLE_AGENT, ROLE_RESPONSABLE, roles_de
     r = Requisition.objects.select_related("demande").filter(demande_id=pk).first()

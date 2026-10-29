@@ -21,7 +21,7 @@ export default function FenetreBon({ d, role, signataire, quantites, numero, tit
 
   const visas = { ...visasDe(d) };
   if (role && !succes) visas[role] = { nom: signataire, le: null, image };
-  const libelleRole = role === "agent" ? "Agent Logistique" : "Responsable HBC";
+  const libelleRole = role === "agent" ? "Responsable Technique" : "Responsable Logistique";
 
   return (
     <>

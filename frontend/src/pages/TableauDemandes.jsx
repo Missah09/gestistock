@@ -81,7 +81,7 @@ export function statutAffiche(d) {
   if (d.statut === "VALIDEE" && d.requisition?.statut === "VISEE") {
     return d.requisition.imprimee_le ? { libelle: "Bon imprimé", classe: "p-ok" } : { libelle: "Visée · bon à imprimer", classe: "p-ok" };
   }
-  if (d.statut === "VALIDEE" && d.requisition?.statut === "REFUSEE") return { libelle: "Refusée (Responsable)", classe: "p-c" };
+  if (d.statut === "VALIDEE" && d.requisition?.statut === "REFUSEE") return { libelle: "Refusée (Resp. Logistique)", classe: "p-c" };
   return STATUTS_DEMANDE[d.statut];
 }
 

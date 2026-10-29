@@ -1,6 +1,6 @@
 """Écran « Comptes » de l'administrateur (11/10/2026) : créer, modifier, désactiver les comptes GestiStock.
 
-Rôles : cases « Agent Logistique » et « Responsable HBC » (groupes Django). Tout compte actif est Saisisseur.
+Rôles : cases « Responsable Technique » et « Responsable Logistique » (groupes Django). Tout compte actif est Saisisseur.
 Le super-utilisateur (Administrateur) se gère toujours dans l'administration Django.
 """
 import re

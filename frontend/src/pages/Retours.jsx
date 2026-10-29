@@ -7,7 +7,7 @@ import { Onglets, useDemandeOuverte, useListeDemandes } from "./TableauDemandes.
 
 const ONGLETS_RETOURS = [["attendu", "Matériel attendu"], ["en_retard", "En retard"], ["soldes", "Rentrés"], ["toutes", "Tous"]];
 
-/** Écran « Retours de stock » (Agent Logistique, 12/10/2026) : le matériel prêté revient au magasin.
+/** Écran « Retours de stock » (Responsable Technique, 12/10/2026) : le matériel prêté revient au magasin.
  *  On imprime un bon de retour avec ce qui reste à rendre, le magasinier le remplit (Qté rendue, État au retour),
  *  puis on confirme le retour en recopiant le bon : le stock remonte. Retour partiel : un bon par passage. */
 export default function Retours() {

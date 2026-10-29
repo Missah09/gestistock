@@ -1,9 +1,9 @@
-"""Écran « Réquisitions » (12/10/2026) : les bons signés par l'Agent Logistique et le Responsable HBC.
+"""Écran « Réquisitions » (12/10/2026) : les bons signés par le Responsable Technique et le Responsable Logistique.
 
-- Visible par l'Agent Logistique et le Responsable HBC.
+- Visible par le Responsable Technique et le Responsable Logistique.
 - « Télécharger le PDF » fabrique le bon (pdf_bon.py) et note chaque téléchargement (qui, quand).
-- Le premier téléchargement par l'Agent Logistique marque le bon « imprimé » : c'est lui qui le porte au magasin.
-  Un téléchargement du Responsable est une simple consultation.
+- Le premier téléchargement par le Responsable Technique marque le bon « imprimé » : c'est lui qui le porte au magasin.
+  Un téléchargement du Responsable Logistique est une simple consultation.
 """
 from django.db import transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
@@ -27,7 +27,7 @@ def _introuvable():
 
 
 def _signees():
-    """Demandes dont la réquisition est signée par l'Agent Logistique et le Responsable HBC."""
+    """Demandes dont la réquisition est signée par le Responsable Technique et le Responsable Logistique."""
     return demandes_completes().select_related("requisition__imprimee_par") \
         .filter(requisition__statut=Requisition.Statut.VISEE) \
         .annotate(nb_telechargements=Count("requisition__telechargements"),
@@ -89,7 +89,7 @@ def detail(request, pk):
 def pdf(request, pk):
     """Télécharge le bon de réquisition en PDF (pk = id de la demande). Chaque téléchargement est noté.
     ?impression=1 (12/10/2026) : bouton « Imprimer » de l'application (le PDF s'ouvre dans l'aperçu d'impression).
-    Le premier téléchargement ou la première impression par l'Agent Logistique marque le bon « Imprimée »."""
+    Le premier téléchargement ou la première impression par le Responsable Technique marque le bon « Imprimée »."""
     impression = request.query_params.get("impression") == "1"
     # ReportLab est chargé ici seulement : s'il manque, le reste de GestiStock fonctionne quand même (12/10/2026).
     try:
@@ -104,7 +104,7 @@ def pdf(request, pk):
         r = (Requisition.objects.select_for_update(of=("self",))
              .select_related("demande__demandeur", "visa_agent", "visa_responsable").filter(demande_id=pk).first())
         if r is None or r.statut != Requisition.Statut.VISEE:
-            return Response({"general": ["Ce bon n'est pas encore signé par le Responsable HBC : il ne peut pas être imprimé."]},
+            return Response({"general": ["Ce bon n'est pas encore signé par le Responsable Logistique : il ne peut pas être imprimé."]},
                             status=status.HTTP_404_NOT_FOUND if r is None else status.HTTP_400_BAD_REQUEST)
         maintenant = timezone.now()
         TelechargementBon.objects.create(requisition=r, par=request.user, impression=impression,

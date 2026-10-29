@@ -1,4 +1,4 @@
-"""Écrans « Générer Rapports » et « Historique » (Agent Logistique, 15/10/2026).
+"""Écrans « Générer Rapports » et « Historique » (Responsable Technique, 15/10/2026).
 
 - GET /api/rapports/                      : les six rapports (cartes de l'écran) et les listes des filtres
 - GET /api/rapports/<rapport>/            : le rapport à l'écran ; ?fichier=pdf ou ?fichier=xlsx : le fichier

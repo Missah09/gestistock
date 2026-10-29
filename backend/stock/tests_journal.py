@@ -98,14 +98,14 @@ class JournalTests(TestCase):
         u = self.saisisseur
         rep = c.post(f"/admin/auth/user/{u.id}/change/", {
             "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "email": "", "is_active": "on",
-            "groups": [Group.objects.get(name="Agent Logistique").id], "last_login_0": "", "last_login_1": "",
+            "groups": [Group.objects.get(name="Responsable Technique").id], "last_login_0": "", "last_login_1": "",
             "date_joined_0": "15/10/2026", "date_joined_1": "08:00:00",
             "profil-TOTAL_FORMS": "1", "profil-INITIAL_FORMS": "1", "profil-MIN_NUM_FORMS": "1", "profil-MAX_NUM_FORMS": "1",
             "profil-0-id": u.profil.id, "profil-0-user": u.id, "profil-0-departement": ""})
         self.assertEqual(rep.status_code, 302, rep.content[:3000])
         e = Evenement.objects.get(action="admin_modif", categorie="COMPTE")
-        self.assertIn("→ Agent Logistique", e.detail)
-        self.assertFalse(any("Agent Logistique" in l["detail"] for l in lignes_historique(self.a, type="modification")))
+        self.assertIn("→ Responsable Technique", e.detail)
+        self.assertFalse(any("Responsable Technique" in l["detail"] for l in lignes_historique(self.a, type="modification")))
 
     # ---------------------------------------------------------------- Comptes (administrateur)
     def test_historique_des_comptes(self):
@@ -123,9 +123,9 @@ class JournalTests(TestCase):
         self.assertEqual(actions, ["compte_cree", "compte_modifie", "mot_de_passe", "compte_desactive", "deconnexion_forcee"])
         modif = Evenement.objects.get(action="compte_modifie")
         self.assertIn("Nom : Rabe → Rabearisoa", modif.detail)
-        self.assertIn("Rôles : Saisisseur → Agent Logistique", modif.detail)
+        self.assertIn("Rôles : Saisisseur → Responsable Technique", modif.detail)
         self.assertFalse(Evenement.objects.filter(detail__contains="Autre-2026").exists())   # jamais le mot de passe
-        # Écran : administrateur seulement ; jamais dans l'Historique de l'Agent Logistique
+        # Écran : administrateur seulement ; jamais dans l'Historique du Responsable Technique
         rep = self.adm.get("/api/comptes/journal/", {"vue": "comptes", "compte": k.id})
         self.assertEqual(rep.status_code, 200)
         self.assertEqual(rep.data["count"], 5)

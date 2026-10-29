@@ -123,7 +123,7 @@ export function annulerDemande(id) {
   return envoyer(`/api/demandes/${id}/annuler/`);
 }
 
-// ---------- Demandes à valider (Agent Logistique) ----------
+// ---------- Demandes à valider (Responsable Technique) ----------
 export function listerAValider({ onglet = "attente", page = 1 } = {}) {
   return lire(`/api/a-valider/?${new URLSearchParams({ onglet, page })}`);
 }
@@ -147,7 +147,7 @@ export function renvoyerEmail(id) {
   return envoyer(`/api/a-valider/${id}/renvoyer-email/`);
 }
 
-// ---------- À viser (Responsable HBC) ----------
+// ---------- À viser (Responsable Logistique) ----------
 export function listerAViser({ onglet = "attente", page = 1 } = {}) {
   return lire(`/api/a-viser/?${new URLSearchParams({ onglet, page })}`);
 }
@@ -170,7 +170,7 @@ export function refuserRequisition(id, motif) {
   return envoyer(`/api/a-viser/${id}/refuser/`, { motif });
 }
 
-// ---------- Réquisitions (Agent Logistique et Responsable HBC) : bons signés, PDF ----------
+// ---------- Réquisitions (Responsable Technique et Responsable Logistique) : bons signés, PDF ----------
 export function listerRequisitions({ onglet = "a_imprimer", page = 1 } = {}) {
   return lire(`/api/requisitions/?${new URLSearchParams({ onglet, page })}`);
 }
@@ -178,12 +178,12 @@ export function lireRequisition(id) {
   return lire(`/api/requisitions/${id}/`);
 }
 /** Télécharge le PDF du bon (id de la demande) et l'enregistre sous « RM-2026-0001.pdf ».
- *  Le serveur note le téléchargement (premier téléchargement par l'Agent Logistique = bon imprimé). */
+ *  Le serveur note le téléchargement (premier téléchargement par le Responsable Technique = bon imprimé). */
 export function telechargerBon(id, numero) {
   return telechargerPdf(`/api/requisitions/${id}/pdf/`, `${numero}.pdf`);
 }
 /** « Imprimer » (12/10/2026) : le PDF du bon s'ouvre dans la fenêtre d'impression du navigateur.
- *  Le serveur note l'impression (première impression par l'Agent Logistique = bon « Imprimée »). */
+ *  Le serveur note l'impression (première impression par le Responsable Technique = bon « Imprimée »). */
 export async function imprimerBon(id) {
   const reponse = await appel(`/api/requisitions/${id}/pdf/?impression=1`);
   if (!reponse.ok) {
@@ -214,7 +214,7 @@ export async function imprimerBon(id) {
   setTimeout(() => URL.revokeObjectURL(lien), 10 * 60_000);
 }
 
-// ---------- Sorties (Agent Logistique) : confirmation de la remise, le stock diminue (12/10/2026) ----------
+// ---------- Sorties (Responsable Technique) : confirmation de la remise, le stock diminue (12/10/2026) ----------
 export function listerSorties({ onglet = "a_confirmer", page = 1 } = {}) {
   return lire(`/api/sorties/?${new URLSearchParams({ onglet, page })}`);
 }
@@ -247,14 +247,14 @@ export function telechargerArchive(id, numero) {
   return telechargerPdf(`/api/sorties/${id}/pdf/`, `${numero}-archive.pdf`);
 }
 
-// ---------- Retours (Agent Logistique) : bons de retour, le stock remonte (12/10/2026) ----------
+// ---------- Retours (Responsable Technique) : bons de retour, le stock remonte (12/10/2026) ----------
 export function listerRetours({ onglet = "attendu", page = 1 } = {}) {
   return lire(`/api/retours/?${new URLSearchParams({ onglet, page })}`);
 }
 export function lireRetour(id) {
   return lire(`/api/retours/${id}/`);
 }
-/** Prépare le bon de retour (ce qui reste à rendre), signé au stylo par l'Agent Logistique. */
+/** Prépare le bon de retour (ce qui reste à rendre), signé au stylo par le Responsable Technique. */
 export function creerBonRetour(id, signature) {
   return envoyer(`/api/retours/${id}/bon/`, signature);
 }
@@ -294,7 +294,7 @@ export function retirerSignatureCompte(id) {
   return envoyer(`/api/comptes/${id}/signature/`, undefined, "DELETE");
 }
 
-// ---------- Générer Rapports et Historique (Agent Logistique, 15/10/2026) ----------
+// ---------- Générer Rapports et Historique (Responsable Technique, 15/10/2026) ----------
 /** Réglages d'un écran → paramètres de l'adresse (les valeurs vides ne sont pas envoyées). */
 function parametres(reglages = {}) {
   const p = new URLSearchParams();
@@ -343,7 +343,7 @@ export function exporterHistorique(reglages, fichier) {
 
 // ---------- Comptes ----------
 /** Qui est connecté ? Renvoie { connecte: false } ou les informations du compte. */
-/** Nombres affichés sur le menu : demandes à valider (Agent Logistique), réquisitions à viser (Responsable). */
+/** Nombres affichés sur le menu : demandes à valider (Responsable Technique), réquisitions à viser (Responsable). */
 export function lireCompteurs() {
   return lire("/api/compteurs/");
 }

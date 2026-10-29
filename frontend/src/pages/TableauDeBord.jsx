@@ -6,7 +6,7 @@ import EntreeStock from "./EntreeStock.jsx";
 import FicheArticle from "./FicheArticle.jsx";
 import GraphiquesTableau from "./GraphiquesTableau.jsx";
 
-/** Écran « Tableau de bord » (12/10/2026) : l'essentiel du jour, pour l'Agent Logistique et le Responsable HBC.
+/** Écran « Tableau de bord » (12/10/2026) : l'essentiel du jour, pour le Responsable Technique et le Responsable Logistique.
  *  Ouvert après la connexion. Chiffres, graphiques (16/10/2026) et listes.
  *  Mis à jour toutes les 30 s, au retour sur l'onglet et après chaque action (comme les pastilles du menu). */
 
@@ -109,7 +109,7 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
   const activiteVisible = activite.slice(0, maxActivite);
   const autresSousSeuil = (c.sous_seuil ?? 0) - listeVisible.length;
   const voirSousSeuil = ouvrir("Liste d'Articles", { sousSeuil: true });
-  // Carte « en attente » : demandes à valider (Agent Logistique) ou bons à viser (Responsable HBC).
+  // Carte « en attente » : demandes à valider (Responsable Technique) ou bons à viser (Responsable Logistique).
   const attente = "a_valider" in c
     ? { titre: "Demandes à valider", valeur: c.a_valider, ecran: "Demandes à valider", aide: "Demandes envoyées qui attendent votre validation" }
     : { titre: "Bons à viser", valeur: c.a_viser, ecran: "Demandes à viser", aide: "Réquisitions qui attendent votre signature" };

@@ -43,7 +43,7 @@ try {
   if ($mdp.Length -lt 16) { throw "Le mot de passe d'application doit faire 16 lettres (vous en avez saisi $($mdp.Length)). Rien n'a été modifié." }
 
   $tempo = Lire $texte "GESTISTOCK_EMAIL_TEMPORAIRE"
-  $dest = Read-Host "Destinataire temporaire des emails (vide = les comptes Responsable HBC) [$tempo]"
+  $dest = Read-Host "Destinataire temporaire des emails (vide = les comptes Responsable Logistique) [$tempo]"
   if (-not $dest) { $dest = $tempo }
 
   Copy-Item $envFich ($envFich + ".avant-email") -Force

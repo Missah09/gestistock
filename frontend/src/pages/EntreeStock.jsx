@@ -41,7 +41,7 @@ function ajuster(cases, n, etat) {
  *  - Un article absent se crée depuis la liste des articles (« ＋ Créer l'article… ») : il est aussitôt placé sur la ligne.
  *  - Article suivi par n° de série (26/10/2026) : on tape la quantité, puis une case par unité apparaît sous la ligne
  *    (n° + état). Entrée passe à la case suivante (douchette), coller une liste remplit les cases, doublons en rouge.
- *  - « Ce produit a des n° de série ? » : l'Agent passe l'article au suivi par n° de série, une seule fois (définitif). */
+ *  - « Ce produit a des n° de série ? » : le Responsable Technique passe l'article au suivi par n° de série, une seule fois (définitif). */
 export default function EntreeStock({ onFermer, onEnregistre, articleInitial = null, onArticleCree }) {
   const [choix, setChoix] = useState(null);
   const [entete, setEntete] = useState({ fournisseur: "", numero_facture: "", date_reception: aujourdhui(), magasin: "" });

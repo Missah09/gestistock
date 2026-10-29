@@ -7,7 +7,7 @@ import { Onglets, useDemandeOuverte, useListeDemandes } from "./TableauDemandes.
 
 const ONGLETS_SORTIES = [["a_confirmer", "À confirmer"], ["confirmees", "Confirmées"], ["toutes", "Toutes"]];
 
-/** Écran « Sorties de stock » (Agent Logistique, 12/10/2026) : les bons imprimés et portés au magasin.
+/** Écran « Sorties de stock » (Responsable Technique, 12/10/2026) : les bons imprimés et portés au magasin.
  *  Au retour du bon signé par le magasinier, on confirme la sortie en recopiant les quantités livrées :
  *  c'est à ce moment que le stock de GestiStock diminue. */
 export default function Sorties() {

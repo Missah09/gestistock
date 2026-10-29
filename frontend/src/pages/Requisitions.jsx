@@ -10,7 +10,7 @@ const ONGLETS_BONS = [["a_imprimer", "À imprimer"], ["imprimees", "Imprimées"]
 /** Lignes qui figurent sur le bon : quantité accordée (sinon demandée), sans les articles retirés (0). */
 const lignesDuBon = (d) => d.lignes.map((l) => ({ ...l, qte: l.qte_accordee ?? l.quantite })).filter((l) => l.qte > 0);
 
-/** Trace d'impression : première impression (ou premier téléchargement) par l'Agent Logistique,
+/** Trace d'impression : première impression (ou premier téléchargement) par le Responsable Technique,
  *  puis le nombre d'impressions et de téléchargements. */
 function Impression({ r }) {
   const imp = r.nb_impressions ?? 0;
@@ -32,9 +32,9 @@ function Impression({ r }) {
   );
 }
 
-/** Écran « Liste Réquisitions » (Agent Logistique et Responsable HBC, 12/10/2026) :
- *  les bons signés par la Logistique et le Responsable, à télécharger en PDF pour impression.
- *  Le premier téléchargement par l'Agent Logistique marque le bon « imprimé » (c'est lui qui le porte au magasin). */
+/** Écran « Liste Réquisitions » (Responsable Technique et Responsable Logistique, 12/10/2026) :
+ *  les bons signés par le Responsable Technique et le Responsable Logistique, à télécharger en PDF pour impression.
+ *  Le premier téléchargement par le Responsable Technique marque le bon « imprimé » (c'est lui qui le porte au magasin). */
 export default function Requisitions({ compte }) {
   const liste = useListeDemandes(listerRequisitions, "a_imprimer");
   const [ouverte, setOuverte] = useDemandeOuverte(liste, lireRequisition);
@@ -103,8 +103,8 @@ export default function Requisitions({ compte }) {
           <Onglets liste={liste} onglets={ONGLETS_BONS} />
           <span className="sp" />
           <span className="aide">
-            {agent ? "Bons signés par la Logistique et le Responsable : « Voir le bon », puis « Imprimer », et portez-le au magasin."
-              : "Bons signés par la Logistique et par vous. Le bon est noté « Imprimée » quand l'Agent Logistique l'imprime."}
+            {agent ? "Bons signés par le Responsable Technique et le Responsable Logistique : « Voir le bon », puis « Imprimer », et portez-le au magasin."
+              : "Bons signés par le Responsable Technique et par vous. Le bon est noté « Imprimée » quand le Responsable Technique l'imprime."}
           </span>
         </div>
 

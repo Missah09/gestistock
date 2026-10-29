@@ -17,9 +17,9 @@ class ComptesTests(TestCase):
         cls.saisisseur.profil.departement = cls.tech; cls.saisisseur.profil.save()
         cls.autre = User.objects.create_user("rasoa", password="Mdp-rasoa-2026")
         cls.agent = User.objects.create_user("agent", password="Mdp-agent-2026")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="Mdp-resp-2026")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
 
     def setUp(self):
@@ -32,8 +32,8 @@ class ComptesTests(TestCase):
 
     def test_donnees_initiales(self):
         self.assertEqual(sorted(Departement.objects.values_list("nom", flat=True)), ["Finance", "Informatique", "Logistique", "Technique"])
-        self.assertTrue(Group.objects.filter(name="Agent Logistique").exists())
-        self.assertTrue(Group.objects.filter(name="Responsable HBC").exists())
+        self.assertTrue(Group.objects.filter(name="Responsable Technique").exists())
+        self.assertTrue(Group.objects.filter(name="Responsable Logistique").exists())
         self.assertTrue(hasattr(User.objects.create_user("nouveau"), "profil"))  # profil créé automatiquement
 
     def test_tout_est_ferme_sans_connexion(self):
@@ -69,9 +69,9 @@ class ComptesTests(TestCase):
     def test_roles(self):
         self.c.force_login(self.agent)
         d = self.c.get("/api/session/").data
-        self.assertEqual(d["roles"], ["Saisisseur", "Agent Logistique"]); self.assertTrue(d["agent_logistique"]); self.assertFalse(d["responsable"])
+        self.assertEqual(d["roles"], ["Saisisseur", "Responsable Technique"]); self.assertTrue(d["agent_logistique"]); self.assertFalse(d["responsable"])
         self.c.force_login(self.resp)
-        self.assertEqual(self.c.get("/api/session/").data["roles"], ["Saisisseur", "Responsable HBC"])
+        self.assertEqual(self.c.get("/api/session/").data["roles"], ["Saisisseur", "Responsable Logistique"])
         admin = User.objects.create_superuser("admin2", password="Mdp-admin-2026")
         self.c.force_login(admin)
         d = self.c.get("/api/session/").data
@@ -91,7 +91,7 @@ class ComptesTests(TestCase):
     def test_chacun_ne_voit_que_ses_demandes(self):
         self.c.force_login(self.saisisseur)
         r = self.demande(self.c); self.assertEqual(r.status_code, 201, r.data)
-        self.assertIn("envoyée à la Logistique", r.data["message"])
+        self.assertIn("envoyée au Responsable Technique", r.data["message"])
         d = Demande.objects.get(id=r.data["id"]); self.assertEqual(d.demandeur, self.saisisseur)
         self.assertEqual(self.c.get("/api/demandes/?onglet=toutes").data["count"], 1)
         autre = APIClient(); autre.force_login(self.autre)

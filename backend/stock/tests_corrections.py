@@ -19,9 +19,9 @@ class CorrectionsTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.saisisseur = User.objects.create_user("Rasoa", password="Mot-de-passe-1", first_name="Rasoa", last_name="R")
         cls.agent = User.objects.create_user("Haja", password="Mot-de-passe-1", first_name="Haja", last_name="Rakoto")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.conso = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).first()
         cls.prete = Article.objects.filter(type="PRETE", emplacement__magasin=cls.ank).first()
 
@@ -99,7 +99,7 @@ class CorrectionsTests(TestCase):
         r = c.post("/api/connexion/", {"identifiant": "Haja", "mot_de_passe": "Mot-de-passe-1"}, format="json")
         self.assertEqual(r.status_code, 429)
 
-    # ---- Point 7 : l'Agent Logistique valide sa propre demande → elle va au Responsable ----
+    # ---- Point 7 : le Responsable Technique valide sa propre demande → elle va au Responsable Logistique ----
     def test_agent_valide_sa_propre_demande_qui_va_au_responsable(self):
         a = self.client_de(self.agent)
         r = a.post("/api/demandes/", {"magasin": self.ank.id, "lignes": [{"article": self.conso.id, "quantite": 2}]},

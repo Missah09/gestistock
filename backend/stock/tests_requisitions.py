@@ -17,9 +17,9 @@ class RequisitionsTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.saisisseur = User.objects.create_user("rabe", password="x", first_name="Jean", last_name="Rabe")
         cls.agent = User.objects.create_user("agent", password="x", first_name="Hery", last_name="Rasoa")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x", first_name="Paul", last_name="Randria")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.articles = list(Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank)[:2])
 
     def setUp(self):
@@ -28,7 +28,7 @@ class RequisitionsTests(TestCase):
         self.r = APIClient(); self.r.force_login(self.resp)
 
     def demande(self, viser=True, urgent=False):
-        """Demande de 2 articles ; la Logistique retire le 2e (0) ; le Responsable signe si `viser`."""
+        """Demande de 2 articles ; la Logistique retire le 2e (0) ; le Responsable Logistique signe si `viser`."""
         rep = self.s.post("/api/demandes/", {"magasin": self.ank.id, "urgent": urgent, "lignes": [
             {"article": self.articles[0].id, "quantite": 4}, {"article": self.articles[1].id, "quantite": 2}]}, format="json")
         d = Demande.objects.get(id=rep.data["id"])
@@ -98,7 +98,7 @@ class RequisitionsTests(TestCase):
         rq = Requisition.objects.get(demande=d)
         self.assertIsNone(rq.imprimee_le)
         t = rq.telechargements.get()
-        self.assertEqual((t.par, t.role), (self.resp, "Responsable HBC"))
+        self.assertEqual((t.par, t.role), (self.resp, "Responsable Logistique"))
         self.assertEqual(self.a.get("/api/compteurs/").data["a_imprimer"], 1)
 
     def test_compteur_du_menu(self):

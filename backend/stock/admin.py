@@ -229,7 +229,7 @@ class TelechargementBonInline(admin.TabularInline):
 
 @admin.register(Requisition)
 class RequisitionAdmin(admin.ModelAdmin):
-    """Réquisitions matière : créées automatiquement quand l'Agent Logistique valide une demande."""
+    """Réquisitions matière : créées automatiquement quand le Responsable Technique valide une demande."""
     list_display = ("numero", "demande", "statut", "visa_agent", "visa_agent_le", "visa_responsable", "visa_responsable_le")
     list_filter = ("statut",)
     search_fields = ("numero", "demande__numero")
@@ -280,7 +280,7 @@ class ProfilInline(admin.StackedInline):
 
 
 class CompteAdmin(UserAdmin):
-    """Comptes GestiStock. Rôles : cochez les groupes « Agent Logistique » et/ou « Responsable HBC »
+    """Comptes GestiStock. Rôles : cochez les groupes « Responsable Technique » et/ou « Responsable Logistique »
     (tout compte actif peut faire des demandes). « Statut super-utilisateur » = Administrateur."""
     inlines = [ProfilInline]
     list_display = ("username", "first_name", "last_name", "departement", "roles", "email", "is_active")
@@ -289,7 +289,7 @@ class CompteAdmin(UserAdmin):
         (None, {"fields": ("username", "password")}),
         ("Personne", {"fields": ("first_name", "last_name", "email")}),
         ("Rôles et accès", {"fields": ("is_active", "groups", "is_staff", "is_superuser"),
-                            "description": "Rôles : « Agent Logistique », « Responsable HBC » (cumulables). "
+                            "description": "Rôles : « Responsable Technique », « Responsable Logistique » (cumulables). "
                                            "Tout compte actif peut faire des demandes. "
                                            "« Équipe » = accès à cette administration ; « Super-utilisateur » = Administrateur. "
                                            "Prénom et nom : ils sont imprimés sur le bon de réquisition (visas)."}),

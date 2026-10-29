@@ -1,4 +1,4 @@
-"""Tests de l'écran « Demandes à valider » (Agent Logistique, 11/10/2026).  Lancer : python manage.py test stock"""
+"""Tests de l'écran « Demandes à valider » (Responsable Technique, 11/10/2026).  Lancer : python manage.py test stock"""
 from django.contrib.auth.models import Group, User
 from django.core.management import call_command
 from django.test import TestCase
@@ -16,9 +16,9 @@ class ValidationTests(TestCase):
         cls.saisisseur = User.objects.create_user("rabe", password="x", first_name="Jean", last_name="Rabe")
         cls.saisisseur.profil.departement = Departement.objects.get(nom="Technique"); cls.saisisseur.profil.save()
         cls.agent = User.objects.create_user("agent", password="x", first_name="Hery", last_name="Agent")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.articles = list(Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank)[:2])
 
     def setUp(self):

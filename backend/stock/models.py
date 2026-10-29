@@ -244,8 +244,8 @@ class Chantier(models.Model):
 
 
 class Demande(models.Model):
-    """Demande de matériel : une intention, validée ou refusée par l'Agent Logistique
-    (la validation crée la réquisition matière, que le Responsable HBC vise ensuite).
+    """Demande de matériel : une intention, validée ou refusée par le Responsable Technique
+    (la validation crée la réquisition matière, que le Responsable Logistique vise ensuite).
     Le stock ne change pas ici ; il diminue à la confirmation de sortie."""
 
     class Statut(models.TextChoices):
@@ -272,7 +272,7 @@ class Demande(models.Model):
     annulee_le = models.DateTimeField("annulée le", null=True, blank=True)
     traitee_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
                                     related_name="demandes_traitees", verbose_name="validée ou refusée par")
-    # N° de réquisition attribué dès que l'Agent Logistique clique « Valider » (12/10/2026) : il s'affiche sur le bon
+    # N° de réquisition attribué dès que le Responsable Technique clique « Valider » (12/10/2026) : il s'affiche sur le bon
     # qu'il signe, puis devient le n° de la réquisition. Libéré si la demande est refusée ou annulée.
     numero_requisition = models.CharField("n° de réquisition attribué", max_length=20, blank=True)
 
@@ -312,7 +312,7 @@ class LigneDemande(models.Model):
     article = models.ForeignKey(Article, on_delete=models.PROTECT, related_name="lignes_demande")
     quantite = models.PositiveIntegerField("quantité demandée")
     qte_accordee = models.PositiveIntegerField("quantité accordée", null=True, blank=True,
-                                               help_text="Fixée par l'Agent Logistique à la validation (0 = article retiré). "
+                                               help_text="Fixée par le Responsable Technique à la validation (0 = article retiré). "
                                                          "La quantité demandée d'origine est conservée.")
     date_retour_prevue = models.DateField("retour prévu", null=True, blank=True,
                                           help_text="Matériel prêté seulement (obligatoire) ; vide pour un consommable")
@@ -334,39 +334,39 @@ class OrigineSignature(models.TextChoices):
 
 
 class Requisition(models.Model):
-    """Réquisition matière (bon de sortie), créée en un clic quand l'Agent Logistique valide une demande.
-    Cette validation vaut visa électronique de l'Agent Logistique ; le Responsable HBC vise ensuite."""
+    """Réquisition matière (bon de sortie), créée en un clic quand le Responsable Technique valide une demande.
+    Cette validation vaut visa électronique du Responsable Technique ; le Responsable Logistique vise ensuite."""
 
     class Statut(models.TextChoices):
         ATTENTE_VISA = "ATTENTE_VISA", "En attente du visa"
         VISEE = "VISEE", "Visée"
-        REFUSEE = "REFUSEE", "Refusée par le Responsable"
+        REFUSEE = "REFUSEE", "Refusée par le Responsable Logistique"
 
     numero = models.CharField("n°", max_length=20, unique=True, blank=True, help_text="Créé automatiquement")
     demande = models.OneToOneField(Demande, on_delete=models.PROTECT, related_name="requisition")
     statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.ATTENTE_VISA)
-    # Visa électronique de l'Agent Logistique : posé à la validation de la demande.
+    # Visa électronique du Responsable Technique : posé à la validation de la demande.
     visa_agent = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="requisitions_validees",
-                                   verbose_name="visa de l'Agent Logistique")
-    visa_agent_le = models.DateTimeField("visée par l'Agent Logistique le")
-    # Visa du Responsable HBC (étape suivante du circuit).
+                                   verbose_name="visa du Responsable Technique")
+    visa_agent_le = models.DateTimeField("visée par le Responsable Technique le")
+    # Visa du Responsable Logistique (étape suivante du circuit).
     visa_responsable = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
-                                         related_name="requisitions_visees", verbose_name="visa du Responsable HBC")
-    visa_responsable_le = models.DateTimeField("visée par le Responsable le", null=True, blank=True)
+                                         related_name="requisitions_visees", verbose_name="visa du Responsable Logistique")
+    visa_responsable_le = models.DateTimeField("visée par le Responsable Logistique le", null=True, blank=True)
     motif_refus = models.CharField("motif du refus (Responsable)", max_length=250, blank=True)
     creee_le = models.DateTimeField("créée le", auto_now_add=True)
     # Signatures dessinées au stylo électronique (image PNG en base64), imprimées dans les cases du bon (11/10/2026).
-    signature_agent = models.TextField("signature de l'Agent Logistique", blank=True, editable=False)
-    signature_responsable = models.TextField("signature du Responsable HBC", blank=True, editable=False)
-    origine_signature_agent = models.CharField("signature de l'Agent", max_length=10, choices=OrigineSignature.choices,
+    signature_agent = models.TextField("signature du Responsable Technique", blank=True, editable=False)
+    signature_responsable = models.TextField("signature du Responsable Logistique", blank=True, editable=False)
+    origine_signature_agent = models.CharField("signature du Responsable Technique", max_length=10, choices=OrigineSignature.choices,
                                                blank=True, editable=False)
-    origine_signature_responsable = models.CharField("signature du Responsable", max_length=10,
+    origine_signature_responsable = models.CharField("signature du Responsable Logistique", max_length=10,
                                                      choices=OrigineSignature.choices, blank=True, editable=False)
-    # Email au Responsable HBC (envoyé à la validation ; « Renvoyer l'email » possible)
+    # Email au Responsable Logistique (envoyé à la validation ; « Renvoyer l'email » possible)
     email_envoye_le = models.DateTimeField("email envoyé le", null=True, blank=True)
     email_etat = models.CharField("état de l'email", max_length=300, blank=True)
-    # Impression du bon (12/10/2026) : premier téléchargement du PDF par l'Agent Logistique,
-    # qui porte ensuite le bon au magasin. Les téléchargements du Responsable sont de simples consultations.
+    # Impression du bon (12/10/2026) : premier téléchargement du PDF par le Responsable Technique,
+    # qui porte ensuite le bon au magasin. Les téléchargements du Responsable Logistique sont de simples consultations.
     imprimee_le = models.DateTimeField("bon imprimé le", null=True, blank=True)
     imprimee_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
                                      related_name="requisitions_imprimees", verbose_name="bon imprimé par")
@@ -421,8 +421,8 @@ class TelechargementBon(models.Model):
 
 # ---------------------------------------------------------------- Comptes (11/10/2026)
 
-ROLE_AGENT = "Agent Logistique"   # valide les demandes, crée et télécharge les réquisitions, réceptions, sorties, retours
-ROLE_RESPONSABLE = "Responsable HBC"  # vise les réquisitions (prévenu par email)
+ROLE_AGENT = "Responsable Technique"   # valide les demandes, crée et télécharge les réquisitions, réceptions, sorties, retours
+ROLE_RESPONSABLE = "Responsable Logistique"  # vise les réquisitions (prévenu par email)
 ROLES = [ROLE_AGENT, ROLE_RESPONSABLE]
 # « Saisisseur » = tout compte actif (pas de groupe). « Administrateur » = super-utilisateur (crée les comptes).
 
@@ -570,7 +570,7 @@ def noter_echec(sender, credentials, request=None, **kwargs):
 
 # ---------------------------------------------------------------- Sorties (12/10/2026)
 class Sortie(models.Model):
-    """Confirmation de sortie : le magasinier a remis le matériel et signé le bon ; l'Agent Logistique recopie
+    """Confirmation de sortie : le magasinier a remis le matériel et signé le bon ; le Responsable Technique recopie
     les quantités livrées. C'est à ce moment que le stock de l'application diminue."""
 
     requisition = models.OneToOneField(Requisition, on_delete=models.PROTECT, related_name="sortie",
@@ -667,7 +667,7 @@ class MouvementEtat(models.Model):
 
 # ---------------------------------------------------------------- Retours (12/10/2026)
 class BonRetour(models.Model):
-    """Bon de retour de matériel (BR-AAAA-0001) : imprimé par l'Agent Logistique avec ce qui reste à rendre,
+    """Bon de retour de matériel (BR-AAAA-0001) : imprimé par le Responsable Technique avec ce qui reste à rendre,
     rempli à la main au magasin (Qté rendue, État au retour), puis recopié : le stock remonte.
     Retour partiel : un bon par passage au magasin."""
 
@@ -681,9 +681,9 @@ class BonRetour(models.Model):
     statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.A_CONFIRMER)
     imprime_le = models.DateTimeField("imprimé le", auto_now_add=True)
     imprime_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="bons_retour_imprimes")
-    # Visa électronique de l'Agent Logistique (stylo), imprimé dans sa case du bon.
-    signature_agent = models.TextField("signature de l'Agent Logistique", blank=True, editable=False)
-    origine_signature_agent = models.CharField("signature de l'Agent", max_length=10, choices=OrigineSignature.choices,
+    # Visa électronique du Responsable Technique (stylo), imprimé dans sa case du bon.
+    signature_agent = models.TextField("signature du Responsable Technique", blank=True, editable=False)
+    origine_signature_agent = models.CharField("signature du Responsable Technique", max_length=10, choices=OrigineSignature.choices,
                                                blank=True, editable=False)
     annule_le = models.DateTimeField("annulé le", null=True, blank=True)
     # Qui a annulé le bon (15/10/2026) : affiché dans l'Historique.
@@ -748,7 +748,7 @@ class Evenement(models.Model):
 
     - MODIFICATION : fiches d'articles (écran ou administration), création d'un article, n° de série corrigé,
       prix mis à jour par une entrée en stock, listes de l'administration (catégories, magasins, fournisseurs…).
-      Affiché dans l'écran « Historique » (Agent Logistique).
+      Affiché dans l'écran « Historique » (Responsable Technique).
     - COMPTE : création, modification, activation, mot de passe, déconnexion forcée, signature (administrateur seulement).
     - CONNEXION : connexions, échecs, déconnexions (journal de connexion, administrateur seulement).
     Personne ne peut le modifier ni l'effacer (administration en lecture seule)."""

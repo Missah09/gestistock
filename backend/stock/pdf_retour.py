@@ -3,8 +3,8 @@
 Même présentation que le bon de réquisition (pdf_bon.py), en A4 paysage (10 colonnes) :
 en-tête HBC, rattachement à la réquisition RM-… et à la demande DEM-…, puis la liste de ce qui reste à rendre.
 « Qté rendue » et « État au retour » se remplissent à la main au magasin ; sur la copie d'archive (après
-confirmation du retour), ces colonnes sont remplies d'après la saisie de l'Agent Logistique.
-Signatures : Rendu par (demandeur) · Reçu par (magasinier) à la main ; Agent Logistique au stylo électronique.
+confirmation du retour), ces colonnes sont remplies d'après la saisie du Responsable Technique.
+Signatures : Rendu par (demandeur) · Reçu par (magasinier) à la main ; Responsable Technique au stylo électronique.
 """
 from io import BytesIO
 
@@ -128,7 +128,7 @@ def fabriquer_pdf_retour(bon, imprime_par=None, imprime_le=None):
                    f"{bon.date_retour:%d/%m/%Y}" if archive and bon.date_retour else ""),
         _case_main("Reçu par (magasinier)", bon.magasinier if archive else "",
                    f"{bon.date_retour:%d/%m/%Y}" if archive and bon.date_retour else ""),
-        _case_visa("Agent Logistique", _nom(bon.imprime_par), bon.signature_agent, bon.imprime_le, case),
+        _case_visa("Responsable Technique", _nom(bon.imprime_par), bon.signature_agent, bon.imprime_le, case),
     ]], colWidths=[case] * 3, rowHeights=[38 * mm])
     visas.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.6, TRAIT), ("VALIGN", (0, 0), (-1, -1), "TOP"),
                                ("TOPPADDING", (0, 0), (-1, -1), 5), ("LEFTPADDING", (0, 0), (-1, -1), 6),

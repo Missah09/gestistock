@@ -2,8 +2,8 @@
 
 Même mise en page que l'aperçu à l'écran (maquette validée le 11/10/2026) :
 en-tête HBC, informations générales, liste des articles accordés (les lignes à 0 sont retirées),
-puis les quatre cases de visas : Demandeur et Magasinier à signer à la main, Agent Logistique et
-Responsable HBC avec leur signature au stylo électronique, leur nom, la date et l'heure.
+puis les quatre cases de visas : Demandeur et Magasinier à signer à la main, Responsable Technique et
+Responsable Logistique avec leur signature au stylo électronique, leur nom, la date et l'heure.
 Format A4, prêt à imprimer. Fabriqué avec ReportLab.
 """
 from io import BytesIO
@@ -86,7 +86,7 @@ def lignes_du_bon(demande):
 
 
 def _case_visa(titre, nom, b64, le, largeur):
-    """Case Agent Logistique / Responsable HBC : nom, signature dessinée, date et heure du visa."""
+    """Case Responsable Technique / Responsable Logistique : nom, signature dessinée, date et heure du visa."""
     contenu = [Paragraph(titre, S_CASE_TITRE), Spacer(1, 3), Paragraph(f"Nom : <b>{_x(nom)}</b>", S_CASE)]
     if b64:
         lecteur = ImageReader(BytesIO(image_signature(b64)))
@@ -109,7 +109,7 @@ def _case_main(titre, nom="", date=""):
 
 
 def fabriquer_pdf(requisition, imprime_par=None, imprime_le=None, sortie=None):
-    """Renvoie le PDF (octets) du bon de réquisition `requisition` (déjà visé par le Responsable).
+    """Renvoie le PDF (octets) du bon de réquisition `requisition` (déjà visé par le Responsable Logistique).
     `sortie` (12/10/2026) : copie d'archive après confirmation de la sortie, avec la colonne « Qté livrée » remplie,
     les n° de série remis et le nom du magasinier."""
     d = requisition.demande
@@ -199,9 +199,9 @@ def fabriquer_pdf(requisition, imprime_par=None, imprime_le=None, sortie=None):
     case = largeur / 4
     visas = Table([[
         _case_main("Demandeur", _nom(d.demandeur), _jour(d.cree_le)),
-        _case_visa("Agent Logistique", _nom(requisition.visa_agent), requisition.signature_agent,
+        _case_visa("Responsable Technique", _nom(requisition.visa_agent), requisition.signature_agent,
                    requisition.visa_agent_le, case),
-        _case_visa("Responsable HBC", _nom(requisition.visa_responsable), requisition.signature_responsable,
+        _case_visa("Responsable Logistique", _nom(requisition.visa_responsable), requisition.signature_responsable,
                    requisition.visa_responsable_le, case),
         _case_main("Magasinier", sortie.magasinier if sortie else "",
                    f"{sortie.date_remise:%d/%m/%Y}" if sortie else ""),

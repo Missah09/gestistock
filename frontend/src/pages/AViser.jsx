@@ -6,7 +6,7 @@ import { Onglets, TableauDemandes, useDemandeOuverte, useListeDemandes } from ".
 
 const ONGLETS_VISA = [["attente", "À viser"], ["visees", "Visées"], ["refusees", "Refusées"], ["toutes", "Toutes"]];
 
-/** Écran « Demandes à viser » (Responsable HBC). `ouvrirId` : demande à ouvrir tout de suite (lien de l'email). */
+/** Écran « Demandes à viser » (Responsable Logistique). `ouvrirId` : demande à ouvrir tout de suite (lien de l'email). */
 export default function AViser({ ouvrirId, compte }) {
   const liste = useListeDemandes(listerAViser);
   const [affichee, setOuverte] = useDemandeOuverte(liste, lireAViser);

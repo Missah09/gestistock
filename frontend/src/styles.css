@@ -319,7 +319,7 @@ th .facultatif { color: var(--gris); }
 .btn.compte-sortie { height: 38px; margin-top: 8px; }
 
 
-/* ---------- Demandes à valider (Agent Logistique, 11/10/2026) ---------- */
+/* ---------- Demandes à valider (Responsable Technique, 11/10/2026) ---------- */
 .cellule-demande .demandeur { display: block; font-weight: 700; font-size: 13.5px; margin-top: 2px; }
 .col-statut .sous-statut { display: block; margin-top: 5px; font-size: 12px; font-weight: 700; color: var(--hbc); }
 .tableau.demandes td.num .barree { text-decoration: line-through; color: var(--gris); font-weight: 600; }

@@ -17,7 +17,7 @@ class SuppressionArticleTests(TestCase):
         call_command("charger_exemples", verbosity=0)
         cls.chef = User.objects.create_superuser("chef", password="x")
         cls.agent = User.objects.create_user("agent", password="x")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.modele = Article.objects.filter(type="CONSOMMABLE").first()
 
     def setUp(self):
@@ -47,7 +47,7 @@ class SuppressionArticleTests(TestCase):
         self.assertFalse(Article.objects.filter(id__in=[a.id, b.id]).exists())
 
     def recevoir(self, *articles):
-        """Entrée en stock par l'application (Agent Logistique) : 2 de chaque article."""
+        """Entrée en stock par l'application (Responsable Technique) : 2 de chaque article."""
         api = APIClient(); api.force_login(self.agent)
         rep = api.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(),
                                          "magasin": articles[0].emplacement.magasin_id,

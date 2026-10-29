@@ -15,8 +15,8 @@ function Roles({ c }) {
   return (
     <span className="roles">
       {c.administrateur && <span className="pill p-c">Administrateur</span>}
-      {c.agent && <span className="pill p-i">Agent Logistique</span>}
-      {c.responsable && <span className="pill p-ok">Responsable HBC</span>}
+      {c.agent && <span className="pill p-i">Responsable Technique</span>}
+      {c.responsable && <span className="pill p-ok">Responsable Logistique</span>}
       {!c.administrateur && !c.agent && !c.responsable && <span className="pill p-g">Saisisseur</span>}
     </span>
   );
@@ -143,11 +143,11 @@ function FenetreCompte({ compte: c, departements, moi, onFermer, onEnregistre })
             <p className="aide">Tout compte peut faire des demandes de matériel (Saisisseur) : rien à cocher pour cela.</p>
             <label className="btn case">
               <input type="checkbox" checked={f.agent} onChange={(e) => changer("agent", e.target.checked)} />
-              <span><b>Agent Logistique</b><small>Valide les demandes, crée les réquisitions, enregistre les réceptions.</small></span>
+              <span><b>Responsable Technique</b><small>Valide les demandes, crée les réquisitions, enregistre les réceptions.</small></span>
             </label>
             <label className="btn case">
               <input type="checkbox" checked={f.responsable} onChange={(e) => changer("responsable", e.target.checked)} />
-              <span><b>Responsable HBC</b><small>Vise les réquisitions.</small></span>
+              <span><b>Responsable Logistique</b><small>Vise les réquisitions.</small></span>
             </label>
             {c?.administrateur && <p className="aide">Ce compte est <b>Administrateur</b> : il a déjà tous les rôles.</p>}
           </fieldset>

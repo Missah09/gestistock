@@ -17,9 +17,9 @@ class SignatureScanneeTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.saisisseur = User.objects.create_user("rabe", password="x")
         cls.agent = User.objects.create_user("agent", password="Mdp-agent")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="Mdp-resp")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.article = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).first()
 
     def setUp(self):
@@ -71,7 +71,7 @@ class SignatureScanneeTests(TestCase):
         self.assertEqual(Requisition.objects.get(demande_id=did).origine_signature_agent, "IMPORTEE")
         m = self.a.get("/api/ma-signature/").data
         self.assertTrue(m["enregistree"]); self.assertEqual(m["image"], SIGNATURE); self.assertTrue(m["le"])
-        # Le Responsable n'a pas de signature enregistrée ; il importe sans l'enregistrer
+        # Le Responsable Logistique n'a pas de signature enregistrée ; il importe sans l'enregistrer
         rep = self.r.post(f"/api/a-viser/{did}/viser/", {"source": "importee", "signature": SIGNATURE, "mot_de_passe": "Mdp-resp"},
                           format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
@@ -105,7 +105,7 @@ class RetraitParAdministrateurTests(TestCase):
         call_command("charger_exemples", verbosity=0)
         cls.admin = User.objects.create_superuser("admin", password="Mdp-admin")
         cls.agent = User.objects.create_user("agent", password="Mdp-agent")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
 
     def setUp(self):
         p, _ = Profil.objects.get_or_create(user=self.agent)

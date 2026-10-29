@@ -22,9 +22,9 @@ class EtatEtRetoursTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.saisisseur = User.objects.create_user("rabe", password="x", first_name="Jean", last_name="Rabe")
         cls.agent = User.objects.create_user("agent", password="x", first_name="Hery", last_name="Rasoa")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x", first_name="Paul", last_name="Randria")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.conso = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).order_by("code").first()
         Article.objects.filter(id=cls.conso.id).update(qte_stock=50)
         # Matériel prêté suivi par quantité (casques) : 10 en « Bon état »
@@ -240,9 +240,9 @@ class NumeroEtImpressionTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.s_user = User.objects.create_user("rabe", password="x")
         cls.agent = User.objects.create_user("agent", password="x")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.conso = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).first()
         Article.objects.filter(id=cls.conso.id).update(qte_stock=50)
 

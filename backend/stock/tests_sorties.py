@@ -21,9 +21,9 @@ class SortiesTests(TestCase):
         cls.ank = Magasin.objects.get(nom="Ankorondrano")
         cls.saisisseur = User.objects.create_user("rabe", password="x", first_name="Jean", last_name="Rabe")
         cls.agent = User.objects.create_user("agent", password="x", first_name="Hery", last_name="Rasoa")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.resp = User.objects.create_user("resp", password="x", first_name="Paul", last_name="Randria")
-        cls.resp.groups.add(Group.objects.get(name="Responsable HBC"))
+        cls.resp.groups.add(Group.objects.get(name="Responsable Logistique"))
         conso = Article.objects.filter(type="CONSOMMABLE", emplacement__magasin=cls.ank).order_by("code")
         cls.c1, cls.c2 = list(conso[:2])
         Article.objects.filter(id__in=[cls.c1.id, cls.c2.id]).update(qte_stock=50)
@@ -39,7 +39,7 @@ class SortiesTests(TestCase):
         self.r = APIClient(); self.r.force_login(self.resp)
 
     def bon(self, imprimer=True, avec_serie=False):
-        """Demande validée (c2 retiré à 0), visée et, si `imprimer`, téléchargée par l'Agent Logistique."""
+        """Demande validée (c2 retiré à 0), visée et, si `imprimer`, téléchargée par le Responsable Technique."""
         lignes = [{"article": self.c1.id, "quantite": 10}, {"article": self.c2.id, "quantite": 2}]
         if avec_serie:
             lignes.append({"article": self.serie.id, "quantite": 2,

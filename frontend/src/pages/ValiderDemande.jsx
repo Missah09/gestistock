@@ -37,7 +37,7 @@ function SaisieAccorde({ l, valeur, onChange, erreur, desactive }) {
   );
 }
 
-/** Panneau de l'Agent Logistique : vérifier la demande, ajuster les quantités, Valider (crée la réquisition) ou Refuser. */
+/** Panneau du Responsable Technique : vérifier la demande, ajuster les quantités, Valider (crée la réquisition) ou Refuser. */
 export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMiseAJour, emails = false, signataire = "" }) {
   const enAttente = d.statut === "EN_ATTENTE";
   const [accordes, setAccordes] = useState({});
@@ -74,7 +74,7 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
     return () => window.removeEventListener("keydown", touche);
   }, [onFermer, envoi, mode]);
 
-  // « Renvoyer l'email » au Responsable (ex. après avoir configuré Gmail).
+  // « Renvoyer l'email » au Responsable Logistique (ex. après avoir configuré Gmail).
   const [renvoi, setRenvoi] = useState(false);
   async function renvoyer() {
     setRenvoi(true); setErreurs({});
@@ -225,7 +225,7 @@ export default function ValiderDemande({ demande: d, onFermer, onTraitee, onMise
         </div>
       </aside>
 
-      {/* Valider = signer au stylo électronique la case « Agent Logistique » du bon */}
+      {/* Valider = signer au stylo électronique la case « Responsable Technique » du bon */}
       {mode === "valider" && (
         <FenetreBon d={d} role="agent" numero={numero ?? d.numero_requisition} signataire={signataire}
           quantites={Object.fromEntries(d.lignes.map((l, i) => [l.id, Number(valeurs[i])]))}

@@ -45,13 +45,13 @@ function menuPour(compte) {
 /** Toutes les entrées du menu, à plat : [[icône, titre]…]. */
 const entreesDu = (menu) => menu.flatMap((m) => (m[0] === "groupe" ? m[3] : [[m[1], m[2]]]));
 
-/** Écran ouvert après la connexion (12/10/2026) : le Tableau de bord pour l'Agent Logistique et le Responsable HBC,
+/** Écran ouvert après la connexion (12/10/2026) : le Tableau de bord pour le Responsable Technique et le Responsable Logistique,
  *  « Mes demandes » pour les Saisisseurs. */
 function accueil(compte) {
   return compte && (compte.agent_logistique || compte.responsable) ? "Tableau de bord" : "Mes demandes";
 }
 
-/** Lien de l'email au Responsable : http://…/#a-viser/<id de la demande> → écran « Demandes à viser », réquisition ouverte. */
+/** Lien de l'email au Responsable Logistique : http://…/#a-viser/<id de la demande> → écran « Demandes à viser », réquisition ouverte. */
 function lienDeLEmail() {
   const m = window.location.hash.match(/^#a-viser\/(\d+)$/);
   return m ? Number(m[1]) : null;

@@ -4,12 +4,12 @@ import Icon from "../icons.jsx";
 import ValiderDemande from "./ValiderDemande.jsx";
 import { Onglets, TableauDemandes, useDemandeOuverte, useListeDemandes } from "./TableauDemandes.jsx";
 
-/** Écran « Demandes à valider » (Agent Logistique) : toutes les demandes ; en attente, les urgentes puis les plus anciennes. */
+/** Écran « Demandes à valider » (Responsable Technique) : toutes les demandes ; en attente, les urgentes puis les plus anciennes. */
 export default function AValider({ compte }) {
   const liste = useListeDemandes(listerAValider);
   const [affichee, setOuverte] = useDemandeOuverte(liste, lireAValider);
   const [annonce, setAnnonce] = useState(null);
-  const [avertissement, setAvertissement] = useState(null); // ex. email au Responsable non envoyé
+  const [avertissement, setAvertissement] = useState(null); // ex. email au Responsable Logistique non envoyé
   const fermer = useCallback(() => setOuverte(null), [setOuverte]);
 
   return (

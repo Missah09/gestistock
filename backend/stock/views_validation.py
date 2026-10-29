@@ -1,8 +1,8 @@
-"""Écran « Demandes à valider » de l'Agent Logistique (11/10/2026).
+"""Écran « Demandes à valider » du Responsable Technique (11/10/2026).
 
-L'Agent Logistique voit toutes les demandes, modifie au besoin les quantités, puis :
+Le Responsable Technique voit toutes les demandes, modifie au besoin les quantités, puis :
   - valide  → la demande passe « Validée », la réquisition matière (RM-AAAA-0001) est créée en un clic ;
-              cette validation vaut visa électronique de l'Agent Logistique ; elle attend ensuite le visa du Responsable HBC ;
+              cette validation vaut visa électronique du Responsable Technique ; elle attend ensuite le visa du Responsable Logistique ;
   - refuse  → motif obligatoire, visible par le demandeur.
 La quantité demandée d'origine est conservée (LigneDemande.quantite) ; la quantité retenue va dans qte_accordee.
 Le stock ne change pas ici (il baissera à la confirmation de sortie).
@@ -72,7 +72,7 @@ def valider(request, pk):
     saisies = request.data.get("lignes", [])
     if not isinstance(saisies, list):
         return Response({"general": ["Données incorrectes."]}, status=status.HTTP_400_BAD_REQUEST)
-    # La validation vaut visa : l'Agent Logistique signe au stylo électronique (case « Agent Logistique » du bon).
+    # La validation vaut visa : le Responsable Technique signe au stylo électronique (case « Responsable Technique » du bon).
     try:
         sig = signature_de_la_requete(request)  # signature + mot de passe retapé (15/10/2026)
     except ErreurSignature as exc:
@@ -126,12 +126,12 @@ def valider(request, pk):
                                        signature_agent=sig.b64, origine_signature_agent=sig.origine)
         enregistrer_si_demande(request.user, sig)
 
-    # Email au Responsable (désactivé pour l'instant : GESTISTOCK_EMAILS). Après l'enregistrement :
+    # Email au Responsable Logistique (désactivé pour l'instant : GESTISTOCK_EMAILS). Après l'enregistrement :
     # un souci d'email n'annule pas la validation.
     etat_email = prevenir_responsable(r) if settings.GESTISTOCK_EMAILS else None
     d = demandes_completes().get(pk=d.pk)
     return Response({"message": f"Demande {d.numero} validée. Réquisition {r.numero} créée : "
-                                "elle attend maintenant le visa du Responsable HBC (menu « À viser »).",
+                                "elle attend maintenant le visa du Responsable Logistique (menu « À viser »).",
                      "email": etat_email,
                      "email_ok": not settings.GESTISTOCK_EMAILS or (bool(d.requisition.email_envoye_le) and email_actif()),
                      "demande": en_json([d])[0]})
@@ -140,7 +140,7 @@ def valider(request, pk):
 @api_view(["POST"])
 @permission_classes([EstAgentLogistique])
 def renvoyer_email(request, pk):
-    """« Renvoyer l'email » au Responsable HBC (réquisition encore en attente du visa)."""
+    """« Renvoyer l'email » au Responsable Logistique (réquisition encore en attente du visa)."""
     d = demandes_completes().filter(pk=pk).first()
     r = getattr(d, "requisition", None) if d else None
     if r is None:

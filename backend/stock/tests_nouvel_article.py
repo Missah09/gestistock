@@ -1,4 +1,4 @@
-"""Tests de la fenêtre « Nouvel article » (12/10/2026) : création réservée à l'Agent Logistique et à l'administrateur,
+"""Tests de la fenêtre « Nouvel article » (12/10/2026) : création réservée au Responsable Technique et à l'administrateur,
 code automatique, stock à 0, doublons, suivi par n° de série dès la première réception.
 Lancer : python manage.py test stock"""
 from django.contrib.auth.models import Group, User
@@ -19,7 +19,7 @@ class NouvelArticleTests(TestCase):
         cls.cat = Categorie.objects.first()
         cls.saisisseur = User.objects.create_user("rabe", password="x")
         cls.agent = User.objects.create_user("agent", password="x")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.admin = User.objects.create_superuser("chef", password="x")
 
     def client_de(self, user):

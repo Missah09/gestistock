@@ -1,11 +1,11 @@
-"""Écran « Retours de stock » (Agent Logistique, 12/10/2026) : le matériel prêté revient au magasin.
+"""Écran « Retours de stock » (Responsable Technique, 12/10/2026) : le matériel prêté revient au magasin.
 
 Circuit (le même que pour la sortie) :
-1. Dans « Matériel attendu », l'Agent Logistique imprime un **bon de retour** (BR-AAAA-0001) rattaché à la
+1. Dans « Matériel attendu », le Responsable Technique imprime un **bon de retour** (BR-AAAA-0001) rattaché à la
    réquisition, rempli d'office avec ce qui reste à rendre, et signé au stylo électronique.
 2. Au magasin, le magasinier reçoit le matériel, remplit à la main « Qté rendue » et « État au retour » ;
    le demandeur et lui signent.
-3. L'Agent Logistique **confirme le retour** en recopiant le bon : le stock remonte, l'état est mis à jour
+3. Le Responsable Technique **confirme le retour** en recopiant le bon : le stock remonte, l'état est mis à jour
    (Neuf · Bon · Moyen · Mauvais ; tous redeviennent disponibles).
 Retour partiel : un bon par passage au magasin ; le suivant ne liste que ce qui reste à rendre.
 Seul le matériel prêté (non consommable) revient ; jamais les consommables.
@@ -205,7 +205,7 @@ def detail(request, pk):
 @api_view(["POST"])
 @permission_classes([EstAgentLogistique])
 def creer_bon(request, pk):
-    """Prépare le bon de retour (ce qui reste à rendre) ; signature de l'Agent Logistique au stylo."""
+    """Prépare le bon de retour (ce qui reste à rendre) ; signature du Responsable Technique au stylo."""
     try:
         sig = signature_de_la_requete(request)  # signature + mot de passe retapé (15/10/2026)
     except ErreurSignature as exc:

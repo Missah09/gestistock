@@ -18,9 +18,9 @@ class Base(TestCase):
         cls.ch_fini = Chantier.objects.create(nom="Chantier fini", actif=False)
         from django.contrib.auth.models import Group, User
         cls.agent = User.objects.create_user("agent", password="Mdp-agent-2026")
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
     def setUp(self):
-        # Depuis le 11/10/2026 il faut être connecté : les tests agissent en Agent Logistique.
+        # Depuis le 11/10/2026 il faut être connecté : les tests agissent en Responsable Technique.
         self.c = APIClient(); self.c.force_login(self.agent)
     def art(self, code): return Article.objects.get(code=code)
 

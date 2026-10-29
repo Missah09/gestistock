@@ -1,4 +1,4 @@
-"""Emails de GestiStock (11/10/2026) : prévenir le Responsable HBC qu'une réquisition attend son visa."""
+"""Emails de GestiStock (11/10/2026) : prévenir le Responsable Logistique qu'une réquisition attend son visa."""
 from html import escape
 
 from django.conf import settings
@@ -16,7 +16,7 @@ def email_actif():
 
 
 def destinataires_responsable():
-    """Adresse temporaire si elle est réglée (.env), sinon les adresses des comptes Responsable HBC actifs."""
+    """Adresse temporaire si elle est réglée (.env), sinon les adresses des comptes Responsable Logistique actifs."""
     if settings.GESTISTOCK_EMAIL_TEMPORAIRE:
         return [settings.GESTISTOCK_EMAIL_TEMPORAIRE]
     comptes = User.objects.filter(is_active=True).filter(Q(groups__name=ROLE_RESPONSABLE) | Q(is_superuser=True))
@@ -91,7 +91,7 @@ def prevenir_responsable(r):
     (email_envoye_le, email_etat) et renvoyé sous forme de phrase."""
     a = destinataires_responsable()
     if not a:
-        r.email_etat = ("Email non envoyé : aucun compte « Responsable HBC » n'a d'adresse email "
+        r.email_etat = ("Email non envoyé : aucun compte « Responsable Logistique » n'a d'adresse email "
                         "(administration › Utilisateurs).")
         r.save(update_fields=["email_etat"])
         return r.email_etat

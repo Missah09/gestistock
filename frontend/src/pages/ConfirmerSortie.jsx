@@ -13,7 +13,7 @@ const unite = (u) => (u === "m" ? "m" : u === "paire" ? "paire(s)" : "pièce(s)"
 /** Lignes du bon : quantité accordée (sinon demandée), sans les articles retirés (0). */
 export const lignesDuBon = (d) => d.lignes.map((l) => ({ ...l, qte: l.qte_accordee ?? l.quantite })).filter((l) => l.qte > 0);
 
-/** Fenêtre « Confirmer la sortie » (Agent Logistique, 12/10/2026).
+/** Fenêtre « Confirmer la sortie » (Responsable Technique, 12/10/2026).
  *  Le bon signé par le magasinier revient du magasin : on recopie la colonne « Qté livrée »
  *  (on coche les n° de série remis pour le matériel suivi par exemplaire) → le stock diminue.
  *  Une sortie déjà confirmée s'ouvre en lecture, avec la copie d'archive du bon. */

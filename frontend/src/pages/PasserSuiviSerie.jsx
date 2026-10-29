@@ -7,7 +7,7 @@ const premier = (x) => (Array.isArray(x) ? x[0] : x);
 const OPTIONS_ETAT = ORDRE_ETATS.map((e) => ({ valeur: e, libelle: ETATS_PRODUIT[e].libelle }));
 
 /** Fenêtre « Passer au suivi par n° de série » (15/10/2026) : ouverte depuis la fiche d'un article suivi par quantité
- *  (Agent Logistique et administrateur), ou depuis « Entrée en stock » (« Ce produit a des n° de série ? », depuisEntree).
+ *  (Responsable Technique et administrateur), ou depuis « Entrée en stock » (« Ce produit a des n° de série ? », depuisEntree).
  *  Depuis le 26/10/2026, aussi pour un consommable compté à la pièce (box ONT…) : sans code immo ni étalonnage. Une ligne par unité au magasin, l'état déjà rempli
  *  d'après le stock actuel ; on saisit le n° de série (obligatoire), le code immo et l'étalonnage (facultatifs).
  *  Le stock ne change pas ; le choix est définitif. Refusé par le serveur si des unités prêtées ne sont pas rendues. */

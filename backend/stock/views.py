@@ -113,7 +113,7 @@ class ArticleViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.
     @action(detail=True, methods=["post"], url_path="suivi-serie")
     def suivi_serie(self, request, pk=None):
         """« Passer au suivi par n° de série » (fiche article, 15/10/2026) : un n° pour chaque unité au magasin.
-        Agent Logistique et administrateur (comme « Modifier »). Renvoie la fiche à jour."""
+        Responsable Technique et administrateur (comme « Modifier »). Renvoie la fiche à jour."""
         with transaction.atomic():
             article = Article.objects.select_for_update().get(pk=self.get_object().pk)
             s = PassageSuiviSerieSerializer(data=request.data, context={"article": article})
@@ -208,8 +208,8 @@ def enregistrer_entree(request):
 
 # ---------------------------------------------------------------- Demandes
 
-# Onglets « Mes demandes » et « Demandes à valider ». Une réquisition refusée par le Responsable HBC
-# range la demande dans « Refusées » (la demande elle-même reste « validée » par la Logistique).
+# Onglets « Mes demandes » et « Demandes à valider ». Une réquisition refusée par le Responsable Logistique
+# range la demande dans « Refusées » (la demande elle-même reste « validée » par le Responsable Technique).
 ONGLETS = {"attente": Q(statut=Demande.Statut.EN_ATTENTE),
            "validees": Q(statut=Demande.Statut.VALIDEE) & ~Q(requisition__statut="REFUSEE"),
            "refusees": Q(statut=Demande.Statut.REFUSEE) | Q(requisition__statut="REFUSEE"),
@@ -219,7 +219,7 @@ PAR_PAGE_DEMANDES = 10
 
 def mes_demandes(request):
     """« Mes demandes » : chaque compte ne voit que ses propres demandes.
-    (L'Agent Logistique voit toutes les demandes dans son écran « Demandes à valider » : views_validation.py.)"""
+    (Le Responsable Technique voit toutes les demandes dans son écran « Demandes à valider » : views_validation.py.)"""
     return demandes_completes().filter(demandeur=request.user)
 
 
@@ -248,7 +248,7 @@ def demandes(request):
         d = s.save(demandeur=request.user)
         nb = d.lignes.count()
         return Response({"id": d.id, "numero": d.numero,
-                         "message": f"Demande {d.numero} envoyée à la Logistique ({nb} article{'s' if nb > 1 else ''})."},
+                         "message": f"Demande {d.numero} envoyée au Responsable Technique ({nb} article{'s' if nb > 1 else ''})."},
                         status=status.HTTP_201_CREATED)
 
     qs = mes_demandes(request)

@@ -9,7 +9,7 @@ const VIDE = {
   qte_minimale: "0", prix_unitaire: "", fournisseur: "", ref_fournisseur: "", marque: "", modele: "", ref_fabricant: "",
 };
 
-/** Fenêtre « Nouvel article » (12/10/2026) : Agent Logistique et administrateur.
+/** Fenêtre « Nouvel article » (12/10/2026) : Responsable Technique et administrateur.
  *  S'ouvre par-dessus « Entrée en stock » (ligne « ＋ Créer l'article… » de la liste des articles) :
  *  le nom tapé est repris, le magasin est celui de la livraison. Le code est créé automatiquement ;
  *  l'article créé est aussitôt placé sur la ligne de la livraison. */

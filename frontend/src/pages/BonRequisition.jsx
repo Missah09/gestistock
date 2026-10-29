@@ -3,7 +3,7 @@ import { date, dateHeure, etatsDisponibles, quantite, texteEtats } from "../form
 
 const jour = (iso) => (iso ? dateHeure(iso).split(" à ")[0] : "");
 
-/** Une case de visa électronique (Agent Logistique ou Responsable HBC). */
+/** Une case de visa électronique (Responsable Technique ou Responsable Logistique). */
 function CaseVisa({ titre, visa, enCours }) {
   return (
     <div className={`bon-case${enCours ? " a-signer" : ""}`}>
@@ -78,8 +78,8 @@ export default function BonRequisition({ d, quantites, numero, visas = {}, aSign
       <div className="bon-section">3. Visas et signatures</div>
       <div className="bon-visas">
         <CaseMain titre="Demandeur" nom={d.demandeur} date={jour(d.cree_le)} />
-        <CaseVisa titre="Agent Logistique" visa={visas.agent} enCours={aSigner === "agent"} />
-        <CaseVisa titre="Responsable HBC" visa={visas.responsable} enCours={aSigner === "responsable"} />
+        <CaseVisa titre="Responsable Technique" visa={visas.agent} enCours={aSigner === "agent"} />
+        <CaseVisa titre="Responsable Logistique" visa={visas.responsable} enCours={aSigner === "responsable"} />
         <CaseMain titre="Magasinier" nom={r?.sortie?.magasinier} date={r?.sortie ? date(r.sortie.date_remise) : undefined} />
       </div>
       <div className="bon-pied">GestiStock – Demande {d.numero} – aperçu à l'écran</div>

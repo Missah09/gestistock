@@ -48,7 +48,7 @@ class GestionComptesTests(TestCase):
     def setUpTestData(cls):
         cls.admin = User.objects.create_superuser("admin", password=MDP)
         cls.agent = User.objects.create_user("agent", password=MDP)
-        cls.agent.groups.add(Group.objects.get(name="Agent Logistique"))
+        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
         cls.tech = Departement.objects.get(nom="Technique")
 
     def setUp(self):
@@ -72,7 +72,7 @@ class GestionComptesTests(TestCase):
         self.assertEqual(r.status_code, 201, r.data)
         u = User.objects.get(username="lova")
         self.assertEqual((u.first_name, u.last_name, u.profil.departement), ("Lova", "Randria", self.tech))
-        self.assertEqual(list(u.groups.values_list("name", flat=True)), ["Responsable HBC"])
+        self.assertEqual(list(u.groups.values_list("name", flat=True)), ["Responsable Logistique"])
         self.assertFalse(u.is_superuser); self.assertTrue(u.check_password(MDP))
         liste = self.a.get("/api/comptes/").data
         lova = next(x for x in liste["comptes"] if x["identifiant"] == "lova")
@@ -99,7 +99,7 @@ class GestionComptesTests(TestCase):
         self.assertEqual(r.status_code, 200, r.data)
         u.refresh_from_db()
         self.assertEqual((u.last_name, u.profil.departement), ("Rakoto", fin))
-        self.assertEqual(list(u.groups.values_list("name", flat=True)), ["Agent Logistique"])
+        self.assertEqual(list(u.groups.values_list("name", flat=True)), ["Responsable Technique"])
         self.assertEqual(self.a.patch("/api/comptes/999999/", {}, format="json").status_code, 404)
 
     def test_desactiver_mot_de_passe_deconnecter(self):

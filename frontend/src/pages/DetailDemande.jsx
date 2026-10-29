@@ -16,12 +16,12 @@ export function Champ({ libelle, children, large, aide }) {
   );
 }
 
-/** Suivi en 5 étapes : Envoyée → Validée par la Logistique → Visée par le Responsable → Bon prêt → Remise. */
+/** Suivi en 5 étapes : Envoyée → Validée par le Responsable Technique → Visée par le Responsable Logistique → Bon prêt → Remise. */
 export function Suivi({ d, vueAgent = false }) {
   const r = d.requisition;
   const parQui = (nom) => (nom ? ` par ${nom}` : "");
   const validation = {
-    EN_ATTENTE: ["encours", "En attente de la Logistique"],
+    EN_ATTENTE: ["encours", "En attente du Responsable Technique"],
     VALIDEE: ["fait", `${d.traitee_le ? dateHeure(d.traitee_le) : ""}${parQui(d.traitee_par)}`],
     REFUSEE: ["refus", `Refusée${parQui(d.traitee_par)}${d.motif_refus ? ` : ${d.motif_refus}` : ""}`],
     ANNULEE: ["refus", vueAgent ? "Annulée par le demandeur" : "Annulée par vous"],
@@ -33,8 +33,8 @@ export function Suivi({ d, vueAgent = false }) {
   const visee = r?.statut === "VISEE";
   const etapes = [
     ["fait", "Envoyée", dateHeure(d.cree_le)],
-    [validation[0], "Validée par la Logistique", validation[1]],
-    [visa[0], "Visée par le Responsable", visa[1]],
+    [validation[0], "Validée par le Responsable Technique", validation[1]],
+    [visa[0], "Visée par le Responsable Logistique", visa[1]],
     r?.imprimee_le
       ? ["fait", "Bon prêt", `Imprimé le ${dateHeure(r.imprimee_le)}${parQui(r.imprimee_par)}`]
       : [visee ? "encours" : "attente", "Bon prêt", visee ? "Bon de réquisition à imprimer" : ""],
@@ -55,7 +55,7 @@ export function Suivi({ d, vueAgent = false }) {
   );
 }
 
-/** Bloc « La demande » (vue Agent Logistique : avec le demandeur et son service). */
+/** Bloc « La demande » (vue Responsable Technique : avec le demandeur et son service). */
 export function BlocDemande({ d, vueAgent = false }) {
   return (
     <section className="bloc">
@@ -75,7 +75,7 @@ export function BlocDemande({ d, vueAgent = false }) {
   );
 }
 
-/** Fiche d'un article demandé. `accorde` : contenu de la case « Qté accordée » (saisie pour l'Agent Logistique). */
+/** Fiche d'un article demandé. `accorde` : contenu de la case « Qté accordée » (saisie pour le Responsable Technique). */
 export function BlocArticle({ l, accorde, livree }) {
   const a = l.article;
   const insuffisant = manque(l.quantite, a.qte_disponible);
@@ -121,11 +121,11 @@ export function BlocArticle({ l, accorde, livree }) {
 }
 
 /** Bloc « Réquisition matière » (après validation).
- *  avecEmail : montre l'état de l'email au Responsable ; onRenvoyer : bouton « Renvoyer l'email » (Agent Logistique). */
+ *  avecEmail : montre l'état de l'email au Responsable Logistique ; onRenvoyer : bouton « Renvoyer l'email » (Responsable Technique). */
 export function BlocRequisition({ r, avecEmail = false, onRenvoyer, renvoiEnCours = false }) {
   if (!r) return null;
-  const etape = { ATTENTE_VISA: "En attente du visa du Responsable HBC", VISEE: "Visée par le Responsable HBC",
-    REFUSEE: "Refusée par le Responsable HBC" }[r.statut] ?? r.statut_libelle;
+  const etape = { ATTENTE_VISA: "En attente du visa du Responsable Logistique", VISEE: "Visée par le Responsable Logistique",
+    REFUSEE: "Refusée par le Responsable Logistique" }[r.statut] ?? r.statut_libelle;
   const emailOk = r.email_envoye_le && r.email_etat?.startsWith("Email envoyé");
   return (
     <section className="bloc">
@@ -133,22 +133,22 @@ export function BlocRequisition({ r, avecEmail = false, onRenvoyer, renvoiEnCour
       <div className="champs">
         <Champ libelle="N° de réquisition"><span className="code">{r.numero}</span></Champ>
         <Champ libelle="Étape">{etape}</Champ>
-        <Champ libelle="Visa de l'Agent Logistique" large>
+        <Champ libelle="Visa du Responsable Technique" large>
           {r.visa_agent} <span className="discret">· visé électroniquement le {dateHeure(r.visa_agent_le)}</span>
         </Champ>
         {r.statut === "VISEE" && (
-          <Champ libelle="Visa du Responsable HBC" large>
+          <Champ libelle="Visa du Responsable Logistique" large>
             {r.visa_responsable} <span className="discret">· visé électroniquement le {dateHeure(r.visa_responsable_le)}</span>
           </Champ>
         )}
         {r.statut === "REFUSEE" && (
-          <Champ libelle="Refus du Responsable HBC" large>
+          <Champ libelle="Refus du Responsable Logistique" large>
             {r.motif_refus || "—"} <span className="discret">· {r.visa_responsable}, le {dateHeure(r.visa_responsable_le)}</span>
           </Champ>
         )}
         {avecEmail && r.statut === "ATTENTE_VISA" && (
           <div className="champ large">
-            <span>Email au Responsable</span>
+            <span>Email au Responsable Logistique</span>
             <b className={emailOk ? "vert" : "a-completer"}>
               {r.email_etat || "Pas encore envoyé."}{emailOk && <span className="discret"> ({dateHeure(r.email_envoye_le)})</span>}
             </b>
@@ -216,7 +216,7 @@ export default function DetailDemande({ demande: d, onFermer, onAnnulee }) {
           <BlocDemande d={d} />
           <BlocRequisition r={d.requisition} />
           {d.statut === "REFUSEE" && d.motif_refus && (
-            <section className="bloc"><h3>Motif du refus</h3><div className="champs"><Champ libelle="Refusée par la Logistique" large>{d.motif_refus}</Champ></div></section>
+            <section className="bloc"><h3>Motif du refus</h3><div className="champs"><Champ libelle="Refusée par le Responsable Technique" large>{d.motif_refus}</Champ></div></section>
           )}
           {d.lignes.map((l) => <BlocArticle key={l.id} l={l} livree={d.requisition?.sortie?.lignes[l.id]} />)}
         </div>

@@ -1,4 +1,4 @@
-"""Écran « Rapports » (Agent Logistique, 15/10/2026) : six rapports, à voir à l'écran, en PDF ou en Excel.
+"""Écran « Rapports » (Responsable Technique, 15/10/2026) : six rapports, à voir à l'écran, en PDF ou en Excel.
 
 D'après la maquette (écran 10) : État du stock · À commander · Consommation par chantier · Matériel prêté ·
 Valeur du stock · Étalonnages à prévoir. Chaque rapport est décrit une seule fois (voir exports.py) :

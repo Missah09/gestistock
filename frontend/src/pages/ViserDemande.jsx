@@ -5,7 +5,7 @@ import { statutAffiche } from "./TableauDemandes.jsx";
 
 const MOTIF_MAX = 250;
 
-/** Responsable HBC : la réquisition s'ouvre dans une fenêtre, sous forme de bon de réquisition.
+/** Responsable Logistique : la réquisition s'ouvre dans une fenêtre, sous forme de bon de réquisition.
  *  Il signe sa case au stylo électronique (souris), ou refuse avec un motif. */
 export default function ViserDemande({ demande: d, signataire, onFermer, onTraitee }) {
   const r = d.requisition;
@@ -41,7 +41,7 @@ export default function ViserDemande({ demande: d, signataire, onFermer, onTrait
 
   const piedRefus = (
     <div className="refus-saisie">
-      <label htmlFor="motif-refus-visa" className="question">Motif du refus <span className="facultatif">(obligatoire, montré à la Logistique et au demandeur)</span></label>
+      <label htmlFor="motif-refus-visa" className="question">Motif du refus <span className="facultatif">(obligatoire, montré au Responsable Technique et au demandeur)</span></label>
       <textarea id="motif-refus-visa" className={`saisie zone${erreurs.motif ? " invalide" : ""}`} rows={2} maxLength={MOTIF_MAX} autoFocus
         value={motif} disabled={envoi} onChange={(e) => { setMotif(e.target.value); setErreurs((x) => ({ ...x, motif: undefined })); }}
         placeholder="Ex. : budget du mois dépassé" />

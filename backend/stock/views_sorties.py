@@ -1,7 +1,7 @@
-"""Écran « Sorties » (Agent Logistique, 12/10/2026) : confirmation de la remise du matériel.
+"""Écran « Sorties » (Responsable Technique, 12/10/2026) : confirmation de la remise du matériel.
 
 Circuit : le bon imprimé (écran « Réquisitions ») est porté au magasin ; le magasinier remet le matériel,
-remplit la colonne « Qté livrée » et signe. Au retour du bon signé, l'Agent Logistique recopie ici les quantités
+remplit la colonne « Qté livrée » et signe. Au retour du bon signé, le Responsable Technique recopie ici les quantités
 livrées (et coche les n° de série remis pour le matériel suivi par exemplaire) : **le stock diminue à ce moment**.
 L'application garde une copie d'archive du bon avec la Qté livrée remplie (PDF).
 """
@@ -34,7 +34,7 @@ def _introuvable():
 
 
 def _bons_imprimes():
-    """Demandes dont le bon (visé) a été imprimé par l'Agent Logistique : il est parti au magasin."""
+    """Demandes dont le bon (visé) a été imprimé par le Responsable Technique : il est parti au magasin."""
     return demandes_completes().filter(requisition__statut=Requisition.Statut.VISEE,
                                        requisition__imprimee_le__isnull=False)
 
@@ -170,7 +170,7 @@ def confirmer(request, pk):
                             status=status.HTTP_400_BAD_REQUEST)
         d = r.demande
 
-        # Date de remise : obligatoire, ni dans le futur, ni avant le visa du Responsable.
+        # Date de remise : obligatoire, ni dans le futur, ni avant le visa du Responsable Logistique.
         aujourd_hui = timezone.localdate()
         try:
             date_remise = datetime.date.fromisoformat(str(donnees.get("date_remise") or ""))

@@ -1,4 +1,4 @@
-"""Écran « Historique » (Agent Logistique, 15/10/2026) : tous les mouvements, avec le stock avant et après.
+"""Écran « Historique » (Responsable Technique, 15/10/2026) : tous les mouvements, avec le stock avant et après.
 
 D'après la maquette (écran 11). Personne ne peut modifier l'historique : il est fabriqué à partir de ce que
 GestiStock a enregistré.
@@ -6,8 +6,8 @@ GestiStock a enregistré.
 Deux sortes de lignes :
 - **les mouvements du stock** (MouvementEtat) : entrées en stock, sorties confirmées, retours confirmés et corrections
   (administration, import du fichier de stock). Quantité signée (+ / −) et stock disponible « avant → après ».
-- **les étapes du circuit** (sans effet sur le stock) : demande envoyée, validation ou refus de la Logistique,
-  signature ou refus du Responsable HBC, impression du bon.
+- **les étapes du circuit** (sans effet sur le stock) : demande envoyée, validation ou refus du Responsable Technique,
+  signature ou refus du Responsable Logistique, impression du bon.
 
 Stock avant → après : on part du stock disponible actuel de chaque article et on remonte le temps, mouvement par
 mouvement (`variation`). Les lignes d'un même passage (une sortie en plusieurs états, plusieurs n° de série reçus
@@ -147,7 +147,7 @@ def evenements_du_circuit(du, au):
     for d in base.select_related("requisition").filter(traitee_le__isnull=False, **_dans("traitee_le", du, au)):
         r = getattr(d, "requisition", None)
         if d.statut == Demande.Statut.REFUSEE and r is None:
-            ajouter(d.traitee_le, "refus", d, d.traitee_par, d.numero, f"Refusée par la Logistique : {d.motif_refus}")
+            ajouter(d.traitee_le, "refus", d, d.traitee_par, d.numero, f"Refusée par le Responsable Technique : {d.motif_refus}")
         elif r is not None:
             ajouter(d.traitee_le, "validation", d, d.traitee_par, r.numero, f"Demande {d.numero} validée et signée{_origine(r.origine_signature_agent)}")
     reqs = Requisition.objects.select_related("demande", "visa_responsable", "imprimee_par").prefetch_related(
@@ -155,10 +155,10 @@ def evenements_du_circuit(du, au):
     for r in reqs.filter(visa_responsable_le__isnull=False, **_dans("visa_responsable_le", du, au)):
         if r.statut == Requisition.Statut.REFUSEE:
             ajouter(r.visa_responsable_le, "refus", r.demande, r.visa_responsable, r.numero,
-                    f"Refusé par le Responsable : {r.motif_refus}")
+                    f"Refusé par le Responsable Logistique : {r.motif_refus}")
         else:
             ajouter(r.visa_responsable_le, "visa", r.demande, r.visa_responsable, r.numero,
-                    f"Demande {r.demande.numero} signée par le Responsable HBC{_origine(r.origine_signature_responsable)}")
+                    f"Demande {r.demande.numero} signée par le Responsable Logistique{_origine(r.origine_signature_responsable)}")
     for r in reqs.filter(imprimee_le__isnull=False, **_dans("imprimee_le", du, au)):
         ajouter(r.imprimee_le, "impression", r.demande, r.imprimee_par, r.numero,
                 f"Demande {r.demande.numero} : bon imprimé pour le magasin")

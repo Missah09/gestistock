@@ -154,10 +154,10 @@ if not DEBUG:
         raise ImproperlyConfigured("DJANGO_SECRET_KEY manquante : obligatoire en ligne (DJANGO_DEBUG=0).")
 
 # ---------------------------------------------------------------- Emails (11/10/2026)
-# Désactivés le 11/10 à 22 h 15 à la demande de l'utilisateur : le Responsable est prévenu dans l'application
+# Désactivés le 11/10 à 22 h 15 à la demande de l'utilisateur : le Responsable Logistique est prévenu dans l'application
 # (compteur sur le menu « À viser »). Pour les réactiver plus tard : GESTISTOCK_EMAILS=1 dans backend/.env.
 GESTISTOCK_EMAILS = os.environ.get("GESTISTOCK_EMAILS", "0") == "1"
-# Le Responsable HBC est prévenu par email quand une réquisition attend son visa.
+# Le Responsable Logistique est prévenu par email quand une réquisition attend son visa.
 # Envoi par Gmail : EMAIL_HOST_USER = l'adresse Gmail, EMAIL_HOST_PASSWORD = un « mot de passe d'application »
 # (à saisir avec outils\configurer-email.bat). Tant qu'il n'y a pas de mot de passe, les emails ne partent pas :
 # ils sont enregistrés comme fichiers dans backend/emails-non-envoyes (pour vérifier leur contenu).
@@ -174,7 +174,7 @@ if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
 else:
     EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
     EMAIL_FILE_PATH = BASE_DIR / "emails-non-envoyes"
-# Destinataire temporaire : s'il est rempli, les emails vont à cette adresse au lieu de celles des comptes Responsable HBC.
+# Destinataire temporaire : s'il est rempli, les emails vont à cette adresse au lieu de celles des comptes Responsable Logistique.
 GESTISTOCK_EMAIL_TEMPORAIRE = os.environ.get("GESTISTOCK_EMAIL_TEMPORAIRE", "").strip()
 # Adresse de l'application, pour le lien de l'email (à changer lors de l'hébergement, ex. https://stock.hbc-mg.com).
 GESTISTOCK_ADRESSE = (os.environ.get("GESTISTOCK_ADRESSE")

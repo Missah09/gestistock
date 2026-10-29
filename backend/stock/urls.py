@@ -14,9 +14,9 @@ router.register("articles", ArticleViewSet, basename="article")
 urlpatterns = [path("session/", session), path("compteurs/", compteurs),
                # Signature scannée enregistrée dans le compte connecté (15/10/2026)
                path("ma-signature/", ma_signature),
-               # Écran « Tableau de bord » (Agent Logistique et Responsable HBC, 12/10/2026)
+               # Écran « Tableau de bord » (Responsable Technique et Responsable Logistique, 12/10/2026)
                path("tableau-de-bord/", views_tableau.tableau_de_bord),
-               # Écrans « Générer Rapports » et « Historique » (Agent Logistique, 15/10/2026)
+               # Écrans « Générer Rapports » et « Historique » (Responsable Technique, 15/10/2026)
                path("rapports/", views_rapports.liste), path("rapports/<str:cle>/", views_rapports.rapport),
                path("historique/", views_rapports.historique), path("historique/export/", views_rapports.historique_export),
                # Écran « Comptes » (administrateur)
@@ -30,24 +30,24 @@ urlpatterns = [path("session/", session), path("compteurs/", compteurs),
                path("filtres/", filtres), path("choix/", choix), path("entrees/", enregistrer_entree),
                path("demandes/", demandes), path("demandes/choix/", choix_demande),
                path("demandes/<int:pk>/", detail_demande), path("demandes/<int:pk>/annuler/", annuler_demande),
-               # Écran « Demandes à valider » (Agent Logistique)
+               # Écran « Demandes à valider » (Responsable Technique)
                path("a-valider/", views_validation.liste), path("a-valider/<int:pk>/", views_validation.detail),
                path("a-valider/<int:pk>/numero/", views_validation.attribuer_numero),
                path("a-valider/<int:pk>/valider/", views_validation.valider),
                path("a-valider/<int:pk>/refuser/", views_validation.refuser),
                path("a-valider/<int:pk>/renvoyer-email/", views_validation.renvoyer_email),
-               # Écran « À viser » (Responsable HBC)
+               # Écran « À viser » (Responsable Logistique)
                path("a-viser/", views_visa.liste), path("a-viser/<int:pk>/", views_visa.detail),
                path("a-viser/<int:pk>/viser/", views_visa.viser), path("a-viser/<int:pk>/refuser/", views_visa.refuser),
                path("requisitions/<int:pk>/signature/<str:qui>/", views_visa.signature),
-               # Écran « Réquisitions » (Agent Logistique et Responsable HBC) : bons signés, PDF (12/10/2026)
+               # Écran « Réquisitions » (Responsable Technique et Responsable Logistique) : bons signés, PDF (12/10/2026)
                path("requisitions/", views_requisitions.liste), path("requisitions/<int:pk>/", views_requisitions.detail),
                path("requisitions/<int:pk>/pdf/", views_requisitions.pdf),
-               # Écran « Sorties » (Agent Logistique) : confirmation de la remise, le stock diminue (12/10/2026)
+               # Écran « Sorties » (Responsable Technique) : confirmation de la remise, le stock diminue (12/10/2026)
                path("sorties/", views_sorties.liste), path("sorties/<int:pk>/", views_sorties.detail),
                path("sorties/<int:pk>/confirmer/", views_sorties.confirmer),
                path("sorties/<int:pk>/pdf/", views_sorties.pdf_archive),
-               # Écran « Retours de stock » (Agent Logistique) : bons de retour, le stock remonte (12/10/2026)
+               # Écran « Retours de stock » (Responsable Technique) : bons de retour, le stock remonte (12/10/2026)
                path("retours/", views_retours.liste), path("retours/<int:pk>/", views_retours.detail),
                path("retours/<int:pk>/bon/", views_retours.creer_bon),
                path("retours/bons/<int:bon_id>/pdf/", views_retours.pdf),

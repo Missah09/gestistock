@@ -5,7 +5,7 @@ import Icon from "../icons.jsx";
 import ListeDeroulante from "../ListeDeroulante.jsx";
 import FicheArticle from "./FicheArticle.jsx";
 
-/** Écran « Générer Rapports » (Agent Logistique, 15/10/2026), d'après la maquette (écran 10).
+/** Écran « Générer Rapports » (Responsable Technique, 15/10/2026), d'après la maquette (écran 10).
  *  Six cartes : Voir (à l'écran, avec des filtres), PDF, Excel. Les lignes et totaux sont fabriqués par le serveur
  *  (stock/rapports.py) : l'écran, le PDF et le fichier Excel montrent exactement la même chose. */
 

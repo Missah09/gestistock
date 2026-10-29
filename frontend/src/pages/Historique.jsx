@@ -4,7 +4,7 @@ import Icon from "../icons.jsx";
 import ListeDeroulante from "../ListeDeroulante.jsx";
 import FicheArticle from "./FicheArticle.jsx";
 
-/** Écran « Historique » (Agent Logistique, 15/10/2026), d'après la maquette (écran 11).
+/** Écran « Historique » (Responsable Technique, 15/10/2026), d'après la maquette (écran 11).
  *  Tous les mouvements, les plus récents d'abord : entrées, sorties, retours, corrections (avec le stock avant → après),
  *  les étapes du circuit (demande, validation, signature, impression du bon, annulations, bons de retour) et, depuis le
  *  15/10/2026, les modifications (fiches, articles créés, prix, administration : ancienne → nouvelle valeur).

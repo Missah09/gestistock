@@ -1,7 +1,7 @@
-"""Écran « Sorties » (Responsable Technique, 12/10/2026) : confirmation de la remise du matériel.
+"""Écran « Sorties » (Responsable Logistique depuis le 09/11/2026) : confirmation de la remise du matériel.
 
 Circuit : le bon imprimé (écran « Réquisitions ») est porté au magasin ; le magasinier remet le matériel,
-remplit la colonne « Qté livrée » et signe. Au retour du bon signé, le Responsable Technique recopie ici les quantités
+remplit la colonne « Qté livrée » et signe. Au retour du bon signé, le Responsable Logistique recopie ici les quantités
 livrées (et coche les n° de série remis pour le matériel suivi par exemplaire) : **le stock diminue à ce moment**.
 L'application garde une copie d'archive du bon avec la Qté livrée remplie (PDF).
 """
@@ -17,7 +17,7 @@ from rest_framework.response import Response
 
 from . import etats
 from .models import Article, Exemplaire, LigneSortie, Requisition, Sortie
-from .permissions import EstAgentLogistique
+from .permissions import EstResponsable
 from .serializers import nom_de
 from .views import PAR_PAGE_DEMANDES, demandes_completes, en_json
 
@@ -34,7 +34,7 @@ def _introuvable():
 
 
 def _bons_imprimes():
-    """Demandes dont le bon (visé) a été imprimé par le Responsable Technique : il est parti au magasin."""
+    """Demandes dont le bon (visé) a été imprimé par le Responsable Logistique : il est parti au magasin."""
     return demandes_completes().filter(requisition__statut=Requisition.Statut.VISEE,
                                        requisition__imprimee_le__isnull=False)
 
@@ -64,7 +64,7 @@ def _avec_exemplaires(demandes):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def liste(request):
     """Bons imprimés par onglet (?onglet=a_confirmer|confirmees|toutes, ?page=).
     À confirmer : les urgents d'abord, puis les plus anciens ; sinon les plus récents d'abord."""
@@ -90,7 +90,7 @@ def liste(request):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def detail(request, pk):
     d = _bons_imprimes().filter(pk=pk).first()
     return _introuvable() if d is None else Response(_avec_exemplaires([d])[0])
@@ -138,7 +138,7 @@ def _entier(valeur):
 
 
 @api_view(["POST"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def confirmer(request, pk):
     """Confirme la sortie d'un bon imprimé : quantités livrées (ou n° de série remis) → le stock diminue.
 
@@ -277,7 +277,7 @@ def confirmer(request, pk):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def pdf_archive(request, pk):
     """Copie d'archive du bon, avec la colonne « Qté livrée » remplie (après confirmation de la sortie)."""
     try:

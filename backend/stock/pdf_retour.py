@@ -3,8 +3,8 @@
 Même présentation que le bon de réquisition (pdf_bon.py), en A4 paysage (10 colonnes) :
 en-tête HBC, rattachement à la réquisition RM-… et à la demande DEM-…, puis la liste de ce qui reste à rendre.
 « Qté rendue » et « État au retour » se remplissent à la main au magasin ; sur la copie d'archive (après
-confirmation du retour), ces colonnes sont remplies d'après la saisie du Responsable Technique.
-Signatures : Rendu par (demandeur) · Reçu par (magasinier) à la main ; Responsable Technique au stylo électronique.
+confirmation du retour), ces colonnes sont remplies d'après la saisie du Responsable Logistique.
+Signatures : Rendu par (demandeur) · Reçu par (magasinier) à la main ; Responsable Logistique au stylo électronique (Responsable Technique sur les bons signés avant le 09/11/2026).
 """
 from io import BytesIO
 
@@ -14,10 +14,17 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from . import etats
-from .models import BonRetour
+from .models import ROLE_AGENT, ROLE_RESPONSABLE, BonRetour
 from .pdf_bon import (BLEU, BLEU_CLAIR, GRAS, GRIS, LOGO, POLICE, S_ARCHIVE, S_CELLULE, S_ENTETE, S_NOTE, S_NUMERO,
                       S_SECTION, S_TEXTE, S_TITRE, TRAIT, _case_main, _case_visa, _date_heure, _jour, _nom, _x,
                       quantite_texte)
+
+
+def titre_visa_retour(bon):
+    """Titre de la case de visa : les retours sont passés au Responsable Logistique le 09/11/2026 ;
+    un bon signé avant cette date par un Responsable Technique garde son titre d'origine."""
+    noms = set(bon.imprime_par.groups.values_list("name", flat=True))
+    return ROLE_AGENT if ROLE_AGENT in noms and ROLE_RESPONSABLE not in noms else ROLE_RESPONSABLE
 
 
 def _texte_etats(dico):
@@ -128,7 +135,7 @@ def fabriquer_pdf_retour(bon, imprime_par=None, imprime_le=None):
                    f"{bon.date_retour:%d/%m/%Y}" if archive and bon.date_retour else ""),
         _case_main("Reçu par (magasinier)", bon.magasinier if archive else "",
                    f"{bon.date_retour:%d/%m/%Y}" if archive and bon.date_retour else ""),
-        _case_visa("Responsable Technique", _nom(bon.imprime_par), bon.signature_agent, bon.imprime_le, case),
+        _case_visa(titre_visa_retour(bon), _nom(bon.imprime_par), bon.signature_agent, bon.imprime_le, case),
     ]], colWidths=[case] * 3, rowHeights=[38 * mm])
     visas.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.6, TRAIT), ("VALIGN", (0, 0), (-1, -1), "TOP"),
                                ("TOPPADDING", (0, 0), (-1, -1), 5), ("LEFTPADDING", (0, 0), (-1, -1), 6),

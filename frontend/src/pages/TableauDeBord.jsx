@@ -72,7 +72,7 @@ function Carte({ icone, ton, titre, valeur, detail, aide, onOuvrir }) {
 }
 
 export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
-  const agent = !!compte?.agent_logistique;
+  const gestion = !!compte?.responsable; // entrée en stock et modification : Responsable Logistique (09/11/2026)
   const [donnees, setDonnees] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [ouvert, setOuvert] = useState(null);       // fiche article ouverte
@@ -218,7 +218,7 @@ export default function TableauDeBord({ compte, allerA, ecransDuMenu = [] }) {
           onEnregistre={() => { const id = reception.article; setReception(null); setRafraichir((n) => n + 1); if (id) setOuvert(id); }}
         />
       )}
-      {ouvert && <FicheArticle id={ouvert} modifiable={agent} onFermer={fermerFiche} onModifie={() => setRafraichir((n) => n + 1)}
+      {ouvert && <FicheArticle id={ouvert} modifiable={gestion} onFermer={fermerFiche} onModifie={() => setRafraichir((n) => n + 1)}
         onEntreeStock={(id) => { setOuvert(null); setReception({ article: id }); }} />}
     </>
   );

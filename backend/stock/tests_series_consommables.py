@@ -22,11 +22,11 @@ class SeriesConsommablesTests(TestCase):
         self.r = APIClient(); self.r.force_login(self.resp)
 
     def entree(self, *lignes):
-        return self.a.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
+        return self.r.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
                                              "lignes": list(lignes)}, format="json")
 
     def box_ont(self):
-        rep = self.a.post("/api/articles/", {"nom": "Box ONT test", "categorie": self.conso.categorie_id, "type": "CONSOMMABLE",
+        rep = self.r.post("/api/articles/", {"nom": "Box ONT test", "categorie": self.conso.categorie_id, "type": "CONSOMMABLE",
                                              "unite": "piece", "emplacement": self.conso.emplacement_id}, format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
         return Article.objects.get(id=rep.data["id"])
@@ -62,12 +62,12 @@ class SeriesConsommablesTests(TestCase):
     # ---------------------------------------------------------------- Consommable suivi par n° de série
     def test_consommable_suivi_par_serie_de_bout_en_bout(self):
         box = self.box_ont()
-        choix = {a["id"]: a for a in self.a.get("/api/choix/").data["articles"]}
+        choix = {a["id"]: a for a in self.r.get("/api/choix/").data["articles"]}
         self.assertEqual((choix[box.id]["suivi_serie"], choix[box.id]["serie_possible"]), (False, True))
         # « Ce produit a des n° de série ? » : stock à 0, aucun n° à saisir maintenant
-        rep = self.a.post(f"/api/articles/{box.id}/suivi-serie/", {"exemplaires": []}, format="json")
+        rep = self.r.post(f"/api/articles/{box.id}/suivi-serie/", {"exemplaires": []}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
-        self.assertTrue(self.a.get("/api/choix/").data["articles"] and Article.objects.get(id=box.id).suivi_serie)
+        self.assertTrue(self.r.get("/api/choix/").data["articles"] and Article.objects.get(id=box.id).suivi_serie)
         # Réception : les n° sont maintenant obligatoires
         self.assertEqual(self.entree({"article": box.id, "quantite": 2}).status_code, 400)
         rep = self.entree({"article": box.id, "quantite": 2, "exemplaires": [
@@ -86,12 +86,12 @@ class SeriesConsommablesTests(TestCase):
                          "lignes": [{"id": l.id, "qte_accordee": 1}]}, format="json").status_code, 200)
         self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"},
                                      format="json").status_code, 200)
-        self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
-        a_cocher = self.a.get(f"/api/sorties/{d.id}/").data["lignes"][0]
+        self.assertEqual(self.r.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
+        a_cocher = self.r.get(f"/api/sorties/{d.id}/").data["lignes"][0]
         self.assertTrue(a_cocher["article"]["suivi_par_serie"])
         self.assertEqual([e["numero_serie"] for e in a_cocher["exemplaires_en_stock"]], ["ONT-A", "ONT-B"])
         ont_a = Exemplaire.objects.get(numero_serie="ONT-A")
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
                           "lignes": [{"id": l.id, "exemplaires": [ont_a.id]}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         ont_a.refresh_from_db()
@@ -105,8 +105,8 @@ class SeriesConsommablesTests(TestCase):
     def test_consommable_unite_verrouillee(self):
         box = self.box_ont()
         Article.objects.filter(id=box.id).update(suivi_serie=True)
-        rep = self.a.patch(f"/api/articles/{box.id}/", {"unite": "m"}, format="json")
+        rep = self.r.patch(f"/api/articles/{box.id}/", {"unite": "m"}, format="json")
         self.assertEqual(rep.status_code, 400)
         self.assertIn("pièce", rep.data["unite"][0])
         # Un consommable sans n° de série peut toujours changer d'unité
-        self.assertEqual(self.a.patch(f"/api/articles/{self.conso.id}/", {"unite": "m"}, format="json").status_code, 200)
+        self.assertEqual(self.r.patch(f"/api/articles/{self.conso.id}/", {"unite": "m"}, format="json").status_code, 200)

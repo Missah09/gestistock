@@ -33,14 +33,14 @@ class EstAdministrateur(BasePermission):
         return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
 
 
-class LectureOuAgentLogistique(BasePermission):
-    """Lecture pour tout compte connecté ; modification pour le Responsable Technique."""
-    message = "Seul le Responsable Technique peut modifier les articles."
+class LectureOuResponsable(BasePermission):
+    """Lecture pour tout compte connecté ; modification pour le Responsable Logistique (09/11/2026)."""
+    message = "Seul le Responsable Logistique peut modifier les articles."
 
     def has_permission(self, request, view):
         if not (request.user and request.user.is_authenticated):
             return False
-        return request.method in SAFE_METHODS or a_le_role(request.user, ROLE_AGENT)
+        return request.method in SAFE_METHODS or a_le_role(request.user, ROLE_RESPONSABLE)
 
 
 MESSAGE_AUTRE_APPAREIL = ("Votre compte vient d'être ouvert sur un autre appareil : vous avez été déconnecté ici. "

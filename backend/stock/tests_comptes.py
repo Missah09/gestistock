@@ -84,9 +84,40 @@ class ComptesTests(TestCase):
         self.assertEqual(self.c.patch(f"/api/articles/{a.id}/", {"nom": "X"}, format="json").status_code, 403)
         self.assertEqual(self.c.post("/api/entrees/", {}, format="json").status_code, 403)
         self.assertEqual(self.c.get("/api/choix/").status_code, 403)
+        # Responsable Technique : plus d'entrée en stock ni de modification d'article (09/11/2026).
         self.c.force_login(self.agent)
+        self.assertEqual(self.c.get("/api/articles/").status_code, 200)  # lecture permise
+        self.assertEqual(self.c.patch(f"/api/articles/{a.id}/", {"nom": "X"}, format="json").status_code, 403)
+        self.assertEqual(self.c.post("/api/articles/", {}, format="json").status_code, 403)
+        self.assertEqual(self.c.post(f"/api/articles/{a.id}/suivi-serie/", {}, format="json").status_code, 403)
+        self.assertEqual(self.c.post("/api/entrees/", {}, format="json").status_code, 403)
+        self.assertEqual(self.c.get("/api/choix/").status_code, 403)
+        # Responsable Logistique : autorisé.
+        self.c.force_login(self.resp)
         self.assertEqual(self.c.patch(f"/api/articles/{a.id}/", {"nom": "Nouveau nom"}, format="json").status_code, 200)
+        self.assertEqual(self.c.post("/api/entrees/", {}, format="json").status_code, 400)  # autorisé, formulaire vide refusé
         self.assertEqual(self.c.get("/api/choix/").status_code, 200)
+
+    def test_droits_sorties_retours_rapports(self):
+        """Sorties et retours : Responsable Logistique ; rapports et historique : les deux responsables (09/11/2026)."""
+        self.c.force_login(self.agent)
+        for url in ("/api/sorties/", "/api/retours/"):
+            self.assertEqual(self.c.get(url).status_code, 403, url)
+        for url in ("/api/rapports/", "/api/historique/"):
+            self.assertEqual(self.c.get(url).status_code, 200, url)
+        self.c.force_login(self.resp)
+        for url in ("/api/sorties/", "/api/retours/", "/api/rapports/", "/api/historique/"):
+            self.assertEqual(self.c.get(url).status_code, 200, url)
+        self.c.force_login(self.saisisseur)
+        for url in ("/api/sorties/", "/api/retours/", "/api/rapports/", "/api/historique/"):
+            self.assertEqual(self.c.get(url).status_code, 403, url)
+
+    def test_titre_de_la_case_du_bon_de_retour(self):
+        """Un bon signé autrefois par un Responsable Technique garde son titre ; les nouveaux portent Responsable Logistique."""
+        from types import SimpleNamespace
+        from stock.pdf_retour import titre_visa_retour
+        self.assertEqual(titre_visa_retour(SimpleNamespace(imprime_par=self.agent)), "Responsable Technique")
+        self.assertEqual(titre_visa_retour(SimpleNamespace(imprime_par=self.resp)), "Responsable Logistique")
 
     def test_chacun_ne_voit_que_ses_demandes(self):
         self.c.force_login(self.saisisseur)

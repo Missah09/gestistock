@@ -16,8 +16,8 @@ class SuppressionArticleTests(TestCase):
     def setUpTestData(cls):
         call_command("charger_exemples", verbosity=0)
         cls.chef = User.objects.create_superuser("chef", password="x")
-        cls.agent = User.objects.create_user("agent", password="x")
-        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
+        cls.logistique = User.objects.create_user("logistique", password="x")
+        cls.logistique.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.modele = Article.objects.filter(type="CONSOMMABLE").first()
 
     def setUp(self):
@@ -48,7 +48,7 @@ class SuppressionArticleTests(TestCase):
 
     def recevoir(self, *articles):
         """Entrée en stock par l'application (Responsable Technique) : 2 de chaque article."""
-        api = APIClient(); api.force_login(self.agent)
+        api = APIClient(); api.force_login(self.logistique)
         rep = api.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(),
                                          "magasin": articles[0].emplacement.magasin_id,
                                          "lignes": [{"article": x.id, "quantite": 2} for x in articles]}, format="json")

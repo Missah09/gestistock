@@ -365,8 +365,8 @@ class Requisition(models.Model):
     # Email au Responsable Logistique (envoyé à la validation ; « Renvoyer l'email » possible)
     email_envoye_le = models.DateTimeField("email envoyé le", null=True, blank=True)
     email_etat = models.CharField("état de l'email", max_length=300, blank=True)
-    # Impression du bon (12/10/2026) : premier téléchargement du PDF par le Responsable Technique,
-    # qui porte ensuite le bon au magasin. Les téléchargements du Responsable Logistique sont de simples consultations.
+    # Impression du bon (12/10/2026) : premier téléchargement du PDF par le Responsable Logistique (09/11/2026),
+    # qui porte ensuite le bon au magasin. Les téléchargements du Responsable Technique sont de simples consultations.
     imprimee_le = models.DateTimeField("bon imprimé le", null=True, blank=True)
     imprimee_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, null=True, blank=True,
                                      related_name="requisitions_imprimees", verbose_name="bon imprimé par")
@@ -421,8 +421,8 @@ class TelechargementBon(models.Model):
 
 # ---------------------------------------------------------------- Comptes (11/10/2026)
 
-ROLE_AGENT = "Responsable Technique"   # valide les demandes, crée et télécharge les réquisitions, réceptions, sorties, retours
-ROLE_RESPONSABLE = "Responsable Logistique"  # vise les réquisitions (prévenu par email)
+ROLE_AGENT = "Responsable Technique"   # valide les demandes, crée les réquisitions
+ROLE_RESPONSABLE = "Responsable Logistique"  # vise et imprime les réquisitions (prévenu par email), entrées, sorties, retours et modification des articles (09/11/2026)
 ROLES = [ROLE_AGENT, ROLE_RESPONSABLE]
 # « Saisisseur » = tout compte actif (pas de groupe). « Administrateur » = super-utilisateur (crée les comptes).
 
@@ -570,7 +570,7 @@ def noter_echec(sender, credentials, request=None, **kwargs):
 
 # ---------------------------------------------------------------- Sorties (12/10/2026)
 class Sortie(models.Model):
-    """Confirmation de sortie : le magasinier a remis le matériel et signé le bon ; le Responsable Technique recopie
+    """Confirmation de sortie : le magasinier a remis le matériel et signé le bon ; le Responsable Logistique recopie
     les quantités livrées. C'est à ce moment que le stock de l'application diminue."""
 
     requisition = models.OneToOneField(Requisition, on_delete=models.PROTECT, related_name="sortie",
@@ -667,7 +667,7 @@ class MouvementEtat(models.Model):
 
 # ---------------------------------------------------------------- Retours (12/10/2026)
 class BonRetour(models.Model):
-    """Bon de retour de matériel (BR-AAAA-0001) : imprimé par le Responsable Technique avec ce qui reste à rendre,
+    """Bon de retour de matériel (BR-AAAA-0001) : imprimé par le Responsable Logistique avec ce qui reste à rendre,
     rempli à la main au magasin (Qté rendue, État au retour), puis recopié : le stock remonte.
     Retour partiel : un bon par passage au magasin."""
 
@@ -681,7 +681,7 @@ class BonRetour(models.Model):
     statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.A_CONFIRMER)
     imprime_le = models.DateTimeField("imprimé le", auto_now_add=True)
     imprime_par = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="bons_retour_imprimes")
-    # Visa électronique du Responsable Technique (stylo), imprimé dans sa case du bon.
+    # Visa électronique de celui qui prépare le bon (Responsable Logistique depuis le 09/11/2026), imprimé dans sa case du bon.
     signature_agent = models.TextField("signature du Responsable Technique", blank=True, editable=False)
     origine_signature_agent = models.CharField("signature du Responsable Technique", max_length=10, choices=OrigineSignature.choices,
                                                blank=True, editable=False)
@@ -748,7 +748,7 @@ class Evenement(models.Model):
 
     - MODIFICATION : fiches d'articles (écran ou administration), création d'un article, n° de série corrigé,
       prix mis à jour par une entrée en stock, listes de l'administration (catégories, magasins, fournisseurs…).
-      Affiché dans l'écran « Historique » (Responsable Technique).
+      Affiché dans l'écran « Historique » (Responsable Technique et Responsable Logistique).
     - COMPTE : création, modification, activation, mot de passe, déconnexion forcée, signature (administrateur seulement).
     - CONNEXION : connexions, échecs, déconnexions (journal de connexion, administrateur seulement).
     Personne ne peut le modifier ni l'effacer (administration en lecture seule)."""

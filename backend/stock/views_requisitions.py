@@ -2,8 +2,8 @@
 
 - Visible par le Responsable Technique et le Responsable Logistique.
 - « Télécharger le PDF » fabrique le bon (pdf_bon.py) et note chaque téléchargement (qui, quand).
-- Le premier téléchargement par le Responsable Technique marque le bon « imprimé » : c'est lui qui le porte au magasin.
-  Un téléchargement du Responsable Logistique est une simple consultation.
+- Le premier téléchargement par le Responsable Logistique marque le bon « imprimé » : c'est lui qui le fait porter au magasin (09/11/2026).
+  Un téléchargement du Responsable Technique est une simple consultation.
 """
 from django.db import transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
@@ -89,7 +89,7 @@ def detail(request, pk):
 def pdf(request, pk):
     """Télécharge le bon de réquisition en PDF (pk = id de la demande). Chaque téléchargement est noté.
     ?impression=1 (12/10/2026) : bouton « Imprimer » de l'application (le PDF s'ouvre dans l'aperçu d'impression).
-    Le premier téléchargement ou la première impression par le Responsable Technique marque le bon « Imprimée »."""
+    Le premier téléchargement ou la première impression par le Responsable Logistique marque le bon « Imprimée »."""
     impression = request.query_params.get("impression") == "1"
     # ReportLab est chargé ici seulement : s'il manque, le reste de GestiStock fonctionne quand même (12/10/2026).
     try:
@@ -98,7 +98,7 @@ def pdf(request, pk):
         return Response({"general": ["Le PDF ne peut pas être fabriqué : le module ReportLab n'est pas installé sur ce PC. "
                                      "Double-cliquez sur outils\\installer-modules.bat (Internet nécessaire), "
                                      "puis redémarrez GestiStock."]}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    agent = a_le_role(request.user, ROLE_AGENT)
+    logistique = a_le_role(request.user, ROLE_RESPONSABLE)
     with transaction.atomic():
         # select_for_update(of=("self",)) : PostgreSQL ne verrouille pas les tables jointes (demandeur facultatif).
         r = (Requisition.objects.select_for_update(of=("self",))
@@ -108,8 +108,8 @@ def pdf(request, pk):
                             status=status.HTTP_404_NOT_FOUND if r is None else status.HTTP_400_BAD_REQUEST)
         maintenant = timezone.now()
         TelechargementBon.objects.create(requisition=r, par=request.user, impression=impression,
-                                         role=ROLE_AGENT if agent else ROLE_RESPONSABLE)
-        if agent and r.imprimee_le is None:
+                                         role=ROLE_RESPONSABLE if logistique else ROLE_AGENT)
+        if logistique and r.imprimee_le is None:
             r.imprimee_le, r.imprimee_par = maintenant, request.user
             r.save(update_fields=["imprimee_le", "imprimee_par"])
     contenu = fabriquer_pdf(r, imprime_par=request.user, imprime_le=maintenant)

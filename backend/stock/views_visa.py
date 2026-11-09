@@ -98,7 +98,7 @@ def viser(request, pk):
                               "origine_signature_responsable"])
         enregistrer_si_demande(request.user, sig)
     d = _a_viser().get(pk=pk)
-    return Response({"message": f"Réquisition {r.numero} signée et visée. Le Responsable Technique peut maintenant imprimer le bon.",
+    return Response({"message": f"Réquisition {r.numero} signée et visée. Vous pouvez maintenant imprimer le bon.",
                      "demande": en_json([d])[0]})
 
 

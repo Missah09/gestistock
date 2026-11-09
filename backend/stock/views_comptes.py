@@ -38,6 +38,8 @@ def compteurs(request):
     reponse = {}
     if ROLE_AGENT in roles:
         reponse["a_valider"] = Demande.objects.filter(statut=Demande.Statut.EN_ATTENTE).count()
+    if ROLE_RESPONSABLE in roles:
+        reponse["a_viser"] = Requisition.objects.filter(statut=Requisition.Statut.ATTENTE_VISA).count()
         # Bons signés pas encore imprimés (écran « Réquisitions »)
         reponse["a_imprimer"] = Requisition.objects.filter(statut=Requisition.Statut.VISEE, imprimee_le__isnull=True).count()
         # Bons imprimés dont la remise au magasin n'est pas encore confirmée (écran « Sorties », 12/10/2026)
@@ -46,8 +48,6 @@ def compteurs(request):
         # Matériel prêté pas rentré à la date prévue (écran « Retours de stock », 12/10/2026)
         from .views_retours import compter_retards
         reponse["retours_en_retard"] = compter_retards()
-    if ROLE_RESPONSABLE in roles:
-        reponse["a_viser"] = Requisition.objects.filter(statut=Requisition.Statut.ATTENTE_VISA).count()
     return Response(reponse)
 
 

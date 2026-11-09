@@ -10,7 +10,7 @@ const ONGLETS_BONS = [["a_imprimer", "À imprimer"], ["imprimees", "Imprimées"]
 /** Lignes qui figurent sur le bon : quantité accordée (sinon demandée), sans les articles retirés (0). */
 const lignesDuBon = (d) => d.lignes.map((l) => ({ ...l, qte: l.qte_accordee ?? l.quantite })).filter((l) => l.qte > 0);
 
-/** Trace d'impression : première impression (ou premier téléchargement) par le Responsable Technique,
+/** Trace d'impression : première impression (ou premier téléchargement) par le Responsable Logistique,
  *  puis le nombre d'impressions et de téléchargements. */
 function Impression({ r }) {
   const imp = r.nb_impressions ?? 0;
@@ -34,7 +34,7 @@ function Impression({ r }) {
 
 /** Écran « Liste Réquisitions » (Responsable Technique et Responsable Logistique, 12/10/2026) :
  *  les bons signés par le Responsable Technique et le Responsable Logistique, à télécharger en PDF pour impression.
- *  Le premier téléchargement par le Responsable Technique marque le bon « imprimé » (c'est lui qui le porte au magasin). */
+ *  Le premier téléchargement par le Responsable Logistique marque le bon « imprimé » (c'est lui qui le fait porter au magasin, 09/11/2026). */
 export default function Requisitions({ compte }) {
   const liste = useListeDemandes(listerRequisitions, "a_imprimer");
   const [ouverte, setOuverte] = useDemandeOuverte(liste, lireRequisition);
@@ -42,13 +42,13 @@ export default function Requisitions({ compte }) {
   const [annonce, setAnnonce] = useState(null);
   const [erreur, setErreur] = useState(null);
   const fermer = useCallback(() => setOuverte(null), [setOuverte]);
-  const agent = compte?.agent_logistique;
+  const logistique = compte?.responsable;
 
   async function imprimer(d) {
     setEnCours(`imp-${d.id}`); setErreur(null); setAnnonce(null);
     try {
       await imprimerBon(d.id);
-      const premiere = agent && !d.requisition.imprimee_le;
+      const premiere = logistique && !d.requisition.imprimee_le;
       setAnnonce(premiere
         ? `Bon ${d.requisition.numero} envoyé à l'impression : il est maintenant noté « Imprimée ». Portez-le au magasin.`
         : `Bon ${d.requisition.numero} envoyé à l'impression.`);
@@ -64,7 +64,7 @@ export default function Requisitions({ compte }) {
     setEnCours(d.id); setErreur(null); setAnnonce(null);
     try {
       await telechargerBon(d.id, d.requisition.numero);
-      const premiere = agent && !d.requisition.imprimee_le;
+      const premiere = logistique && !d.requisition.imprimee_le;
       setAnnonce(premiere
         ? `Bon ${d.requisition.numero} téléchargé : il est maintenant noté « Imprimée ». Imprimez-le et portez-le au magasin.`
         : `Bon ${d.requisition.numero} téléchargé.`);
@@ -103,8 +103,8 @@ export default function Requisitions({ compte }) {
           <Onglets liste={liste} onglets={ONGLETS_BONS} />
           <span className="sp" />
           <span className="aide">
-            {agent ? "Bons signés par le Responsable Technique et le Responsable Logistique : « Voir le bon », puis « Imprimer », et portez-le au magasin."
-              : "Bons signés par le Responsable Technique et par vous. Le bon est noté « Imprimée » quand le Responsable Technique l'imprime."}
+            {logistique ? "Bons signés par le Responsable Technique et par vous : « Voir le bon », puis « Imprimer », et portez-le au magasin."
+              : "Bons signés par vous et par le Responsable Logistique. Le bon est noté « Imprimée » quand le Responsable Logistique l'imprime."}
           </span>
         </div>
 

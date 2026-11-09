@@ -36,8 +36,8 @@ function menuPour(compte) {
     ["entree", "box", "Liste d'Articles"],
     groupe("clip", "Demandes", [["clip", "Mes demandes"], agent && ["check", "Demandes à valider"], resp && ["sign", "Demandes à viser"]]),
     groupe("out", "Mouvements de stock", [
-      (agent || resp) && ["doc", "Liste Réquisitions"], agent && ["out", "Sorties de stock"], agent && ["back", "Retours de stock"]]),
-    groupe("chart", "Rapports et suivi", [agent && ["chart", "Générer Rapports"], agent && ["clock", "Historique"]]),
+      (agent || resp) && ["doc", "Liste Réquisitions"], resp && ["out", "Sorties de stock"], resp && ["back", "Retours de stock"]]),
+    groupe("chart", "Rapports et suivi", [(agent || resp) && ["chart", "Générer Rapports"], (agent || resp) && ["clock", "Historique"]]),
     groupe("users", "Administration", [compte.administrateur && ["users", "Comptes"]]),
   ].filter(Boolean);
 }

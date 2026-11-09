@@ -32,7 +32,7 @@ class JournalTests(TestCase):
     # ---------------------------------------------------------------- Historique : modifications
     def test_fiche_article_modifiee(self):
         a = self.conso
-        rep = self.a.patch(f"/api/articles/{a.id}/", {"prix_unitaire": "13000", "qte_minimale": 12, "marque": "Corning"}, format="json")
+        rep = self.r.patch(f"/api/articles/{a.id}/", {"prix_unitaire": "13000", "qte_minimale": 12, "marque": "Corning"}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         e = Evenement.objects.get(article=a, action="article_modifie")
         self.assertIn("Qté minimale :", e.detail)
@@ -45,14 +45,14 @@ class JournalTests(TestCase):
         self.assertEqual((h[0]["article_id"], h[0]["code"], h[0]["reference"]), (a.id, a.code, "Fiche article"))
         self.assertTrue(h[0]["detail"].startswith("Fiche article modifiée · "))
         # Même chose une deuxième fois : rien de nouveau
-        self.a.patch(f"/api/articles/{a.id}/", {"prix_unitaire": "13000", "qte_minimale": 12, "marque": "Corning"}, format="json")
+        self.r.patch(f"/api/articles/{a.id}/", {"prix_unitaire": "13000", "qte_minimale": 12, "marque": "Corning"}, format="json")
         self.assertEqual(Evenement.objects.filter(action="article_modifie").count(), 1)
         # La recherche et le filtre « Utilisateur » trouvent la ligne
         self.assertEqual(len(lignes_historique(self.a, q="Corning")), 1)
         self.assertTrue(any(u["id"] == self.agent.id for u in self.a.get("/api/historique/").data["utilisateurs"]))
 
     def test_article_cree_et_prix_mis_a_jour_par_une_entree(self):
-        rep = self.a.post("/api/articles/", {"nom": "Pince à dénuder", "categorie": self.conso.categorie_id, "type": "CONSOMMABLE",
+        rep = self.r.post("/api/articles/", {"nom": "Pince à dénuder", "categorie": self.conso.categorie_id, "type": "CONSOMMABLE",
                                              "unite": "piece", "emplacement": self.conso.emplacement_id, "qte_minimale": 2,
                                              "prix_unitaire": "8000"}, format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
@@ -60,9 +60,9 @@ class JournalTests(TestCase):
         self.assertEqual(cree.article_id, rep.data["id"])
         self.assertIn("Prix unitaire : 8 000 Ar", cree.detail)
         base = {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id}
-        self.a.post("/api/entrees/", {**base, "lignes": [{"article": rep.data["id"], "quantite": 5, "prix_unitaire": "8000"}]}, format="json")
+        self.r.post("/api/entrees/", {**base, "lignes": [{"article": rep.data["id"], "quantite": 5, "prix_unitaire": "8000"}]}, format="json")
         self.assertFalse(Evenement.objects.filter(action="prix_entree").exists())  # même prix : rien
-        self.a.post("/api/entrees/", {**base, "lignes": [{"article": rep.data["id"], "quantite": 5, "prix_unitaire": "9500"}]}, format="json")
+        self.r.post("/api/entrees/", {**base, "lignes": [{"article": rep.data["id"], "quantite": 5, "prix_unitaire": "9500"}]}, format="json")
         p = Evenement.objects.get(action="prix_entree")
         self.assertEqual(p.detail, "Prix unitaire : 8 000 Ar → 9 500 Ar (dernier prix d'achat)")
         self.assertTrue(p.reference.startswith("Réception du"))
@@ -75,13 +75,13 @@ class JournalTests(TestCase):
         self.assertEqual((len(h), h[0]["reference"]), (1, d.numero))
         # Bon de retour imprimé puis annulé
         d2 = self.sortie(avec_serie=False)
-        rep = self.a.post(f"/api/retours/{d2.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
+        rep = self.r.post(f"/api/retours/{d2.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         bon = rep.data["demande"]["retour"]["bon_ouvert"]
-        self.assertEqual(self.a.post(f"/api/retours/bons/{bon['id']}/annuler/").status_code, 200)
+        self.assertEqual(self.r.post(f"/api/retours/bons/{bon['id']}/annuler/").status_code, 200)
         retours = [l for l in lignes_historique(self.a, type="retour") if l["reference"] == bon["numero"]]
         self.assertEqual(sorted(l["detail"].split(" (")[0].split(" :")[0] for l in retours),
                          ["Bon de retour annulé", "Bon de retour imprimé"])
-        self.assertTrue(all("Rasoa" in l["par"] for l in retours))
+        self.assertTrue(all("Randria" in l["par"] for l in retours))
 
     def test_administration_django(self):
         c = Client(); c.force_login(self.chef)

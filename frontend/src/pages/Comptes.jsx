@@ -143,11 +143,11 @@ function FenetreCompte({ compte: c, departements, moi, onFermer, onEnregistre })
             <p className="aide">Tout compte peut faire des demandes de matériel (Saisisseur) : rien à cocher pour cela.</p>
             <label className="btn case">
               <input type="checkbox" checked={f.agent} onChange={(e) => changer("agent", e.target.checked)} />
-              <span><b>Responsable Technique</b><small>Valide les demandes, crée les réquisitions, enregistre les réceptions.</small></span>
+              <span><b>Responsable Technique</b><small>Valide les demandes et crée les réquisitions.</small></span>
             </label>
             <label className="btn case">
               <input type="checkbox" checked={f.responsable} onChange={(e) => changer("responsable", e.target.checked)} />
-              <span><b>Responsable Logistique</b><small>Vise les réquisitions.</small></span>
+              <span><b>Responsable Logistique</b><small>Vise et imprime les réquisitions, enregistre les entrées, sorties et retours de stock, modifie les articles.</small></span>
             </label>
             {c?.administrateur && <p className="aide">Ce compte est <b>Administrateur</b> : il a déjà tous les rôles.</p>}
           </fieldset>

@@ -9,7 +9,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
 from . import etats
-from .permissions import EstAgentLogistique, LectureOuAgentLogistique
+from .permissions import EstResponsable, LectureOuResponsable
 from .models import Article, Categorie, Etat, Chantier, Demande, Emplacement, Exemplaire, Fournisseur, Magasin
 from .serializers import (ArticleCreationSerializer, ArticleFicheSerializer, ArticleListeSerializer, ArticleModificationSerializer,
                           EntreeSerializer, NouvelleDemandeSerializer, PassageSuiviSerieSerializer, article_resume,
@@ -69,7 +69,7 @@ class ArticleViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.
     """
 
     http_method_names = ["get", "post", "patch", "head", "options"]
-    permission_classes = [LectureOuAgentLogistique]
+    permission_classes = [LectureOuResponsable]
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -113,7 +113,7 @@ class ArticleViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.
     @action(detail=True, methods=["post"], url_path="suivi-serie")
     def suivi_serie(self, request, pk=None):
         """« Passer au suivi par n° de série » (fiche article, 15/10/2026) : un n° pour chaque unité au magasin.
-        Responsable Technique et administrateur (comme « Modifier »). Renvoie la fiche à jour."""
+        Responsable Logistique et administrateur (comme « Modifier »). Renvoie la fiche à jour."""
         with transaction.atomic():
             article = Article.objects.select_for_update().get(pk=self.get_object().pk)
             s = PassageSuiviSerieSerializer(data=request.data, context={"article": article})
@@ -169,7 +169,7 @@ def prochain_code(categorie):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def choix(request):
     """Listes proposées dans les formulaires « Modifier » et « Nouvel article »."""
     return Response({
@@ -195,7 +195,7 @@ def choix(request):
 
 
 @api_view(["POST"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def enregistrer_entree(request):
     """Enregistre une réception de produits et met le stock à jour."""
     s = EntreeSerializer(data=request.data)

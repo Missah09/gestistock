@@ -184,7 +184,7 @@ class ArticleModificationSerializer(serializers.ModelSerializer):
 
 
 class ArticleCreationSerializer(serializers.ModelSerializer):
-    """Création d'un article (12/10/2026), depuis « Entrée en stock » : Responsable Technique (et administrateur).
+    """Création d'un article (12/10/2026), depuis « Entrée en stock » : Responsable Logistique (et administrateur).
 
     Le code est créé automatiquement (préfixe de la catégorie + n°). Le stock part de 0 :
     l'article est aussitôt placé sur la ligne de la livraison en cours (fenêtre « Entrée en stock »).
@@ -632,9 +632,9 @@ def requisition_en_json(d):
             "motif_refus": r.motif_refus, "email_envoye_le": heure_locale(r.email_envoye_le), "email_etat": r.email_etat,
             # Signatures dessinées : l'image se lit à part (/api/requisitions/<demande>/signature/agent|responsable/)
             "signature_agent": bool(r.signature_agent), "signature_responsable": bool(r.signature_responsable),
-            # Impression du bon (12/10/2026) : premier téléchargement du PDF par le Responsable Technique
+            # Impression du bon : premier téléchargement du PDF par le Responsable Logistique (09/11/2026)
             "imprimee_le": heure_locale(r.imprimee_le), "imprimee_par": nom_de(r.imprimee_par),
-            # Sortie confirmée par le Responsable Technique (12/10/2026) : matériel remis, stock diminué
+            # Sortie confirmée par le Responsable Logistique (09/11/2026) : matériel remis, stock diminué
             "sortie": sortie_en_json(r)}
 
 

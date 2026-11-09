@@ -9,8 +9,8 @@ import FicheArticle from "./FicheArticle.jsx";
 const PAR_PAGE = 10;
 
 export default function Articles({ compte, parametres }) {
-  // Consultation pour tous ; réception et modification réservées au Responsable Technique.
-  const gestion = !!compte?.agent_logistique;
+  // Consultation pour tous ; entrée en stock et modification réservées au Responsable Logistique (09/11/2026).
+  const gestion = !!compte?.responsable;
   const [page, setPage] = useState(1);
   const [donnees, setDonnees] = useState(null); // { count, results }
   const [erreur, setErreur] = useState(null);

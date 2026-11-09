@@ -79,11 +79,11 @@ Pour arrêter : fermez les deux fenêtres noires.
 - **Mise à jour nécessaire** : `python manage.py migrate` (migration 0020) et le module Python **openpyxl** (fichiers Excel).
   `demarrer-gestistock.bat` fait les deux tout seul au démarrage (Internet nécessaire la première fois) ;
   sinon : double-cliquer sur `outils\installer-modules.bat`. Sans openpyxl, le bouton « Excel » affiche un message.
-- Menu **« Générer Rapports »** (Responsable Technique) : six rapports, chacun avec **Voir** (à l'écran, avec filtres), **PDF** et **Excel** :
+- Menu **« Générer Rapports »** (Responsable Technique et Responsable Logistique) : six rapports, chacun avec **Voir** (à l'écran, avec filtres), **PDF** et **Excel** :
   État du stock · À commander (par fournisseur, quantité pour revenir au minimum, montant estimé) ·
   Consommation par chantier (ou par service demandeur, sur une période) · Matériel prêté (retards en premier) ·
   Valeur du stock (par catégorie, même total que le Tableau de bord) · Étalonnages à prévoir.
-- Menu **« Historique »** (Responsable Technique) : tous les mouvements, le plus récent en haut : entrées, sorties, retours,
+- Menu **« Historique »** (Responsable Technique et Responsable Logistique) : tous les mouvements, le plus récent en haut : entrées, sorties, retours,
   corrections (quantité + / − et **stock avant → après**), et les étapes des demandes (demande, validation, signature, bon imprimé).
   Filtres : recherche, type, utilisateur, période ; **Excel** et **PDF** reprennent les filtres. Personne ne peut le modifier.
 - Une quantité corrigée dans l'administration (article ou n° de série) ou par l'import du fichier de stock est notée
@@ -95,8 +95,8 @@ Pour arrêter : fermez les deux fenêtres noires.
 - Menu **« Réquisitions »** (Responsable Technique et Responsable Logistique) : les bons signés par le Responsable Technique et le Responsable Logistique,
   en onglets « À imprimer », « Imprimées », « Toutes ».
 - **« Télécharger le PDF »** : bon au format A4 (`RM-2026-0001.pdf`), avec les deux signatures ; les articles retirés (0) n'y figurent pas.
-- Chaque téléchargement est noté (qui, quand). Le **premier téléchargement par le Responsable Technique** fait passer le bon en « Imprimée » ;
-  un téléchargement du Responsable Logistique est une simple consultation. Historique visible dans l'administration (fiche de la réquisition).
+- Chaque téléchargement est noté (qui, quand). Le **premier téléchargement par le Responsable Logistique** fait passer le bon en « Imprimée » ;
+  un téléchargement du Responsable Technique est une simple consultation. Historique visible dans l'administration (fiche de la réquisition).
 - Le PDF est fabriqué avec **ReportLab** (ajouté à `requirements.txt`) : `demarrer-gestistock.bat` l'installe tout seul au démarrage
   (Internet nécessaire la première fois). Sinon : double-cliquer sur `outils\installer-modules.bat`.
   Sans ReportLab, GestiStock fonctionne mais « Télécharger le PDF » affiche un message.
@@ -104,7 +104,7 @@ Pour arrêter : fermez les deux fenêtres noires.
   (installé avec PostgreSQL) envoie pip vers un fichier absent. Les deux .bat l'ignorent pour leur fenêtre (rien n'est changé sur le PC).
 
 ## Sorties : confirmation de la remise du matériel (depuis le 12/10/2026)
-- Menu **« Sorties »** (Responsable Technique) : les bons **imprimés** (écran « Réquisitions ») et portés au magasin,
+- Menu **« Sorties »** (Responsable Logistique) : les bons **imprimés** (écran « Réquisitions ») et portés au magasin,
   en onglets « À confirmer », « Confirmées », « Toutes ». La pastille rouge compte les bons à confirmer.
 - Au retour du bon signé par le magasinier : **« Confirmer la sortie »**, recopier la colonne « Qté livrée »
   (0 si rien n'a été remis ; lien « Tout a été livré comme sur le bon »), cocher les **n° de série remis** pour le matériel suivi
@@ -122,7 +122,7 @@ Pour arrêter : fermez les deux fenêtres noires.
   disponible** (une ligne « Correction » est ajoutée à l'historique). Ce qui avait été mis au rebut reste hors stock.
   Les emplacements vides « Atelier – À réparer » et « Rebut » sont supprimés. **À lancer : `python manage.py migrate`.**
 - L'écran **« Matériel à réparer » a été retiré**.
-- Menu **« Retours de stock »** (Responsable Technique) : le matériel prêté attendu (retards en rouge, pastille du menu).
+- Menu **« Retours de stock »** (Responsable Logistique) : le matériel prêté attendu (retards en rouge, pastille du menu).
   « Préparer le bon de retour » (signature au stylo) → BON DE RETOUR BR-AAAA-0001 en PDF, rempli à la main au magasin →
   « Confirmer le retour » : le stock remonte. Retour partiel : un bon par passage, le suivant ne liste que le reste.
 - Historique de chaque changement d'état : Administration › « Historique des états ».
@@ -135,7 +135,7 @@ Pour arrêter : fermez les deux fenêtres noires.
   sur la ligne : il ne reste qu'à saisir la quantité. Si la livraison est ensuite annulée, l'article reste créé (stock 0).
 - **Depuis une fiche article** : bouton **« Entrée en stock »** à côté de « Modifier » ; la fenêtre s'ouvre avec cet article déjà choisi,
   et la fiche se rouvre ensuite avec le stock à jour.
-- Responsable Technique et administrateur seulement.
+- Responsable Logistique et administrateur seulement.
 - Création : code automatique (aperçu affiché), catégorie, unité, type, emplacement, seuil d'alerte ; prix, fournisseur, références facultatifs.
   Matériel « Non consommable · à rendre » : case **« Suivi par n° de série »** (OTDR, soudeuse…) : n° exigés dès la 1re entrée en stock.
   Type et suivi par n° de série fixés à la création. Doublon refusé : même nom (accents/majuscules ignorés) dans le même magasin.

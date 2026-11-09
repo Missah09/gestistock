@@ -1,4 +1,4 @@
-"""Écrans « Générer Rapports » et « Historique » (Responsable Technique, 15/10/2026).
+"""Écrans « Générer Rapports » et « Historique » (Responsable Technique et Responsable Logistique depuis le 09/11/2026).
 
 - GET /api/rapports/                      : les six rapports (cartes de l'écran) et les listes des filtres
 - GET /api/rapports/<rapport>/            : le rapport à l'écran ; ?fichier=pdf ou ?fichier=xlsx : le fichier
@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from . import historique as hist
 from .exports import reponse_fichier
-from .permissions import EstAgentLogistique
+from .permissions import EstAgentOuResponsable
 from .rapports import PERIODES, RAPPORTS, catalogue, construire
 
 PAR_PAGE = 50
@@ -44,13 +44,13 @@ def rapport_json(r):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstAgentOuResponsable])
 def liste(request):
     return Response(catalogue())
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstAgentOuResponsable])
 def rapport(request, cle):
     if cle not in RAPPORTS:
         return Response({"general": ["Rapport inconnu."]}, status=status.HTTP_404_NOT_FOUND)
@@ -62,7 +62,7 @@ def rapport(request, cle):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstAgentOuResponsable])
 def historique(request):
     lignes, du, au, libelle = hist.historique(request.query_params)
     try:
@@ -83,7 +83,7 @@ def historique(request):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstAgentOuResponsable])
 def historique_export(request):
     r = hist.rapport(request.query_params)
     lignes = r["sections"][0]["lignes"]

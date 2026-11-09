@@ -97,8 +97,8 @@ class TableauDeBordTests(TestCase):
         self.a.post(f"/api/a-valider/{did}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x",
                     "lignes": [{"id": l["id"], "qte_accordee": l["quantite"]} for l in lignes]}, format="json")
         self.r.post(f"/api/a-viser/{did}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
-        self.assertEqual(self.a.get(f"/api/requisitions/{did}/pdf/").status_code, 200)
-        rep = self.a.post(f"/api/sorties/{did}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
+        self.assertEqual(self.r.get(f"/api/requisitions/{did}/pdf/").status_code, 200)
+        rep = self.r.post(f"/api/sorties/{did}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
                           "lignes": [{"id": lignes[0]["id"], "qte_livree": 5}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
 

@@ -18,8 +18,8 @@ class NouvelArticleTests(TestCase):
         cls.emp = Emplacement.objects.filter(magasin=cls.ank).exclude(nom__in=["Atelier – À réparer", "Rebut"]).first()
         cls.cat = Categorie.objects.first()
         cls.saisisseur = User.objects.create_user("rabe", password="x")
-        cls.agent = User.objects.create_user("agent", password="x")
-        cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
+        cls.logistique = User.objects.create_user("logistique", password="x")
+        cls.logistique.groups.add(Group.objects.get(name="Responsable Logistique"))
         cls.admin = User.objects.create_superuser("chef", password="x")
 
     def client_de(self, user):
@@ -31,8 +31,8 @@ class NouvelArticleTests(TestCase):
         d.update(autres)
         return d
 
-    def test_agent_cree_un_article(self):
-        a = self.client_de(self.agent)
+    def test_responsable_logistique_cree_un_article(self):
+        a = self.client_de(self.logistique)
         attendu = a.get("/api/choix/").data["categories"]
         prochain = next(c["prochain_code"] for c in attendu if c["id"] == self.cat.id)
         rep = a.post("/api/articles/", self.donnees(), format="json")
@@ -56,13 +56,13 @@ class NouvelArticleTests(TestCase):
         self.assertFalse(Article.objects.filter(nom="Testeur de continuité XT-9").exists())
 
     def test_champs_obligatoires(self):
-        rep = self.client_de(self.agent).post("/api/articles/", {"nom": " "}, format="json")
+        rep = self.client_de(self.logistique).post("/api/articles/", {"nom": " "}, format="json")
         self.assertEqual(rep.status_code, 400)
         for champ in ["nom", "categorie", "type", "unite", "emplacement"]:
             self.assertIn(champ, rep.data)
 
     def test_doublon_dans_le_meme_magasin_refuse(self):
-        a = self.client_de(self.agent)
+        a = self.client_de(self.logistique)
         existant = Article.objects.filter(emplacement__magasin=self.ank).first()
         nom = existant.nom.upper().replace("E", "É")  # majuscules et accents ignorés
         rep = a.post("/api/articles/", self.donnees(nom=f"  {nom} "), format="json")
@@ -71,13 +71,13 @@ class NouvelArticleTests(TestCase):
 
     def test_emplacement_mis_de_cote_refuse(self):
         rebut = Emplacement.objects.get_or_create(magasin=self.ank, nom="Rebut")[0]
-        rep = self.client_de(self.agent).post("/api/articles/", self.donnees(emplacement=rebut.id), format="json")
+        rep = self.client_de(self.logistique).post("/api/articles/", self.donnees(emplacement=rebut.id), format="json")
         self.assertEqual(rep.status_code, 400)
         self.assertIn("emplacement", rep.data)
 
     def test_consommable_suivi_par_serie_seulement_a_la_piece(self):
         # Depuis le 26/10/2026 : un consommable compté à la pièce (box ONT…) peut être suivi par n° de série.
-        a = self.client_de(self.agent)
+        a = self.client_de(self.logistique)
         rep = a.post("/api/articles/", self.donnees(suivi_serie=True), format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
         self.assertTrue(Article.objects.get(id=rep.data["id"]).suivi_serie)
@@ -90,7 +90,7 @@ class NouvelArticleTests(TestCase):
         self.assertFalse(Article.objects.get(id=rep.data["id"]).suivi_serie)
 
     def test_materiel_suivi_par_serie_des_la_premiere_reception(self):
-        a = self.client_de(self.agent)
+        a = self.client_de(self.logistique)
         rep = a.post("/api/articles/", self.donnees(nom="OTDR test", type="PRETE", suivi_serie=True), format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
         art_id = rep.data["id"]
@@ -107,7 +107,7 @@ class NouvelArticleTests(TestCase):
         self.assertEqual(a.get(f"/api/articles/{art_id}/").data["qte_disponible"], 2)
 
     def test_materiel_sans_serie_suivi_par_quantite(self):
-        a = self.client_de(self.agent)
+        a = self.client_de(self.logistique)
         rep = a.post("/api/articles/", self.donnees(nom="Pelle test", type="PRETE"), format="json")
         art_id = rep.data["id"]
         entree = {"date_reception": "2026-10-12", "magasin": self.ank.id,

@@ -1,4 +1,4 @@
-"""Écran « Historique » (Responsable Technique, 15/10/2026) : tous les mouvements, avec le stock avant et après.
+"""Écran « Historique » (Responsable Technique et Responsable Logistique) : tous les mouvements, avec le stock avant et après.
 
 D'après la maquette (écran 11). Personne ne peut modifier l'historique : il est fabriqué à partir de ce que
 GestiStock a enregistré.

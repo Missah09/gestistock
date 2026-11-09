@@ -111,7 +111,7 @@ const FICHES = [
     ],
   },
   {
-    id: "reception", role: AGENT, icone: "box", titre: "Entrée en stock : enregistrer une livraison", ecran: "Liste d'Articles",
+    id: "reception", role: RESPONSABLE, icone: "box", titre: "Entrée en stock : enregistrer une livraison", ecran: "Liste d'Articles",
     etapes: [
       "Menu « Liste d'Articles », bouton « Entrée en stock » (en haut à droite).",
       "Indiquez le fournisseur, le n° de facture ou de bon de livraison, la date et le magasin.",
@@ -130,7 +130,7 @@ const FICHES = [
     ],
   },
   {
-    id: "modifier", role: AGENT, icone: "edit", titre: "Modifier la fiche d'un article", ecran: "Liste d'Articles",
+    id: "modifier", role: RESPONSABLE, icone: "edit", titre: "Modifier la fiche d'un article", ecran: "Liste d'Articles",
     etapes: [
       "Menu « Liste d'Articles », « Détails » sur la ligne de l'article, puis « Modifier ».",
       "Changez le nom, l'emplacement, le minimum, le prix, le fournisseur…, puis « Enregistrer ».",
@@ -169,9 +169,9 @@ const FICHES = [
     ],
   },
   {
-    id: "imprimer", role: AGENT, icone: "doc", titre: "Imprimer le bon de réquisition", ecran: "Liste Réquisitions",
+    id: "imprimer", role: RESPONSABLE, icone: "doc", titre: "Imprimer le bon de réquisition", ecran: "Liste Réquisitions",
     etapes: [
-      "Menu « Liste Réquisitions », onglet « À imprimer » : les bons signés par vous et par le Responsable Logistique. La pastille rouge les compte.",
+      "Menu « Liste Réquisitions », onglet « À imprimer » : les bons signés par le Responsable Technique et par vous. La pastille rouge les compte.",
       "Cliquez sur « Voir le bon » pour le relire.",
       "En bas de l'aperçu : « Imprimer » ouvre la fenêtre d'impression (format A4) ; « Télécharger le PDF » l'enregistre (fichier RM-2026-0001.pdf, par exemple).",
       "Portez le bon imprimé au magasin.",
@@ -184,7 +184,7 @@ const FICHES = [
     ],
   },
   {
-    id: "sortie", role: AGENT, icone: "out", titre: "Confirmer la sortie (matériel remis)", ecran: "Sorties de stock",
+    id: "sortie", role: RESPONSABLE, icone: "out", titre: "Confirmer la sortie (matériel remis)", ecran: "Sorties de stock",
     etapes: [
       "Quand le bon signé par le magasinier revient, ouvrez le menu « Sorties de stock », onglet « À confirmer ». La pastille rouge compte les bons en attente.",
       "Cliquez sur « Confirmer la sortie » à droite du bon.",
@@ -202,7 +202,7 @@ const FICHES = [
     ],
   },
   {
-    id: "retour", role: AGENT, icone: "back", titre: "Enregistrer un retour de matériel", ecran: "Retours de stock",
+    id: "retour", role: RESPONSABLE, icone: "back", titre: "Enregistrer un retour de matériel", ecran: "Retours de stock",
     etapes: [
       "Menu « Retours de stock », onglet « Matériel attendu » : le matériel prêté sorti et pas encore rentré (jamais les consommables). Les retards sont en rouge ; la pastille du menu les compte.",
       "Quand le demandeur rapporte le matériel, cliquez sur « Préparer le bon de retour », signez (signature enregistrée, scannée ou à la souris) et retapez votre mot de passe, puis « Signer et préparer le bon » : le BON DE RETOUR (BR-…) se télécharge avec tout ce qui reste à rendre. Imprimez-le.",
@@ -217,7 +217,7 @@ const FICHES = [
     ],
   },
   {
-    id: "rapports", role: AGENT, icone: "chart", titre: "Sortir un rapport (PDF ou Excel)", ecran: "Générer Rapports",
+    id: "rapports", role: [AGENT, RESPONSABLE], icone: "chart", titre: "Sortir un rapport (PDF ou Excel)", ecran: "Générer Rapports",
     etapes: [
       "Menu « Générer Rapports » : six rapports – État du stock, À commander, Consommation par chantier, Matériel prêté, Valeur du stock, Étalonnages à prévoir.",
       "« Voir » ouvre le rapport à l'écran. En haut, choisissez au besoin le magasin, la catégorie ou la période.",
@@ -231,7 +231,7 @@ const FICHES = [
     ],
   },
   {
-    id: "historique", role: AGENT, icone: "clock", titre: "Retrouver un mouvement (Historique)", ecran: "Historique",
+    id: "historique", role: [AGENT, RESPONSABLE], icone: "clock", titre: "Retrouver un mouvement (Historique)", ecran: "Historique",
     etapes: [
       "Menu « Historique » : tout ce qui s'est passé, le plus récent en haut – entrées, sorties, retours, corrections, et les étapes des demandes (validation, signature, bon imprimé).",
       "Pour chaque entrée, sortie ou retour : la quantité (+ en vert, − en rouge) et le stock de l'article avant → après.",
@@ -246,10 +246,10 @@ const FICHES = [
     ],
   },
   {
-    id: "bons", role: RESPONSABLE, icone: "doc", titre: "Consulter les bons signés", ecran: "Liste Réquisitions",
+    id: "bons", role: AGENT, icone: "doc", titre: "Consulter les bons signés", ecran: "Liste Réquisitions",
     etapes: [
-      "Menu « Liste Réquisitions » : tous les bons signés par le Responsable Technique et par vous.",
-      "La colonne « Impression » indique si le Responsable Technique a déjà imprimé le bon, quand, et combien de fois il a été téléchargé.",
+      "Menu « Liste Réquisitions » : tous les bons signés par vous et par le Responsable Logistique.",
+      "La colonne « Impression » indique si le Responsable Logistique a déjà imprimé le bon, quand, et combien de fois il a été téléchargé.",
       "« Voir le bon » pour le consulter ; en bas de l'aperçu, « Imprimer » ou « Télécharger le PDF ».",
     ],
     astuces: ["Votre impression ou téléchargement est une simple consultation : il ne fait pas passer le bon en « Imprimée »."],

@@ -1,11 +1,11 @@
-"""Écran « Retours de stock » (Responsable Technique, 12/10/2026) : le matériel prêté revient au magasin.
+"""Écran « Retours de stock » (Responsable Logistique depuis le 09/11/2026) : le matériel prêté revient au magasin.
 
 Circuit (le même que pour la sortie) :
-1. Dans « Matériel attendu », le Responsable Technique imprime un **bon de retour** (BR-AAAA-0001) rattaché à la
+1. Dans « Matériel attendu », le Responsable Logistique imprime un **bon de retour** (BR-AAAA-0001) rattaché à la
    réquisition, rempli d'office avec ce qui reste à rendre, et signé au stylo électronique.
 2. Au magasin, le magasinier reçoit le matériel, remplit à la main « Qté rendue » et « État au retour » ;
    le demandeur et lui signent.
-3. Le Responsable Technique **confirme le retour** en recopiant le bon : le stock remonte, l'état est mis à jour
+3. Le Responsable Logistique **confirme le retour** en recopiant le bon : le stock remonte, l'état est mis à jour
    (Neuf · Bon · Moyen · Mauvais ; tous redeviennent disponibles).
 Retour partiel : un bon par passage au magasin ; le suivant ne liste que ce qui reste à rendre.
 Seul le matériel prêté (non consommable) revient ; jamais les consommables.
@@ -22,7 +22,7 @@ from rest_framework.response import Response
 
 from . import etats
 from .models import Article, BonRetour, Exemplaire, LigneRetour, LigneSortie, Requisition, Sortie
-from .permissions import EstAgentLogistique
+from .permissions import EstResponsable
 from .serializers import heure_locale, nom_de
 from .signatures import ErreurSignature, enregistrer_si_demande, signature_de_la_requete
 from .views import PAR_PAGE_DEMANDES, demandes_completes, en_json
@@ -158,7 +158,7 @@ def compter_retards():
 
 # ---------------------------------------------------------------- API
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def liste(request):
     """Matériel attendu (?onglet=attendu|en_retard|soldes|toutes, ?page=).
     Attendu : les retards d'abord, puis le retour prévu le plus proche ; sinon les sorties les plus récentes."""
@@ -196,16 +196,16 @@ def _sortie_de(pk):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def detail(request, pk):
     s = _sortie_de(pk)
     return _introuvable() if s is None else Response(_avec_retour([s])[0])
 
 
 @api_view(["POST"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def creer_bon(request, pk):
-    """Prépare le bon de retour (ce qui reste à rendre) ; signature du Responsable Technique au stylo."""
+    """Prépare le bon de retour (ce qui reste à rendre) ; signature du Responsable Logistique au stylo."""
     try:
         sig = signature_de_la_requete(request)  # signature + mot de passe retapé (15/10/2026)
     except ErreurSignature as exc:
@@ -237,7 +237,7 @@ def creer_bon(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def annuler_bon(request, bon_id):
     """Bon imprimé mais le matériel n'est pas venu : on l'annule (le numéro reste utilisé)."""
     with transaction.atomic():
@@ -254,7 +254,7 @@ def annuler_bon(request, bon_id):
 
 
 @api_view(["POST"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def confirmer(request, bon_id):
     """Recopie du bon de retour rempli au magasin → le stock remonte, l'état est mis à jour.
 
@@ -403,7 +403,7 @@ def confirmer(request, bon_id):
 
 
 @api_view(["GET"])
-@permission_classes([EstAgentLogistique])
+@permission_classes([EstResponsable])
 def pdf(request, bon_id):
     """Bon de retour à imprimer ; après confirmation, copie d'archive avec les colonnes remplies."""
     try:

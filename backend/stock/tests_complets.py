@@ -19,12 +19,18 @@ class Base(TestCase):
         from django.contrib.auth.models import Group, User
         cls.agent = User.objects.create_user("agent", password="Mdp-agent-2026")
         cls.agent.groups.add(Group.objects.get(name="Responsable Technique"))
+        cls.logistique = User.objects.create_user("logistique", password="Mdp-logistique-2026")
+        cls.logistique.groups.add(Group.objects.get(name="Responsable Logistique"))
     def setUp(self):
         # Depuis le 11/10/2026 il faut être connecté : les tests agissent en Responsable Technique.
         self.c = APIClient(); self.c.force_login(self.agent)
     def art(self, code): return Article.objects.get(code=code)
 
 class ArticlesTests(Base):
+    def setUp(self):
+        # Entrées en stock et modification des articles : Responsable Logistique (09/11/2026).
+        self.c = APIClient(); self.c.force_login(self.logistique)
+
     def test_liste(self):
         r = self.c.get("/api/articles/"); self.assertEqual(r.status_code, 200)
         self.assertIn("results", r.data); self.assertGreater(r.data["count"], 0)

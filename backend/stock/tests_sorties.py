@@ -54,11 +54,11 @@ class SortiesTests(TestCase):
                                      format="json").status_code, 200)
         self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
         if imprimer:
-            self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
+            self.assertEqual(self.r.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
         return d
 
     def confirmer(self, d, lignes, date=None, **extra):
-        return self.a.post(f"/api/sorties/{d.id}/confirmer/", {
+        return self.r.post(f"/api/sorties/{d.id}/confirmer/", {
             "date_remise": (date or timezone.localdate()).isoformat(), "lignes": lignes, **extra}, format="json")
 
     def stock(self, article):
@@ -67,19 +67,19 @@ class SortiesTests(TestCase):
     # ---------------------------------------------------------------- Droits et liste
     def test_droits(self):
         d = self.bon()
-        self.assertEqual(self.a.get("/api/sorties/").status_code, 200)
-        self.assertEqual(self.r.get("/api/sorties/").status_code, 403)
+        self.assertEqual(self.r.get("/api/sorties/").status_code, 200)
+        self.assertEqual(self.a.get("/api/sorties/").status_code, 403)
         self.assertEqual(self.s.get("/api/sorties/").status_code, 403)
         self.assertEqual(APIClient().get("/api/sorties/").status_code, 401)
-        self.assertEqual(self.r.post(f"/api/sorties/{d.id}/confirmer/", {}, format="json").status_code, 403)
+        self.assertEqual(self.a.post(f"/api/sorties/{d.id}/confirmer/", {}, format="json").status_code, 403)
 
     def test_seuls_les_bons_imprimes_et_compteurs(self):
         imprime = self.bon()
         pas_imprime = self.bon(imprimer=False)
-        rep = self.a.get("/api/sorties/?onglet=a_confirmer")
+        rep = self.r.get("/api/sorties/?onglet=a_confirmer")
         self.assertEqual([x["id"] for x in rep.data["results"]], [imprime.id])
         self.assertEqual(rep.data["compteurs"], {"a_confirmer": 1, "confirmees": 0, "toutes": 1})
-        self.assertEqual(self.a.get("/api/compteurs/").data["a_confirmer"], 1)
+        self.assertEqual(self.r.get("/api/compteurs/").data["a_confirmer"], 1)
         rep = self.confirmer(pas_imprime, [])
         self.assertEqual(rep.status_code, 400)
         self.assertIn("pas encore imprimé", rep.data["general"][0])
@@ -95,12 +95,12 @@ class SortiesTests(TestCase):
         self.assertEqual(self.stock(self.c2), 50)  # retiré du bon : pas touché
         s = Sortie.objects.get(requisition__demande=d)
         self.assertEqual((s.magasinier, s.confirmee_par, s.lignes.get().qte_livree, s.lignes.get().qte_bon),
-                         ("Rakoto", self.agent, 6, 8))
+                         ("Rakoto", self.resp, 6, 8))
         sortie = rep.data["demande"]["requisition"]["sortie"]
         self.assertEqual(sortie["lignes"][str(l1.id)]["qte_livree"], 6)
         # Onglets et compteurs
-        self.assertEqual(self.a.get("/api/sorties/").data["compteurs"], {"a_confirmer": 0, "confirmees": 1, "toutes": 1})
-        self.assertEqual(self.a.get("/api/compteurs/").data["a_confirmer"], 0)
+        self.assertEqual(self.r.get("/api/sorties/").data["compteurs"], {"a_confirmer": 0, "confirmees": 1, "toutes": 1})
+        self.assertEqual(self.r.get("/api/compteurs/").data["a_confirmer"], 0)
         # Pas deux fois
         rep = self.confirmer(d, [{"id": l1.id, "qte_livree": 6}])
         self.assertEqual(rep.status_code, 400)
@@ -126,7 +126,7 @@ class SortiesTests(TestCase):
         self.assertIn("futur", self.confirmer(d, [{"id": l1.id, "qte_livree": 1}], date=demain).data["date_remise"][0])
         hier = timezone.localdate() - datetime.timedelta(days=1)
         self.assertIn("visé le", self.confirmer(d, [{"id": l1.id, "qte_livree": 1}], date=hier).data["date_remise"][0])
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {"lignes": [{"id": l1.id, "qte_livree": 1}]}, format="json")
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {"lignes": [{"id": l1.id, "qte_livree": 1}]}, format="json")
         self.assertIn("date_remise", rep.data)
         # Stock insuffisant dans l'application
         Article.objects.filter(id=self.c1.id).update(qte_stock=3)
@@ -139,7 +139,7 @@ class SortiesTests(TestCase):
     def test_materiel_suivi_par_numero_de_serie(self):
         d = self.bon(avec_serie=True)
         l1, _, l3 = d.lignes.order_by("id")
-        rep = self.a.get(f"/api/sorties/{d.id}/")
+        rep = self.r.get(f"/api/sorties/{d.id}/")
         ligne = [x for x in rep.data["lignes"] if x["id"] == l3.id][0]
         self.assertTrue(ligne["article"]["suivi_par_serie"])
         dispo = {e["numero_serie"]: e["id"] for e in ligne["exemplaires_en_stock"]}
@@ -164,10 +164,10 @@ class SortiesTests(TestCase):
 
     def test_copie_d_archive(self):
         d = self.bon()
-        self.assertEqual(self.a.get(f"/api/sorties/{d.id}/pdf/").status_code, 404)
+        self.assertEqual(self.r.get(f"/api/sorties/{d.id}/pdf/").status_code, 404)
         l1 = d.lignes.order_by("id").first()
         self.assertEqual(self.confirmer(d, [{"id": l1.id, "qte_livree": 8}], magasinier="Rakoto").status_code, 200)
-        rep = self.a.get(f"/api/sorties/{d.id}/pdf/")
+        rep = self.r.get(f"/api/sorties/{d.id}/pdf/")
         self.assertEqual(rep.status_code, 200)
         self.assertTrue(rep.content.startswith(b"%PDF"))
         self.assertIn("-archive.pdf", rep["Content-Disposition"])

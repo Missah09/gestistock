@@ -48,7 +48,7 @@ class RapportsEtHistoriqueTests(TestCase):
 
     def circuit(self, retour_prevu=None):
         """Réception, demande (chantier Fibre Ivato), validation, visa, impression, sortie confirmée."""
-        rep = self.a.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
+        rep = self.r.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
                                             "lignes": [{"article": self.conso.id, "quantite": 6, "etat": "NEUF"}]},
                           format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
@@ -63,10 +63,10 @@ class RapportsEtHistoriqueTests(TestCase):
         self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": accord},
                                      format="json").status_code, 200)
         self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
-        self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
+        self.assertEqual(self.r.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
         ls = {l.article_id: l for l in d.lignes.all()}
         ids = list(Exemplaire.objects.filter(numero_serie__startswith="RP-SN-").values_list("id", flat=True))
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {"date_remise": timezone.localdate().isoformat(), "lignes": [
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {"date_remise": timezone.localdate().isoformat(), "lignes": [
             {"id": ls[self.conso.id].id, "qte_livree": 4}, {"id": ls[self.casque.id].id, "qte_livree": 3},
             {"id": ls[self.serie.id].id, "exemplaires": ids}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
@@ -77,7 +77,7 @@ class RapportsEtHistoriqueTests(TestCase):
         for url in ["/api/rapports/", "/api/rapports/etat-stock/", "/api/historique/", "/api/historique/export/?fichier=pdf"]:
             self.assertEqual(self.a.get(url).status_code, 200, url)
             self.assertEqual(self.s.get(url).status_code, 403, url)
-            self.assertEqual(self.r.get(url).status_code, 403, url)
+            self.assertEqual(self.r.get(url).status_code, 200, url)  # ouverts aux deux responsables (09/11/2026)
             self.assertEqual(APIClient().get(url).status_code, 401, url)
         self.assertEqual(self.a.get("/api/rapports/inconnu/").status_code, 404)
         self.assertEqual(self.a.get("/api/rapports/etat-stock/?fichier=doc").status_code, 400)
@@ -181,7 +181,7 @@ class RapportsEtHistoriqueTests(TestCase):
         self.assertEqual((sortie["quantite"], sortie["stock"]), ("−4", "56 → 52"))
         self.assertEqual(Article.objects.get(id=self.conso.id).qte_stock, 52)
         self.assertEqual(sortie["reference"], d.requisition.numero)
-        self.assertEqual(sortie["par"], "Hery Rasoa")
+        self.assertEqual(sortie["par"], "Paul Randria")
         # Les 2 n° de série sortis ensemble : une seule ligne, −2
         serie = [l for l in lignes if l["type"] == "sortie" and l["code"] == self.serie.code]
         self.assertEqual(len(serie), 1)

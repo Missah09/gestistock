@@ -60,20 +60,20 @@ class EtatEtRetoursTests(TestCase):
         self.assertEqual(self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": accord},
                                      format="json").status_code, 200)
         self.assertEqual(self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 200)
-        self.assertEqual(self.a.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
+        self.assertEqual(self.r.get(f"/api/requisitions/{d.id}/pdf/").status_code, 200)
         ls = {l.article_id: l for l in d.lignes.all()}
         envoi = [{"id": ls[self.casque.id].id, "qte_livree": casques}, {"id": ls[self.conso.id].id, "qte_livree": 3}]
         if avec_serie:
             ids = list(Exemplaire.objects.filter(numero_serie__startswith="RT-SN-").values_list("id", flat=True))
             envoi.append({"id": ls[self.serie.id].id, "exemplaires": ids})
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {"date_remise": timezone.localdate().isoformat(),
                                                                "lignes": envoi}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         return d
 
     # ---------------------------------------------------------------- État du produit
     def test_reception_avec_etat(self):
-        rep = self.a.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
+        rep = self.r.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
                                             "lignes": [{"article": self.casque.id, "quantite": 4, "etat": "MOYEN"},
                                                        {"article": self.conso.id, "quantite": 2, "etat": "MAUVAIS"}]},
                           format="json")
@@ -85,7 +85,7 @@ class EtatEtRetoursTests(TestCase):
         self.assertEqual(self.par_etat(self.conso)["MAUVAIS"], 2)
         self.assertEqual(MouvementEtat.objects.filter(type="RECEPTION").count(), 2)
         # Anciens états refusés
-        rep = self.a.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
+        rep = self.r.post("/api/entrees/", {"date_reception": timezone.localdate().isoformat(), "magasin": self.ank.id,
                                             "lignes": [{"article": self.conso.id, "quantite": 1, "etat": "A_REPARER"}]},
                           format="json")
         self.assertEqual(rep.status_code, 400)
@@ -104,43 +104,43 @@ class EtatEtRetoursTests(TestCase):
         self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l.id, "qte_accordee": 5}]},
                     format="json")
         self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
-        self.a.get(f"/api/requisitions/{d.id}/pdf/")
+        self.r.get(f"/api/requisitions/{d.id}/pdf/")
         base = {"date_remise": timezone.localdate().isoformat()}
         # Deux états en stock : il faut dire lesquels sont sortis
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {**base, "lignes": [{"id": l.id, "qte_livree": 5}]}, format="json")
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {**base, "lignes": [{"id": l.id, "qte_livree": 5}]}, format="json")
         self.assertEqual(rep.status_code, 400)
         self.assertIn("état", rep.data["lignes"][str(l.id)][0])
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {**base, "lignes": [
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {**base, "lignes": [
             {"id": l.id, "qte_livree": 5, "etats": {"BON": 2, "MOYEN": 2}}]}, format="json")
         self.assertEqual(rep.status_code, 400)  # 4 ≠ 5
-        rep = self.a.post(f"/api/sorties/{d.id}/confirmer/", {**base, "lignes": [
+        rep = self.r.post(f"/api/sorties/{d.id}/confirmer/", {**base, "lignes": [
             {"id": l.id, "qte_livree": 5, "etats": {"BON": 2, "MOYEN": 3}}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         self.assertEqual(self.par_etat(self.casque), {"NEUF": 0, "BON": 8, "MOYEN": 0, "MAUVAIS": 0})
         self.assertEqual(self.stock(self.casque), 8)
         self.assertEqual(LigneSortie.objects.get(ligne_demande=l).etats, {"BON": 2, "MOYEN": 3})
         # Copie d'archive avec la colonne État
-        self.assertEqual(self.a.get(f"/api/sorties/{d.id}/pdf/").status_code, 200)
+        self.assertEqual(self.r.get(f"/api/sorties/{d.id}/pdf/").status_code, 200)
 
     # ---------------------------------------------------------------- Retours
     def test_circuit_du_retour_partiel(self):
         d = self.sortie()
         self.assertEqual(self.stock(self.casque), 2)
-        self.assertEqual(self.r.get("/api/retours/").status_code, 403)
-        rep = self.a.get("/api/retours/")
+        self.assertEqual(self.a.get("/api/retours/").status_code, 403)
+        rep = self.r.get("/api/retours/")
         self.assertEqual(rep.data["compteurs"]["attendu"], 1)
         retour = rep.data["results"][0]["retour"]
         self.assertEqual(retour["reste_total"], 10)  # 8 casques + 2 n° de série ; jamais le consommable
         self.assertEqual({l["article"]["id"] for l in retour["lignes"]}, {self.casque.id, self.serie.id})
 
         # Bon de retour : signature obligatoire, un seul à la fois
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {}, format="json").status_code, 400)
-        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
+        self.assertEqual(self.r.post(f"/api/retours/{d.id}/bon/", {}, format="json").status_code, 400)
+        rep = self.r.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         self.assertEqual(rep.status_code, 201, rep.data)
         b = BonRetour.objects.get(id=rep.data["bon"])
         self.assertTrue(b.numero.startswith(f"BR-{timezone.localdate().year}-"))
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
-        pdf = self.a.get(f"/api/retours/bons/{b.id}/pdf/")
+        self.assertEqual(self.r.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
+        pdf = self.r.get(f"/api/retours/bons/{b.id}/pdf/")
         self.assertEqual(pdf.status_code, 200)
         self.assertTrue(pdf.content.startswith(b"%PDF"))
 
@@ -151,19 +151,19 @@ class EtatEtRetoursTests(TestCase):
         url = f"/api/retours/bons/{b.id}/confirmer/"
         base = {"date_retour": timezone.localdate().isoformat(), "magasinier": "Koto", "rendu_par": "Jean Rabe"}
         # Plus que le reste : refusé ; date future : refusée ; rien rendu : refusé
-        rep = self.a.post(url, {**base, "lignes": [{"id": ligne_casque["id"], "etats": {"BON": 9}},
+        rep = self.r.post(url, {**base, "lignes": [{"id": ligne_casque["id"], "etats": {"BON": 9}},
                                                    {"id": ligne_serie["id"], "exemplaires": {}}]}, format="json")
         self.assertEqual(rep.status_code, 400)
-        rep = self.a.post(url, {**base, "date_retour": (timezone.localdate() + datetime.timedelta(days=1)).isoformat(),
+        rep = self.r.post(url, {**base, "date_retour": (timezone.localdate() + datetime.timedelta(days=1)).isoformat(),
                                 "lignes": [{"id": ligne_casque["id"], "etats": {"BON": 1}},
                                            {"id": ligne_serie["id"], "exemplaires": {}}]}, format="json")
         self.assertIn("date_retour", rep.data)
-        rep = self.a.post(url, {**base, "lignes": [{"id": ligne_casque["id"], "etats": {}},
+        rep = self.r.post(url, {**base, "lignes": [{"id": ligne_casque["id"], "etats": {}},
                                                    {"id": ligne_serie["id"], "exemplaires": {}}]}, format="json")
         self.assertEqual(rep.status_code, 400)
 
         # Retour partiel : 6 casques (4 bon, 2 mauvais) et 1 n° de série en mauvais état : tout redevient disponible
-        rep = self.a.post(url, {**base, "lignes": [
+        rep = self.r.post(url, {**base, "lignes": [
             {"id": ligne_casque["id"], "etats": {"BON": 4, "MAUVAIS": 2}, "observation": "2 fêlés"},
             {"id": ligne_serie["id"], "exemplaires": {str(ex[0]): "MAUVAIS"}}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
@@ -172,36 +172,36 @@ class EtatEtRetoursTests(TestCase):
         self.assertEqual(self.par_etat(self.casque)["MAUVAIS"], 2)
         e0 = Exemplaire.objects.get(id=ex[0])
         self.assertEqual((e0.statut, e0.etat, e0.prete_a), ("EN_STOCK", "MAUVAIS", ""))
-        self.assertEqual(self.a.get(f"/api/retours/bons/{b.id}/pdf/").status_code, 200)  # copie d'archive
+        self.assertEqual(self.r.get(f"/api/retours/bons/{b.id}/pdf/").status_code, 200)  # copie d'archive
 
         # Second bon : seulement ce qui reste
-        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
+        rep = self.r.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         bon2 = rep.data["demande"]["retour"]["bon_ouvert"]
         self.assertEqual(sorted(l["qte_attendue"] for l in bon2["lignes"]), [1, 2])
         l2c = next(l for l in bon2["lignes"] if l["article"]["id"] == self.casque.id)
         l2s = next(l for l in bon2["lignes"] if l["article"]["id"] == self.serie.id)
         self.assertEqual([e["id"] for e in l2s["exemplaires"]], [ex[1]])
-        rep = self.a.post(f"/api/retours/bons/{bon2['id']}/confirmer/", {**base, "lignes": [
+        rep = self.r.post(f"/api/retours/bons/{bon2['id']}/confirmer/", {**base, "lignes": [
             {"id": l2c["id"], "etats": {"MOYEN": 2}}, {"id": l2s["id"], "exemplaires": {str(ex[1]): "BON"}}]}, format="json")
         self.assertEqual(rep.status_code, 200, rep.data)
         self.assertIn("est rentré", rep.data["message"])
         self.assertTrue(rep.data["demande"]["retour"]["solde"])
-        self.assertEqual(self.a.get("/api/retours/?onglet=soldes").data["count"], 1)
+        self.assertEqual(self.r.get("/api/retours/?onglet=soldes").data["count"], 1)
         self.assertEqual(Exemplaire.objects.get(id=ex[1]).statut, "EN_STOCK")
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
+        self.assertEqual(self.r.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 400)
 
     def test_annuler_un_bon_et_retards(self):
         d = self.sortie(avec_serie=False)
         # Retour prévu dépassé : compté en retard
         d.lignes.filter(article=self.casque).update(date_retour_prevue=timezone.localdate() - datetime.timedelta(days=1))
-        self.assertEqual(self.a.get("/api/compteurs/").data["retours_en_retard"], 1)
-        self.assertEqual(self.a.get("/api/retours/?onglet=en_retard").data["count"], 1)
-        rep = self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
+        self.assertEqual(self.r.get("/api/compteurs/").data["retours_en_retard"], 1)
+        self.assertEqual(self.r.get("/api/retours/?onglet=en_retard").data["count"], 1)
+        rep = self.r.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
         b = rep.data["bon"]
-        rep = self.a.post(f"/api/retours/bons/{b}/annuler/")
+        rep = self.r.post(f"/api/retours/bons/{b}/annuler/")
         self.assertEqual(rep.status_code, 200)
         self.assertIsNone(rep.data["demande"]["retour"]["bon_ouvert"])
-        self.assertEqual(self.a.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 201)
+        self.assertEqual(self.r.post(f"/api/retours/{d.id}/bon/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json").status_code, 201)
 
     # ---------------------------------------------------------------- « Matériel à réparer » retiré
     def test_ecran_materiel_a_reparer_retire(self):
@@ -283,10 +283,10 @@ class NumeroEtImpressionTests(TestCase):
         self.a.post(f"/api/a-valider/{d.id}/valider/", {"signature": SIGNATURE, "mot_de_passe": "x", "lignes": [{"id": l.id, "qte_accordee": 2}]},
                     format="json")
         self.r.post(f"/api/a-viser/{d.id}/viser/", {"signature": SIGNATURE, "mot_de_passe": "x"}, format="json")
-        rep = self.r.get(f"/api/requisitions/{d.id}/pdf/?impression=1")  # Responsable : consultation
+        rep = self.a.get(f"/api/requisitions/{d.id}/pdf/?impression=1")  # Responsable Technique : consultation
         self.assertTrue(rep["Content-Disposition"].startswith("inline"))
         self.assertEqual(self.a.get("/api/requisitions/?onglet=imprimees").data["count"], 0)
-        self.a.get(f"/api/requisitions/{d.id}/pdf/?impression=1")
+        self.r.get(f"/api/requisitions/{d.id}/pdf/?impression=1")
         rep = self.a.get("/api/requisitions/?onglet=imprimees")
         self.assertEqual(rep.data["count"], 1)
         self.assertEqual(rep.data["results"][0]["requisition"]["nb_impressions"], 2)
